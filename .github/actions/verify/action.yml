@@ -1,0 +1,35 @@
+name: 'Blueprint Integrity Verification'
+description: 'Validate repository blueprints for agentic AI tools'
+inputs:
+  backend:
+    description: 'Backend tool format (claude | cursor | opendev | generic)'
+    required: false
+    default: 'claude'
+  level:
+    description: 'Validation level (structural | semantic | logical | drift | all)'
+    required: false
+    default: 'all'
+  fail-on:
+    description: 'Exit non-zero at or above this validation level (structural | semantic | logical | drift | all)'
+    required: false
+    default: 'logical'
+  json-report:
+    description: 'Generate a machine-readable JSON report'
+    required: false
+    default: 'false'
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    - name: Run verification
+      shell: bash
+      run: |
+        ARGS="--level ${{ inputs.level }} --fail-on ${{ inputs.fail-on }}"
+        if [ "${{ inputs.json-report }}" = "true" ]; then
+          ARGS="$ARGS --json"
+        fi
+        # Execute verification
+        npx @agentic/bp verify $ARGS

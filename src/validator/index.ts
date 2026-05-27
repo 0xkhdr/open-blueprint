@@ -1,7 +1,9 @@
+import * as fs from "node:fs";
 import * as path from "node:path";
 import fg from "fast-glob";
 import type { Fingerprint } from "../detector/fingerprint.js";
 import type { BackendManifest } from "../templater/selector.js";
+import { loadCache, saveCache } from "./cache.js";
 import { validateDrift } from "./drift.js";
 import { validateLogical } from "./logical.js";
 import { validateSemantic } from "./semantic.js";
@@ -66,28 +68,72 @@ export async function runValidator(options: ValidatorOptions): Promise<Validatio
   const { level, projectRoot, manifest, fingerprint } = options;
 
   const files = await collectBlueprintFiles(projectRoot, manifest);
-  const allErrors: ValidationError[] = [];
+  const cache = loadCache(projectRoot, manifest.version);
+  const cacheUpdatedFiles: Record<string, { mtime: number; errors: ValidationError[] }> = {
+    ...cache.files,
+  };
 
-  // Layer 1: Structural (always run)
-  const structuralErrors = validateStructuralBatch(files, manifest);
-  allErrors.push(...structuralErrors);
+  const filesToValidate: string[] = [];
+  const cachedErrors: ValidationError[] = [];
+
+  for (const file of files) {
+    if (!fs.existsSync(file)) {
+      filesToValidate.push(file);
+      continue;
+    }
+    const stat = fs.statSync(file);
+    const mtime = stat.mtimeMs;
+    const cachedEntry = cache.files[file];
+    if (cachedEntry && cachedEntry.mtime === mtime) {
+      cachedErrors.push(...cachedEntry.errors);
+    } else {
+      filesToValidate.push(file);
+    }
+  }
+
+  const newErrors: ValidationError[] = [];
+
+  // Layer 1: Structural (always run for modified/new files)
+  const structuralErrors = validateStructuralBatch(filesToValidate, manifest);
+  newErrors.push(...structuralErrors);
 
   // Short-circuit: if structural hard failures exist, skip deeper layers
   const structuralHardFail = structuralErrors.some((e) => e.severity === "error");
 
-  // Layer 2: Semantic
+  // Layer 2: Semantic (run only for modified/new files)
   if (!structuralHardFail && (level === "semantic" || level === "all")) {
-    const semanticErrors = await validateSemantic(files, { projectRoot, manifest });
-    allErrors.push(...semanticErrors);
+    const semanticErrors = await validateSemantic(filesToValidate, { projectRoot, manifest });
+    newErrors.push(...semanticErrors);
   }
 
-  // Layer 3: Logical
+  // Update cache for the validated files
+  for (const file of filesToValidate) {
+    if (!fs.existsSync(file)) continue;
+    const stat = fs.statSync(file);
+    // Find all errors for this specific file
+    const fileErrors = newErrors.filter((e) => e.file === file);
+    cacheUpdatedFiles[file] = {
+      mtime: stat.mtimeMs,
+      errors: fileErrors,
+    };
+  }
+
+  // Save the updated cache
+  saveCache(projectRoot, {
+    version: "1.0",
+    manifestVersion: manifest.version,
+    files: cacheUpdatedFiles,
+  });
+
+  const allErrors: ValidationError[] = [...cachedErrors, ...newErrors];
+
+  // Layer 3: Logical (always run since it is global across rules)
   if (!structuralHardFail && (level === "logical" || level === "all")) {
     const logicalErrors = await validateLogical(files, { projectRoot });
     allErrors.push(...logicalErrors);
   }
 
-  // Layer 4: Drift
+  // Layer 4: Drift (always run since it checks drift)
   if (level === "drift" || level === "all") {
     if (fingerprint) {
       const driftErrors = await validateDrift(files, {

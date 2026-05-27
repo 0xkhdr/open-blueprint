@@ -194,7 +194,16 @@ async function checkTopologyDrift(
   for (const ruleFile of ruleFiles) {
     try {
       const content = fs.readFileSync(ruleFile, "utf-8");
-      const fm = matter(content).data as Record<string, unknown>;
+      const parsed = matter(content);
+      const data = parsed.data || {};
+      const fm: Record<string, unknown> = Object.create(null);
+      if (typeof data === "object" && data !== null) {
+        for (const [k, v] of Object.entries(data)) {
+          if (k !== "__proto__" && k !== "constructor") {
+            fm[k] = v;
+          }
+        }
+      }
       if (typeof fm.scope === "string") coveredScopes.push(fm.scope);
     } catch {
       /* skip */
@@ -251,7 +260,16 @@ function checkDependencyDrift(
     if (!f.endsWith(".md")) continue;
     try {
       const content = fs.readFileSync(f, "utf-8");
-      const fm = matter(content).data as Record<string, unknown>;
+      const parsed = matter(content);
+      const data = parsed.data || {};
+      const fm: Record<string, unknown> = Object.create(null);
+      if (typeof data === "object" && data !== null) {
+        for (const [k, v] of Object.entries(data)) {
+          if (k !== "__proto__" && k !== "constructor") {
+            fm[k] = v;
+          }
+        }
+      }
       const tags = fm.tags;
       if (Array.isArray(tags)) knownTopics.push(...tags.map(String));
       const name = fm.name;

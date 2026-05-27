@@ -123,20 +123,24 @@ export function createVerifyCommand(): Command {
 
   cmd
     .description("Validate blueprint integrity")
+    .argument("[paths...]", "One or more repository paths to verify")
     .option("--level <level>", "structural | semantic | logical | drift | all", "all")
     .option("--json", "Machine-readable JSON output", false)
     .option("--fix", "Auto-correct unambiguous structural issues", false)
     .option("--watch", "Re-validate on file change (debounced 300ms)", false)
     .option("--fail-on <level>", "Exit non-zero only at this severity level", "logical")
     .action(
-      async (opts: {
-        level: string;
-        json: boolean;
-        fix: boolean;
-        watch: boolean;
-        failOn: string;
-      }) => {
-        const cwd = process.cwd();
+      async (
+        pathsArg: string[] | undefined,
+        opts: {
+          level: string;
+          json: boolean;
+          fix: boolean;
+          watch: boolean;
+          failOn: string;
+        }
+      ) => {
+        const paths = pathsArg && pathsArg.length > 0 ? pathsArg : ["."];
 
         if (!VALID_LEVELS.includes(opts.level as ValidationLevel)) {
           console.error(
@@ -147,98 +151,134 @@ export function createVerifyCommand(): Command {
 
         const level = opts.level as ValidationLevel;
         const userConfig = loadUserConfig();
-        const projectConfig = loadProjectConfig(cwd);
-        const backend = projectConfig?.backend ?? userConfig.default_backend;
 
         const runValidation = async (): Promise<void> => {
-          const spinner =
-            opts.json || opts.watch
-              ? null
-              : ora({ text: `Validating blueprint (${level})...`, color: "cyan" }).start();
+          const results: Array<Record<string, unknown>> = [];
+          let _overallPassed = true;
+          let maxExitCode = 0;
 
-          try {
-            const fingerprint = await detect(cwd);
-            const pack = resolveTemplatePack(fingerprint, backend);
+          for (const targetPath of paths) {
+            const absolutePath = path.resolve(targetPath);
+            if (!fs.existsSync(absolutePath)) {
+              if (!opts.json) {
+                console.error(chalk.red(`Path does not exist: ${targetPath}`));
+              }
+              _overallPassed = false;
+              maxExitCode = Math.max(maxExitCode, EXIT_CODES.GENERAL_ERROR);
+              continue;
+            }
 
-            const result = await runValidator({
-              level,
-              projectRoot: cwd,
-              manifest: pack.manifest,
-              fingerprint,
-            });
+            const projectConfig = loadProjectConfig(absolutePath);
+            const backend = projectConfig?.backend ?? userConfig.default_backend;
 
-            // Apply fixes before reporting
-            if (opts.fix && !opts.json) {
-              const fixable = [...result.errors, ...result.warnings].filter(
-                (e) => e.type === "MISSING_FRONTMATTER" || e.type === "INVALID_SEVERITY"
-              );
-              let fixedCount = 0;
-              for (const err of fixable) {
-                if (applyFix(err)) {
-                  fixedCount++;
-                  console.log(
-                    chalk.green(`  ✔ Fixed [${err.type}] in ${path.relative(cwd, err.file)}`)
-                  );
+            const spinner =
+              opts.json || opts.watch
+                ? null
+                : ora({
+                    text: `Validating blueprint at ${targetPath} (${level})...`,
+                    color: "cyan",
+                  }).start();
+
+            try {
+              const fingerprint = await detect(absolutePath);
+              const pack = resolveTemplatePack(fingerprint, backend);
+
+              const result = await runValidator({
+                level,
+                projectRoot: absolutePath,
+                manifest: pack.manifest,
+                fingerprint,
+              });
+
+              // Apply fixes before reporting
+              if (opts.fix && !opts.json) {
+                const fixable = [...result.errors, ...result.warnings].filter(
+                  (e) => e.type === "MISSING_FRONTMATTER" || e.type === "INVALID_SEVERITY"
+                );
+                let fixedCount = 0;
+                for (const err of fixable) {
+                  if (applyFix(err)) {
+                    fixedCount++;
+                    console.log(
+                      chalk.green(
+                        `  ✔ Fixed [${err.type}] in ${path.relative(absolutePath, err.file)}`
+                      )
+                    );
+                  }
+                }
+                if (fixedCount > 0) {
+                  spinner?.info(chalk.cyan(`Applied ${fixedCount} auto-fix(es). Re-validating...`));
+                  // Re-run after fixes
+                  const reResult = await runValidator({
+                    level,
+                    projectRoot: absolutePath,
+                    manifest: pack.manifest,
+                    fingerprint,
+                  });
+                  Object.assign(result, reResult);
                 }
               }
-              if (fixedCount > 0) {
-                spinner?.info(chalk.cyan(`Applied ${fixedCount} auto-fix(es). Re-validating...`));
-                // Re-run after fixes
-                const reResult = await runValidator({
-                  level,
-                  projectRoot: cwd,
-                  manifest: pack.manifest,
-                  fingerprint,
-                });
-                Object.assign(result, reResult);
+
+              results.push({ ...result, path: targetPath });
+              if (!result.passed) {
+                _overallPassed = false;
               }
-            }
+              maxExitCode = Math.max(maxExitCode, exitCodeForResult(result));
 
-            if (opts.json) {
-              console.log(JSON.stringify(result, null, 2));
-              if (!opts.watch) process.exit(exitCodeForResult(result));
-              return;
-            }
+              if (!opts.json) {
+                if (result.passed && result.warnings.length === 0) {
+                  spinner?.succeed(
+                    chalk.green(
+                      `[${targetPath}] All checks passed (${result.filesChecked} files, ${level} level)`
+                    )
+                  );
+                } else if (result.passed) {
+                  spinner?.warn(
+                    chalk.yellow(
+                      `[${targetPath}] Passed with ${result.warnings.length} warning(s) (${result.filesChecked} files)`
+                    )
+                  );
+                } else {
+                  spinner?.fail(
+                    chalk.red(
+                      `[${targetPath}] ${result.errors.length} error(s), ${result.warnings.length} warning(s) (${result.filesChecked} files)`
+                    )
+                  );
+                }
 
-            if (result.passed && result.warnings.length === 0) {
-              spinner?.succeed(
-                chalk.green(`All checks passed (${result.filesChecked} files, ${level} level)`)
-              );
-            } else if (result.passed) {
-              spinner?.warn(
-                chalk.yellow(
-                  `Passed with ${result.warnings.length} warning(s) (${result.filesChecked} files)`
-                )
-              );
-            } else {
+                if (result.errors.length > 0) {
+                  console.error(chalk.red(`\nErrors in ${targetPath} (${result.errors.length}):`));
+                  for (const err of result.errors) formatError(err, absolutePath);
+                }
+                if (result.warnings.length > 0) {
+                  console.warn(
+                    chalk.yellow(`\nWarnings in ${targetPath} (${result.warnings.length}):`)
+                  );
+                  for (const warn of result.warnings) formatError(warn, absolutePath);
+                }
+              }
+            } catch (e) {
               spinner?.fail(
-                chalk.red(
-                  `${result.errors.length} error(s), ${result.warnings.length} warning(s) (${result.filesChecked} files)`
-                )
+                `[${targetPath}] Validation error: ${e instanceof Error ? e.message : String(e)}`
               );
+              _overallPassed = false;
+              maxExitCode = Math.max(maxExitCode, EXIT_CODES.GENERAL_ERROR);
+              results.push({
+                path: targetPath,
+                passed: false,
+                error: e instanceof Error ? e.message : String(e),
+              });
             }
+          }
 
-            if (result.errors.length > 0) {
-              console.error(chalk.red(`\nErrors (${result.errors.length}):`));
-              for (const err of result.errors) formatError(err, cwd);
-            }
-            if (result.warnings.length > 0) {
-              console.warn(chalk.yellow(`\nWarnings (${result.warnings.length}):`));
-              for (const warn of result.warnings) formatError(warn, cwd);
-            }
+          if (opts.json) {
+            console.log(JSON.stringify(results.length === 1 ? results[0] : results, null, 2));
+            if (!opts.watch) process.exit(maxExitCode);
+            return;
+          }
 
-            if (!opts.watch) process.exit(exitCodeForResult(result));
-          } catch (e) {
-            spinner?.fail(`Validation error: ${e instanceof Error ? e.message : String(e)}`);
-            if (opts.json) {
-              console.log(
-                JSON.stringify({
-                  error: e instanceof Error ? e.message : String(e),
-                  passed: false,
-                })
-              );
-            }
-            if (!opts.watch) process.exit(EXIT_CODES.GENERAL_ERROR);
+          if (!opts.watch) {
+            process.exit(maxExitCode);
           }
         };
 
@@ -247,7 +287,8 @@ export function createVerifyCommand(): Command {
 
         // Watch mode: keep process alive
         if (opts.watch) {
-          startWatcher(cwd, level, runValidation);
+          const firstPath = path.resolve(paths[0] || ".");
+          startWatcher(firstPath, level, runValidation);
           // Keep alive
           await new Promise<never>(() => {
             /* intentionally never resolves */

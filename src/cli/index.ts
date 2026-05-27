@@ -5,6 +5,7 @@ import { createConvertCommand } from "./commands/convert.js";
 import { createDoctorCommand } from "./commands/doctor.js";
 import { createHookCommand } from "./commands/hook.js";
 import { createInitCommand } from "./commands/init.js";
+import { createMigrateCommand } from "./commands/migrate.js";
 import { createRuleCommand } from "./commands/rule.js";
 import { createSyncCommand } from "./commands/sync.js";
 import { createTemplateCommand } from "./commands/template.js";
@@ -35,6 +36,30 @@ program.addCommand(createRuleCommand());
 program.addCommand(createHookCommand());
 program.addCommand(createConfigCommand());
 program.addCommand(createUpdateCommand());
+program.addCommand(createMigrateCommand());
+
+// Audit logging hook
+program.hook("preAction", (_thisCommand, actionCommand) => {
+  try {
+    const { logAudit } = require("../security/audit.js");
+    logAudit({
+      command: actionCommand.name(),
+      args: actionCommand.args,
+      status: "success",
+    });
+  } catch {
+    // ESM dynamic import fallback
+    import("../security/audit.js")
+      .then(({ logAudit }) => {
+        logAudit({
+          command: actionCommand.name(),
+          args: actionCommand.args,
+          status: "success",
+        });
+      })
+      .catch(() => {});
+  }
+});
 
 program.parseAsync(process.argv).catch((e: unknown) => {
   console.error(e instanceof Error ? e.message : String(e));

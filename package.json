@@ -22,7 +22,14 @@
     "type": "git",
     "url": "git+https://github.com/0xkhdr/open-blueprint.git"
   },
-  "keywords": ["cli", "blueprint", "claude", "cursor", "agentic", "scaffolding"],
+  "keywords": [
+    "cli",
+    "blueprint",
+    "claude",
+    "cursor",
+    "agentic",
+    "scaffolding"
+  ],
   "author": "Mohamed Khedr",
   "license": "MIT",
   "engines": {
@@ -40,9 +47,12 @@
     "@types/picomatch": "^4.0.3",
     "@types/pino": "^7.0.4",
     "@vitest/coverage-v8": "^4.1.7",
+    "fast-check": "^4.8.0",
     "tsx": "^4.22.3",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.7"
+    "vitest": "^4.1.7",
+    "vscode-languageserver": "^9.0.1",
+    "vscode-languageserver-textdocument": "^1.0.12"
   },
   "dependencies": {
     "chalk": "^5.6.2",

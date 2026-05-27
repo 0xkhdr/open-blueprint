@@ -69,7 +69,16 @@ interface ParsedFrontmatter {
 function parseFrontmatter(content: string): ParsedFrontmatter | null {
   try {
     const parsed = matter(content);
-    return { data: parsed.data as Record<string, unknown>, content: parsed.content };
+    const data = parsed.data || {};
+    const fm: Record<string, unknown> = Object.create(null);
+    if (typeof data === "object" && data !== null) {
+      for (const [k, v] of Object.entries(data)) {
+        if (k !== "__proto__" && k !== "constructor") {
+          fm[k] = v;
+        }
+      }
+    }
+    return { data: fm, content: parsed.content };
   } catch {
     return null;
   }

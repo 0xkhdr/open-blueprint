@@ -1,0 +1,7 @@
+- id: bp-verify
+  name: Blueprint Verify
+  description: Validate blueprint files for agentic AI tools
+  entry: npx @agentic/bp verify
+  language: node
+  files: ^(\.claude/|CLAUDE\.md|\.bp\.json)
+  pass_filenames: false

@@ -1,0 +1,24 @@
+{
+  "name": "open-blueprint-vscode",
+  "displayName": "Open Blueprint VS Code Extension",
+  "description": "VS Code support for open-blueprint, validating spatial anchors, rules, and skills.",
+  "version": "1.0.0",
+  "publisher": "agentic",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Linters",
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onLanguage:markdown",
+    "workspaceContains:CLAUDE.md",
+    "workspaceContains:.bp.json"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {},
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  }
+}

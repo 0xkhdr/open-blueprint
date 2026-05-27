@@ -1,0 +1,18 @@
+{
+  "version": "1.0",
+  "manifestVersion": "2026.1",
+  "files": {
+    "/var/www/html/rai/up/open-blueprint/tests/fixtures/conflict-rules/CLAUDE.md": {
+      "mtime": 1779921050934.5034,
+      "errors": []
+    },
+    "/var/www/html/rai/up/open-blueprint/tests/fixtures/conflict-rules/.claude/rules/01-api.md": {
+      "mtime": 1779921050929.5034,
+      "errors": []
+    },
+    "/var/www/html/rai/up/open-blueprint/tests/fixtures/conflict-rules/.claude/rules/02-legacy.md": {
+      "mtime": 1779921050931.5034,
+      "errors": []
+    }
+  }
+}

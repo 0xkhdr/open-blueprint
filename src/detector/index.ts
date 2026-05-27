@@ -190,11 +190,14 @@ export async function detect(projectRoot: string): Promise<Fingerprint> {
     throw new DetectorError(`Project root does not exist: ${absoluteRoot}`);
   }
 
-  const languages = detectLanguages(absoluteRoot);
-  const frameworks = detectFrameworks(absoluteRoot);
-  const tooling = detectTooling(absoluteRoot);
-  const security_signals = detectSecurity(absoluteRoot);
-  const directory_topology = scanDirectoryTopology(absoluteRoot);
+  const [languages, frameworks, tooling, security_signals, directory_topology] = await Promise.all([
+    Promise.resolve().then(() => detectLanguages(absoluteRoot)),
+    Promise.resolve().then(() => detectFrameworks(absoluteRoot)),
+    Promise.resolve().then(() => detectTooling(absoluteRoot)),
+    Promise.resolve().then(() => detectSecurity(absoluteRoot)),
+    Promise.resolve().then(() => scanDirectoryTopology(absoluteRoot)),
+  ]);
+
   const entry_points = detectEntryPoints(absoluteRoot, frameworks);
 
   const fingerprint = {

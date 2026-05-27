@@ -77,6 +77,17 @@ export async function writeFile(
   conflictResolution: ConflictResolution = "prompt"
 ): Promise<WriteResult> {
   const { dryRun = false, force = false, projectRoot } = options;
+
+  // Path traversal prevention
+  const absoluteRoot = path.resolve(projectRoot);
+  const absoluteOut = path.resolve(outputPath);
+  const relativePath = path.relative(absoluteRoot, absoluteOut);
+  if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
+    throw new Error(
+      `Path traversal detected: target path "${outputPath}" lies outside project root "${projectRoot}"`
+    );
+  }
+
   const ignorePatterns = readBlueprintIgnore(projectRoot);
 
   if (isIgnored(outputPath, ignorePatterns, projectRoot)) {

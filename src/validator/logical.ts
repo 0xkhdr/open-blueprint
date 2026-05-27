@@ -49,9 +49,17 @@ function parseRule(filePath: string): RuleInfo | null {
   const content = readFileSafe(filePath);
   if (!content) return null;
 
-  let fm: Record<string, unknown>;
+  const fm: Record<string, unknown> = Object.create(null);
   try {
-    fm = matter(content).data as Record<string, unknown>;
+    const parsed = matter(content);
+    const data = parsed.data || {};
+    if (typeof data === "object" && data !== null) {
+      for (const [k, v] of Object.entries(data)) {
+        if (k !== "__proto__" && k !== "constructor") {
+          fm[k] = v;
+        }
+      }
+    }
   } catch {
     return null;
   }
@@ -91,9 +99,17 @@ function buildSkillGraph(skillFiles: string[]): SkillGraph {
       continue;
     }
 
-    let fm: Record<string, unknown>;
+    const fm: Record<string, unknown> = Object.create(null);
     try {
-      fm = matter(content).data as Record<string, unknown>;
+      const parsed = matter(content);
+      const data = parsed.data || {};
+      if (typeof data === "object" && data !== null) {
+        for (const [k, v] of Object.entries(data)) {
+          if (k !== "__proto__" && k !== "constructor") {
+            fm[k] = v;
+          }
+        }
+      }
     } catch {
       edges.set(file, []);
       continue;

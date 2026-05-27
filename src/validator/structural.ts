@@ -2,6 +2,7 @@ import * as fs from "node:fs";
 import matter from "gray-matter";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
+import { scanForSecrets } from "../security/scan.js";
 import type { BackendManifest } from "../templater/selector.js";
 
 export interface ValidationError {
@@ -304,6 +305,7 @@ export function validateStructural(filePath: string, manifest: BackendManifest):
       errors.push(...checkFrontmatter(filePath, content, ftype));
       errors.push(...checkRequiredFields(filePath, content, ftype, manifest));
       errors.push(...checkMarkdownWellformedness(filePath, content));
+      errors.push(...scanForSecrets(filePath, content));
     }
   }
 

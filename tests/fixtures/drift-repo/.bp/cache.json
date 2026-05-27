@@ -1,0 +1,22 @@
+{
+  "version": "1.0",
+  "manifestVersion": "2026.1",
+  "files": {
+    "/var/www/html/rai/up/open-blueprint/tests/fixtures/drift-repo/CLAUDE.md": {
+      "mtime": 1779921050951.504,
+      "errors": []
+    },
+    "/var/www/html/rai/up/open-blueprint/tests/fixtures/drift-repo/.claude/rules/01-style.md": {
+      "mtime": 1779921050944.5037,
+      "errors": []
+    },
+    "/var/www/html/rai/up/open-blueprint/tests/fixtures/drift-repo/.claude/skills/add-test.md": {
+      "mtime": 1779921050946.5037,
+      "errors": []
+    },
+    "/var/www/html/rai/up/open-blueprint/tests/fixtures/drift-repo/.claude/agents/planner.md": {
+      "mtime": 1779921050949.504,
+      "errors": []
+    }
+  }
+}

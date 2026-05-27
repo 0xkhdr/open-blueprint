@@ -1,6 +1,9 @@
 import * as fs from "node:fs";
+import * as os from "node:os";
 import * as path from "node:path";
+import { loadProjectConfig } from "../config/project.js";
 import type { Fingerprint } from "../detector/fingerprint.js";
+import { RegistryClient } from "../registry/client.js";
 import { registerPartials, renderTemplate } from "./engine.js";
 import { getTemplatesRoot, resolveTemplatePack } from "./selector.js";
 import type { WriteResult } from "./writer.js";
@@ -100,19 +103,52 @@ function getOutputPath(templatePath: string, templateDir: string, projectRoot: s
 export async function runTemplater(
   fingerprint: Fingerprint,
   projectRoot: string,
-  options: TemplaterOptions
+  options: TemplaterOptions & { isExtendedRun?: boolean }
 ): Promise<TemplaterResult> {
-  const { backend, templateOverride, dryRun = false, force = false } = options;
+  const {
+    backend,
+    templateOverride,
+    dryRun = false,
+    force = false,
+    isExtendedRun = false,
+  } = options;
 
   // Register base partials
   const basePartialsDir = path.join(getTemplatesRoot(), "_base", "partials");
   registerPartials(basePartialsDir);
 
+  const results: WriteResult[] = [];
+  let basePackName = "";
+
+  // 1. Resolve blueprint inheritance first
+  if (!isExtendedRun && !templateOverride) {
+    const projectConfig = loadProjectConfig(projectRoot);
+    if (projectConfig?.extends) {
+      const registry = new RegistryClient();
+      const baseDir = path.join(os.homedir(), ".bp", "templates", projectConfig.extends);
+      try {
+        await registry.install(projectConfig.extends, baseDir);
+        const baseResult = await runTemplater(fingerprint, projectRoot, {
+          backend,
+          templateOverride: baseDir,
+          dryRun,
+          force,
+          isExtendedRun: true,
+        });
+        results.push(...baseResult.files);
+        basePackName = baseResult.templatePack;
+      } catch (e) {
+        console.warn(
+          `[extends] Could not resolve extended template "${projectConfig.extends}": ${e instanceof Error ? e.message : String(e)}`
+        );
+      }
+    }
+  }
+
   const pack = resolveTemplatePack(fingerprint, backend, templateOverride);
   const context = buildContext(fingerprint) as unknown as Record<string, unknown>;
 
   const templateFiles = findTemplateFiles(pack.directory);
-  const results: WriteResult[] = [];
 
   for (const templateFile of templateFiles) {
     // Skip manifest.json.hbs if it exists
@@ -132,7 +168,7 @@ export async function runTemplater(
 
   // Write .blueprintignore if not exists
   const ignoreFile = path.join(projectRoot, ".blueprintignore");
-  if (!fs.existsSync(ignoreFile) && !dryRun) {
+  if (!isExtendedRun && !fs.existsSync(ignoreFile) && !dryRun) {
     fs.writeFileSync(
       ignoreFile,
       "# Files and directories bp will not overwrite\n# Add paths relative to project root\n",
@@ -142,12 +178,12 @@ export async function runTemplater(
 
   // Write .bp-fingerprint.json
   const fingerprintFile = path.join(projectRoot, ".bp-fingerprint.json");
-  if (!dryRun) {
+  if (!isExtendedRun && !dryRun) {
     fs.writeFileSync(fingerprintFile, JSON.stringify(fingerprint, null, 2), "utf-8");
   }
 
   return {
     files: results,
-    templatePack: pack.name,
+    templatePack: basePackName ? `${basePackName} -> ${pack.name}` : pack.name,
   };
 }
