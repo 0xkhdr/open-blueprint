@@ -124,6 +124,18 @@ export function detectLanguages(projectRoot: string): LanguageSignal[] {
       }
     }
 
+    if (rule.name === "csharp") {
+      try {
+        const files = fs.readdirSync(projectRoot);
+        const hasCsharpSignal = files.some(
+          (file) => file.endsWith(".csproj") || file.endsWith(".sln")
+        );
+        if (hasCsharpSignal) {
+          confidence = Math.max(confidence, 0.9);
+        }
+      } catch {}
+    }
+
     if (rule.srcExtensions && confidence < 0.9) {
       const srcDir = path.join(projectRoot, "src");
       const libDir = path.join(projectRoot, "lib");

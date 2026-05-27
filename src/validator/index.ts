@@ -1,6 +1,10 @@
 import * as path from "node:path";
 import fg from "fast-glob";
+import type { Fingerprint } from "../detector/fingerprint.js";
 import type { BackendManifest } from "../templater/selector.js";
+import { validateDrift } from "./drift.js";
+import { validateLogical } from "./logical.js";
+import { validateSemantic } from "./semantic.js";
 import type { ValidationError } from "./structural.js";
 import { validateStructuralBatch } from "./structural.js";
 
@@ -10,6 +14,7 @@ export interface ValidatorOptions {
   level: ValidationLevel;
   projectRoot: string;
   manifest: BackendManifest;
+  fingerprint?: Fingerprint;
   json?: boolean;
   failOn?: ValidationLevel;
 }
@@ -58,27 +63,39 @@ async function collectBlueprintFiles(
 }
 
 export async function runValidator(options: ValidatorOptions): Promise<ValidationResult> {
-  const { level, projectRoot, manifest } = options;
+  const { level, projectRoot, manifest, fingerprint } = options;
 
   const files = await collectBlueprintFiles(projectRoot, manifest);
-
   const allErrors: ValidationError[] = [];
 
   // Layer 1: Structural (always run)
   const structuralErrors = validateStructuralBatch(files, manifest);
   allErrors.push(...structuralErrors);
 
-  // Additional layers are stubs for Phase 1; Phase 2 fills them in
-  if (level === "semantic" || level === "all") {
-    // Phase 2: semantic validation
+  // Short-circuit: if structural hard failures exist, skip deeper layers
+  const structuralHardFail = structuralErrors.some((e) => e.severity === "error");
+
+  // Layer 2: Semantic
+  if (!structuralHardFail && (level === "semantic" || level === "all")) {
+    const semanticErrors = await validateSemantic(files, { projectRoot, manifest });
+    allErrors.push(...semanticErrors);
   }
 
-  if (level === "logical" || level === "all") {
-    // Phase 2: logical validation
+  // Layer 3: Logical
+  if (!structuralHardFail && (level === "logical" || level === "all")) {
+    const logicalErrors = await validateLogical(files, { projectRoot });
+    allErrors.push(...logicalErrors);
   }
 
+  // Layer 4: Drift
   if (level === "drift" || level === "all") {
-    // Phase 2: drift detection
+    if (fingerprint) {
+      const driftErrors = await validateDrift(files, {
+        projectRoot,
+        currentFingerprint: fingerprint,
+      });
+      allErrors.push(...driftErrors);
+    }
   }
 
   const errors = allErrors.filter((e) => e.severity === "error");
@@ -98,6 +115,26 @@ export async function runValidator(options: ValidatorOptions): Promise<Validatio
 export function exitCodeForResult(result: ValidationResult): number {
   if (result.passed) return EXIT_CODES.SUCCESS;
 
+  // Logical conflicts → exit 4
+  const hasLogical = result.errors.some(
+    (e) =>
+      e.type === "RULE_CONFLICT_HARD" ||
+      e.type === "SEMANTIC_CONTRADICTION" ||
+      e.type === "CIRCULAR_SKILL_DEPENDENCY"
+  );
+  if (hasLogical) return EXIT_CODES.LOGICAL_FAILURE;
+
+  // Semantic failures → exit 3
+  const hasSemantic = result.errors.some(
+    (e) =>
+      e.type === "ZERO_MATCH_SCOPE" ||
+      e.type === "INVALID_SCOPE_PATTERN" ||
+      e.type === "MISSING_SKILL_REFERENCE" ||
+      e.type === "UNKNOWN_TOOL_REFERENCE"
+  );
+  if (hasSemantic) return EXIT_CODES.SEMANTIC_FAILURE;
+
+  // Structural failures → exit 2
   const hasStructural = result.errors.some(
     (e) =>
       e.type === "FILE_NOT_FOUND" ||
@@ -108,8 +145,19 @@ export function exitCodeForResult(result: ValidationResult): number {
       e.type === "BOM_DETECTED" ||
       e.type === "UNCLOSED_CODE_FENCE"
   );
-
   if (hasStructural) return EXIT_CODES.STRUCTURAL_FAILURE;
+
+  // Drift (warnings only, no errors) → check warnings
+  const hasDriftWarnings = result.warnings.some(
+    (e) =>
+      e.type === "FINGERPRINT_DELTA" ||
+      e.type === "ENTRY_POINT_DRIFT" ||
+      e.type === "TEST_COMMAND_DRIFT" ||
+      e.type === "UNCOVERED_DIRECTORY" ||
+      e.type === "DEPENDENCY_DRIFT"
+  );
+  if (hasDriftWarnings) return EXIT_CODES.DRIFT_DETECTED;
+
   return EXIT_CODES.GENERAL_ERROR;
 }
 

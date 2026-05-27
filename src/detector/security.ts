@@ -8,6 +8,70 @@ export interface SecuritySignals {
   has_docker: boolean;
 }
 
+/** Packages keyed by ecosystem that signal auth usage */
+const AUTH_PACKAGES: Record<string, string[]> = {
+  npm: [
+    "passport",
+    "jsonwebtoken",
+    "next-auth",
+    "auth0",
+    "@auth0/auth0-spa-js",
+    "firebase-admin",
+    "bcrypt",
+    "bcryptjs",
+    "argon2",
+    "jose",
+    "oauth",
+    "openid-client",
+  ],
+  pip: [
+    "passlib",
+    "python-jose",
+    "authlib",
+    "PyJWT",
+    "flask-login",
+    "django-allauth",
+    "python-oauth2",
+  ],
+  cargo: ["jsonwebtoken", "casbin", "actix-web-httpauth", "axum-login"],
+  go: ["golang-jwt", "casbin", "go-jose", "goth"],
+  maven: ["spring-security", "spring-boot-starter-security", "shiro-core"],
+};
+
+/** Packages that signal external API calls */
+const API_PACKAGES: Record<string, string[]> = {
+  npm: [
+    "axios",
+    "node-fetch",
+    "got",
+    "superagent",
+    "@aws-sdk",
+    "@google-cloud",
+    "stripe",
+    "twilio",
+    "sendgrid",
+    "openai",
+  ],
+  pip: ["requests", "httpx", "boto3", "google-cloud", "stripe", "twilio", "aiohttp"],
+  cargo: ["reqwest", "hyper", "ureq"],
+  go: ["resty", "grpc", "google.golang.org/grpc"],
+  maven: ["okhttp", "retrofit", "spring-web", "feign"],
+};
+
+/** Packages/files that signal secrets management */
+const SECRETS_PACKAGES: Record<string, string[]> = {
+  npm: [
+    "@aws-sdk/client-secrets-manager",
+    "@google-cloud/secret-manager",
+    "@azure/keyvault-secrets",
+    "vault",
+    "dotenv-vault",
+  ],
+  pip: ["hvac", "boto3", "google-cloud-secret-manager"],
+  cargo: ["vaultrs"],
+  go: ["vault/api", "github.com/hashicorp/vault"],
+};
+
 function fileExists(filePath: string): boolean {
   try {
     fs.accessSync(filePath, fs.constants.F_OK);
@@ -25,42 +89,51 @@ function readFile(filePath: string): string | null {
   }
 }
 
+function contentMatchesAny(content: string, patterns: string[]): boolean {
+  return patterns.some((p) => content.includes(p));
+}
+
 function detectAuth(root: string): boolean {
-  // Check package.json for auth-related deps
-  const pkgContent = readFile(path.join(root, "package.json"));
-  if (pkgContent) {
-    const authPackages = [
-      "passport",
-      "jsonwebtoken",
-      "next-auth",
-      "auth0",
-      "@auth0/auth0-spa-js",
-      "firebase-admin",
-      "bcrypt",
-      "bcryptjs",
-      "argon2",
-      "jose",
-      "oauth",
-    ];
-    if (authPackages.some((pkg) => pkgContent.includes(`"${pkg}"`))) return true;
-  }
+  // npm/yarn/pnpm (package.json)
+  const pkg = readFile(path.join(root, "package.json"));
+  if (pkg && contentMatchesAny(pkg, AUTH_PACKAGES.npm ?? [])) return true;
 
-  // Python auth packages
-  const reqContent = readFile(path.join(root, "requirements.txt"));
-  if (reqContent) {
-    const authPackages = [
-      "passlib",
-      "python-jose",
-      "authlib",
-      "PyJWT",
-      "flask-login",
-      "django-allauth",
-    ];
-    if (authPackages.some((pkg) => reqContent.toLowerCase().includes(pkg.toLowerCase())))
-      return true;
-  }
+  // Python (requirements.txt or pyproject.toml)
+  const req = readFile(path.join(root, "requirements.txt"));
+  if (
+    req &&
+    contentMatchesAny(
+      req.toLowerCase(),
+      (AUTH_PACKAGES.pip ?? []).map((p) => p.toLowerCase())
+    )
+  )
+    return true;
+  const pyproject = readFile(path.join(root, "pyproject.toml"));
+  if (
+    pyproject &&
+    contentMatchesAny(
+      pyproject.toLowerCase(),
+      (AUTH_PACKAGES.pip ?? []).map((p) => p.toLowerCase())
+    )
+  )
+    return true;
 
-  // Check for auth-related directories
+  // Rust (Cargo.toml)
+  const cargo = readFile(path.join(root, "Cargo.toml"));
+  if (cargo && contentMatchesAny(cargo, AUTH_PACKAGES.cargo ?? [])) return true;
+
+  // Go (go.mod)
+  const goMod = readFile(path.join(root, "go.mod"));
+  if (goMod && contentMatchesAny(goMod, AUTH_PACKAGES.go ?? [])) return true;
+
+  // Java (pom.xml / build.gradle)
+  const pom = readFile(path.join(root, "pom.xml"));
+  if (pom && contentMatchesAny(pom, AUTH_PACKAGES.maven ?? [])) return true;
+  const gradle =
+    readFile(path.join(root, "build.gradle")) ?? readFile(path.join(root, "build.gradle.kts"));
+  if (gradle && contentMatchesAny(gradle, AUTH_PACKAGES.maven ?? [])) return true;
+
+  // Auth-related directories (any language)
   const authDirs = ["auth", "authentication", "middleware/auth", "src/auth", "src/authentication"];
   for (const d of authDirs) {
     if (fileExists(path.join(root, d))) return true;
@@ -70,46 +143,70 @@ function detectAuth(root: string): boolean {
 }
 
 function detectExternalApis(root: string): boolean {
-  const pkgContent = readFile(path.join(root, "package.json"));
-  if (pkgContent) {
-    const apiPackages = [
-      "axios",
-      "node-fetch",
-      "got",
-      "superagent",
-      "@aws-sdk",
-      "@google-cloud",
-      "stripe",
-      "twilio",
-      "sendgrid",
-    ];
-    if (apiPackages.some((pkg) => pkgContent.includes(pkg))) return true;
-  }
+  const pkg = readFile(path.join(root, "package.json"));
+  if (pkg && contentMatchesAny(pkg, API_PACKAGES.npm ?? [])) return true;
 
-  const reqContent = readFile(path.join(root, "requirements.txt"));
-  if (reqContent) {
-    const apiPackages = ["requests", "httpx", "boto3", "google-cloud", "stripe", "twilio"];
-    if (apiPackages.some((pkg) => reqContent.toLowerCase().includes(pkg.toLowerCase())))
-      return true;
-  }
+  const req = readFile(path.join(root, "requirements.txt"));
+  if (
+    req &&
+    contentMatchesAny(
+      req.toLowerCase(),
+      (API_PACKAGES.pip ?? []).map((p) => p.toLowerCase())
+    )
+  )
+    return true;
+  const pyproject = readFile(path.join(root, "pyproject.toml"));
+  if (
+    pyproject &&
+    contentMatchesAny(
+      pyproject.toLowerCase(),
+      (API_PACKAGES.pip ?? []).map((p) => p.toLowerCase())
+    )
+  )
+    return true;
+
+  const cargo = readFile(path.join(root, "Cargo.toml"));
+  if (cargo && contentMatchesAny(cargo, API_PACKAGES.cargo ?? [])) return true;
+
+  const goMod = readFile(path.join(root, "go.mod"));
+  if (goMod && contentMatchesAny(goMod, API_PACKAGES.go ?? [])) return true;
+
+  const pom = readFile(path.join(root, "pom.xml"));
+  if (pom && contentMatchesAny(pom, API_PACKAGES.maven ?? [])) return true;
 
   return false;
 }
 
 function detectSecretsManager(root: string): boolean {
-  const pkgContent = readFile(path.join(root, "package.json"));
-  if (pkgContent) {
-    const secretsPackages = [
-      "@aws-sdk/client-secrets-manager",
-      "@google-cloud/secret-manager",
-      "@azure/keyvault-secrets",
-      "vault",
-      "dotenv-vault",
-    ];
-    if (secretsPackages.some((pkg) => pkgContent.includes(pkg))) return true;
-  }
+  const pkg = readFile(path.join(root, "package.json"));
+  if (pkg && contentMatchesAny(pkg, SECRETS_PACKAGES.npm ?? [])) return true;
 
-  // Check for .env.vault, vault config
+  const req = readFile(path.join(root, "requirements.txt"));
+  if (
+    req &&
+    contentMatchesAny(
+      req.toLowerCase(),
+      (SECRETS_PACKAGES.pip ?? []).map((p) => p.toLowerCase())
+    )
+  )
+    return true;
+  const pyproject = readFile(path.join(root, "pyproject.toml"));
+  if (
+    pyproject &&
+    contentMatchesAny(
+      pyproject.toLowerCase(),
+      (SECRETS_PACKAGES.pip ?? []).map((p) => p.toLowerCase())
+    )
+  )
+    return true;
+
+  const cargo = readFile(path.join(root, "Cargo.toml"));
+  if (cargo && contentMatchesAny(cargo, SECRETS_PACKAGES.cargo ?? [])) return true;
+
+  const goMod = readFile(path.join(root, "go.mod"));
+  if (goMod && contentMatchesAny(goMod, SECRETS_PACKAGES.go ?? [])) return true;
+
+  // Vault config files (any ecosystem)
   const vaultFiles = [".env.vault", "vault.hcl", ".vault", ".secrets"];
   for (const f of vaultFiles) {
     if (fileExists(path.join(root, f))) return true;
@@ -125,6 +222,7 @@ export function detectSecurity(root: string): SecuritySignals {
     has_secrets_manager: detectSecretsManager(root),
     has_docker:
       fileExists(path.join(root, "Dockerfile")) ||
-      fileExists(path.join(root, "docker-compose.yml")),
+      fileExists(path.join(root, "docker-compose.yml")) ||
+      fileExists(path.join(root, "docker-compose.yaml")),
   };
 }

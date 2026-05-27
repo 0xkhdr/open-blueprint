@@ -119,4 +119,21 @@ describe("detectLanguages", () => {
       expect(js.confidence).toBeLessThan(0.9);
     }
   });
+
+  it("detects C# from root .csproj file", () => {
+    touchFile(tmpDir, "MyAwesomeProject.csproj", "<Project></Project>");
+    const langs = detectLanguages(tmpDir);
+    const cs = langs.find((l) => l.name === "csharp");
+    expect(cs).toBeDefined();
+    expect(cs?.confidence).toBeGreaterThanOrEqual(0.9);
+    expect(cs?.primary).toBe(true);
+  });
+
+  it("detects C# from root .sln file", () => {
+    touchFile(tmpDir, "Solution.sln", "Microsoft Visual Studio Solution File");
+    const langs = detectLanguages(tmpDir);
+    const cs = langs.find((l) => l.name === "csharp");
+    expect(cs).toBeDefined();
+    expect(cs?.confidence).toBeGreaterThanOrEqual(0.9);
+  });
 });
