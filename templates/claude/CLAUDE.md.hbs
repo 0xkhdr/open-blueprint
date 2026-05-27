@@ -1,0 +1,38 @@
+<!-- bp-generated:begin position -->
+# {{project_name}}
+
+**Language:** {{primary_language}}{{#if primary_framework}} · **Framework:** {{primary_framework}}{{/if}}
+**Entry point:** `{{entry_point_path}}`
+**Test command:** `{{test_command}}`
+**Package manager:** {{package_manager}}
+**Git workflow:** {{git_workflow}}
+<!-- bp-generated:end position -->
+
+<!-- bp-generated:begin layers -->
+## Blueprint Layers
+
+This repository uses the five-layer blueprint structure for agentic AI tools:
+
+| Layer | Location | Purpose |
+|---|---|---|
+| Spatial Anchor | `CLAUDE.md` (this file) | Project context for the agent |
+| Agents | `.claude/agents/*.md` | Role-specific personas |
+| Rules | `.claude/rules/*.md` | Hard and soft constraints |
+| Skills | `.claude/skills/*.md` | Reusable capability units |
+| Hooks | `.claude/hooks/*` | Lifecycle callbacks |
+
+## Project Context
+
+- **Project type:** {{project_type}}
+- **Source directories:** {{#if src_dirs}}{{join src_dirs ", "}}{{else}}(root){{/if}}
+- **Test directories:** {{#if test_dirs}}{{join test_dirs ", "}}{{else}}(co-located){{/if}}
+{{#if has_auth}}- **Auth:** Present — follow auth rules in `.claude/rules/02-security.md`{{/if}}
+{{#if has_external_apis}}- **External APIs:** Present — validate inputs and handle errors at API boundaries{{/if}}
+{{#if has_docker}}- **Docker:** Container deployment — see `.claude/rules/02-security.md`{{/if}}
+
+## Quick Reference
+
+- Run tests: `{{test_command}}`
+{{#if linter}}- Lint: `{{linter}}`{{/if}}
+- Blueprint verify: `npx @agentic/bp verify`
+<!-- bp-generated:end layers -->

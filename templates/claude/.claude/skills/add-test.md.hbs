@@ -1,0 +1,55 @@
+---
+name: add-test
+description: Add a test for an existing function or module
+when_to_use: When asked to add, write, or create a test
+tools_required: ["Read", "Edit", "Write", "Bash"]
+---
+
+<!-- bp-generated:begin add-test-body -->
+# Skill: add-test
+
+## When to use
+
+Use this skill when asked to add a test for an existing function, module, or behavior.
+
+## Procedure
+
+1. **Read the implementation** — understand the function's contract, inputs, and outputs
+2. **Check existing tests** — find the test file if it exists (`{{#if test_dirs}}{{join test_dirs ", "}}{{else}}tests/{{/if}}`)
+3. **Write the test**:
+   - Test the happy path first
+   - Test edge cases: empty inputs, nulls, boundary values
+   - Test error cases: invalid inputs, expected exceptions
+4. **Run tests**: `{{test_command}}`
+5. Fix failures before marking complete
+
+## Test Runner: {{test_runner}}
+
+{{#if (eq test_runner "vitest")}}
+```typescript
+import { describe, it, expect } from "vitest";
+import { functionUnderTest } from "../src/module.js";
+
+describe("functionUnderTest", () => {
+  it("should handle happy path", () => {
+    expect(functionUnderTest(validInput)).toEqual(expectedOutput);
+  });
+
+  it("should throw on invalid input", () => {
+    expect(() => functionUnderTest(null)).toThrow();
+  });
+});
+```
+{{/if}}
+{{#if (eq test_runner "pytest")}}
+```python
+def test_function_happy_path():
+    result = function_under_test(valid_input)
+    assert result == expected_output
+
+def test_function_invalid_input():
+    with pytest.raises(ValueError):
+        function_under_test(None)
+```
+{{/if}}
+<!-- bp-generated:end add-test-body -->

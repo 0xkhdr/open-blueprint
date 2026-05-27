@@ -1,0 +1,34 @@
+---
+scope: ".claude/**/*"
+severity: hard
+action: Maintain rule integrity and precedence order
+rationale: Conflicting rules cause unpredictable agent behavior
+tags: [meta, blueprint-integrity]
+---
+
+<!-- bp-generated:begin meta-rule -->
+# Rule 04: Rule Precedence and Meta-Governance
+
+## Rule Precedence Order (highest to lowest)
+
+1. `02-security.md` — Security constraints always win
+2. `01-position.md` — Project context always applies
+3. `03-style.md` — Style applied to source files
+4. `04-meta.md` (this file) — Blueprint governance
+
+## Conflict Resolution
+
+When two rules conflict:
+1. Higher precedence rule wins
+2. If same precedence: narrower scope wins
+3. If scope overlap detected: run `bp verify --level logical` to resolve
+
+## Blueprint Maintenance
+
+- Run `bp verify` before every PR merge
+- Run `bp sync` when project structure changes significantly
+- Never manually edit `<!-- bp-generated:begin ... -->` blocks — re-run `bp init --force` instead
+- Add team customizations in `<!-- bp:preserve -->` blocks
+
+## Detected at: {{detected_at}}
+<!-- bp-generated:end meta-rule -->

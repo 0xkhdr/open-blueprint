@@ -1,0 +1,51 @@
+---
+name: refactor-async
+description: Refactor callback-style or promise-chain code to async/await
+when_to_use: When converting callbacks or .then() chains to async/await
+tools_required: ["Read", "Edit", "Bash"]
+---
+
+<!-- bp-generated:begin refactor-async-body -->
+# Skill: refactor-async
+
+## When to use
+
+Use when converting callback-style or `.then()/.catch()` promise chains to `async/await`.
+
+## Procedure
+
+1. **Read the target function** — identify all async boundaries
+2. **Check callers** — find where the function is called (may need to be made async too)
+3. **Refactor**:
+   - Replace `.then(fn)` with `await`
+   - Replace `.catch(fn)` with `try/catch`
+   - Add `async` to the function signature
+   - Return type becomes `Promise<T>` instead of a `.then()` chain
+4. **Run tests**: `{{test_command}}`
+5. Check all callers still work correctly
+
+## Pattern ({{primary_language}})
+
+{{#if (eq primary_language "typescript")}}
+Before:
+```typescript
+function fetchData(id: string): Promise<Data> {
+  return httpClient.get(`/api/${id}`)
+    .then(res => res.json())
+    .catch(err => { throw new ApiError(err); });
+}
+```
+
+After:
+```typescript
+async function fetchData(id: string): Promise<Data> {
+  try {
+    const res = await httpClient.get(`/api/${id}`);
+    return res.json() as Data;
+  } catch (err) {
+    throw new ApiError(err);
+  }
+}
+```
+{{/if}}
+<!-- bp-generated:end refactor-async-body -->

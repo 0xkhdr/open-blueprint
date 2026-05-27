@@ -1,0 +1,63 @@
+{
+  "name": "@agentic/bp",
+  "version": "1.0.0",
+  "description": "CLI utility that scaffolds and verifies governance structures for agentic AI tools",
+  "type": "module",
+  "main": "./dist/cli/index.js",
+  "bin": {
+    "bp": "./dist/cli/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/cli/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "biome check src/",
+    "lint:fix": "biome check --write src/",
+    "typecheck": "tsc --noEmit",
+    "ci": "npm run typecheck && npm run lint && npm run test:coverage"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/0xkhdr/open-blueprint.git"
+  },
+  "keywords": ["cli", "blueprint", "claude", "cursor", "agentic", "scaffolding"],
+  "author": "Mohamed Khedr",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "bugs": {
+    "url": "https://github.com/0xkhdr/open-blueprint/issues"
+  },
+  "homepage": "https://github.com/0xkhdr/open-blueprint#readme",
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.16",
+    "@types/handlebars": "^4.0.40",
+    "@types/node": "^25.9.1",
+    "@types/ora": "^3.1.0",
+    "@types/picomatch": "^4.0.3",
+    "@types/pino": "^7.0.4",
+    "@vitest/coverage-v8": "^4.1.7",
+    "tsx": "^4.22.3",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.7"
+  },
+  "dependencies": {
+    "chalk": "^5.6.2",
+    "cliui": "^9.0.1",
+    "commander": "^14.0.3",
+    "fast-glob": "^3.3.3",
+    "gray-matter": "^4.0.3",
+    "handlebars": "^4.7.9",
+    "ink": "^7.0.4",
+    "ora": "^9.4.0",
+    "picomatch": "^4.0.4",
+    "pino": "^10.3.1",
+    "remark": "^15.0.1",
+    "remark-parse": "^11.0.0",
+    "unified": "^11.0.5",
+    "zod": "^4.4.3"
+  }
+}

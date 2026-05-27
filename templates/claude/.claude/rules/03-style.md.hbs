@@ -1,0 +1,38 @@
+---
+scope: "{{#if src_dirs}}{{join src_dirs '/**/*,'}},{{else}}src/**/*{{/if}}"
+severity: soft
+action: Follow project style conventions
+rationale: Consistent style reduces cognitive load and merge conflicts
+tags: [style, code-quality]
+---
+
+<!-- bp-generated:begin style-rule -->
+# Rule 03: Style
+
+## Language: {{primary_language}}
+
+{{#if (eq primary_language "typescript")}}
+- Strict TypeScript: no `any` without explicit comment explaining why
+- Use `type` for type aliases, `interface` for object shapes
+- Prefer `const` over `let`; never use `var`
+- Use optional chaining `?.` and nullish coalescing `??`
+{{/if}}
+{{#if (eq primary_language "python")}}
+- Type hints required on all function signatures
+- Use f-strings for string formatting
+- Follow PEP 8 naming: `snake_case` for functions, `PascalCase` for classes
+- Prefer dataclasses or Pydantic models over plain dicts for structured data
+{{/if}}
+{{#if (eq primary_language "go")}}
+- Follow `gofmt` formatting — run before every commit
+- Use explicit error handling — never ignore errors
+- Keep functions short; extract helpers over 20 lines
+{{/if}}
+
+## General
+
+{{#if linter}}- Linter `{{linter}}` must pass with zero errors before commit{{/if}}
+- Functions: single responsibility, ≤ 30 lines
+- No commented-out code in commits
+- No `console.log` / `print` debug statements in committed code
+<!-- bp-generated:end style-rule -->

@@ -1,0 +1,41 @@
+---
+scope: "**/*"
+severity: hard
+action: Never introduce security vulnerabilities
+rationale: Security issues are hard to detect and costly to remediate
+tags: [security, always-apply]
+---
+
+<!-- bp-generated:begin security-rule -->
+# Rule 02: Security
+
+## Hard Constraints (non-negotiable)
+
+- **No hardcoded secrets**: Never put API keys, passwords, tokens, or private keys in source code
+- **No SQL injection**: Always use parameterized queries or ORM methods
+- **No XSS**: Always escape user input before rendering in HTML
+- **No path traversal**: Validate and sanitize all file paths from user input
+- **No `eval`**: Never use `eval()`, `Function()`, or equivalent dynamic code execution
+{{#if has_auth}}
+## Authentication Rules
+
+- Use secure session management — never store sensitive data in cookies without encryption
+- Validate tokens on every protected route
+- Implement rate limiting on auth endpoints
+{{/if}}
+{{#if has_external_apis}}
+## External API Rules
+
+- Validate all input before sending to external APIs
+- Handle API errors explicitly — never silently swallow failures
+- Use timeouts on all external HTTP calls
+- Log API errors with context but without sensitive data
+{{/if}}
+{{#if has_docker}}
+## Container Security
+
+- Do not run containers as root
+- Never copy `.env` files or secrets into Docker images
+- Use multi-stage builds to minimize attack surface
+{{/if}}
+<!-- bp-generated:end security-rule -->
