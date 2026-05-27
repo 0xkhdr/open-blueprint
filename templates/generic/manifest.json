@@ -1,0 +1,39 @@
+{
+  "backend": "generic",
+  "version": "2026.1",
+  "supported_features": {
+    "anchors": true,
+    "rules": true,
+    "skills": true,
+    "agents": true,
+    "hooks": true
+  },
+  "file_patterns": {
+    "anchor": ["BLUEPRINT.md"],
+    "rules": "rules/*.md",
+    "skills": "skills/*.md",
+    "agents": "agents/*.md",
+    "hooks": "hooks/*"
+  },
+  "max_file_sizes": {
+    "anchor": 10000,
+    "rules": 20000,
+    "skills": 30000,
+    "agents": 10000
+  },
+  "frontmatter_schema": {
+    "rules": {
+      "required": ["scope", "severity"],
+      "optional": ["action", "rationale", "tags"],
+      "severity_values": ["hard", "soft", "info"]
+    },
+    "skills": {
+      "required": ["name", "description"],
+      "optional": ["tools_required", "when_to_use"]
+    },
+    "agents": {
+      "required": ["name"],
+      "optional": ["role", "reasoning_style", "allowed_tools"]
+    }
+  }
+}

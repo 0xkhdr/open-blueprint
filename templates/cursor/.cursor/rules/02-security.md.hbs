@@ -1,0 +1,16 @@
+---
+scope: "**/*"
+severity: hard
+action: Do not hardcode credentials or secrets
+rationale: Leaking secrets creates security vulnerabilities
+tags: [security]
+---
+
+<!-- bp-generated:begin security-rule -->
+# Rule 02: Security and Secrets
+
+All code in `{{project_name}}` must follow strict security guidelines:
+- Never hardcode API keys, passwords, or tokens.
+- Use environment variables or a secrets manager.
+- If using Docker, ensure secrets are not baked into the image.
+<!-- bp-generated:end security-rule -->

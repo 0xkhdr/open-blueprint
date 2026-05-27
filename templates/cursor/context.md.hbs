@@ -1,0 +1,22 @@
+<!-- bp-generated:begin position -->
+# {{project_name}} (Cursor Context)
+
+**Language:** {{primary_language}}{{#if primary_framework}} · **Framework:** {{primary_framework}}{{/if}}
+**Entry point:** `{{entry_point_path}}`
+**Test command:** `{{test_command}}`
+**Package manager:** {{package_manager}}
+**Git workflow:** {{git_workflow}}
+<!-- bp-generated:end position -->
+
+<!-- bp-generated:begin layers -->
+## Blueprint Layers
+
+This repository uses the five-layer blueprint structure for agentic AI tools:
+
+| Layer | Location | Purpose |
+|---|---|---|
+| Spatial Anchor | `context.md` (this file) | Project context for the agent |
+| Agents | `.cursor/agents/*.md` | Role-specific personas |
+| Rules | `.cursor/rules/*.md` | Hard and soft constraints |
+| Skills | `.cursor/skills/*.md` | Reusable capability units |
+<!-- bp-generated:end layers -->

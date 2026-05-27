@@ -1,0 +1,23 @@
+<!-- bp-generated:begin position -->
+# {{project_name}} (Generic Blueprint)
+
+**Language:** {{primary_language}}{{#if primary_framework}} · **Framework:** {{primary_framework}}{{/if}}
+**Entry point:** `{{entry_point_path}}`
+**Test command:** `{{test_command}}`
+**Package manager:** {{package_manager}}
+**Git workflow:** {{git_workflow}}
+<!-- bp-generated:end position -->
+
+<!-- bp-generated:begin layers -->
+## Blueprint Layers
+
+This repository uses the five-layer blueprint structure for agentic AI tools:
+
+| Layer | Location | Purpose |
+|---|---|---|
+| Spatial Anchor | `BLUEPRINT.md` (this file) | Project context for the agent |
+| Agents | `agents/*.md` | Role-specific personas |
+| Rules | `rules/*.md` | Hard and soft constraints |
+| Skills | `skills/*.md` | Reusable capability units |
+| Hooks | `hooks/*` | Lifecycle callbacks |
+<!-- bp-generated:end layers -->

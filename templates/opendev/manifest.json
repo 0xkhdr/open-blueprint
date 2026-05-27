@@ -1,0 +1,39 @@
+{
+  "backend": "opendev",
+  "version": "2026.1",
+  "supported_features": {
+    "anchors": false,
+    "rules": false,
+    "skills": true,
+    "agents": false,
+    "hooks": false
+  },
+  "file_patterns": {
+    "anchor": [],
+    "rules": "",
+    "skills": ".opendev/skills/*.md",
+    "agents": "",
+    "hooks": ""
+  },
+  "max_file_sizes": {
+    "anchor": 0,
+    "rules": 0,
+    "skills": 20000,
+    "agents": 0
+  },
+  "frontmatter_schema": {
+    "rules": {
+      "required": [],
+      "optional": [],
+      "severity_values": []
+    },
+    "skills": {
+      "required": ["name", "description"],
+      "optional": ["tools_required", "when_to_use"]
+    },
+    "agents": {
+      "required": [],
+      "optional": []
+    }
+  }
+}

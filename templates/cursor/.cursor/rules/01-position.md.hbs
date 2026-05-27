@@ -1,0 +1,21 @@
+---
+scope: "**/*"
+severity: info
+action: Understand project position before making changes
+rationale: Agents that lack project context make incorrect assumptions
+tags: [meta, always-apply]
+---
+
+<!-- bp-generated:begin position-rule -->
+# Rule 01: Project Position
+
+**Project:** `{{project_name}}`
+**Stack:** {{primary_language}}{{#if primary_framework}} + {{primary_framework}}{{/if}}
+**Entry:** `{{entry_point_path}}`
+**Tests:** `{{test_command}}`
+
+Before any change:
+1. Read `context.md` for current project state
+2. Check `{{#if src_dirs}}{{join src_dirs ", "}}{{else}}src/{{/if}}` for existing patterns
+3. Run `{{test_command}}` to confirm baseline passes
+<!-- bp-generated:end position-rule -->

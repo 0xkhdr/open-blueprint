@@ -1,0 +1,14 @@
+---
+scope: "**/*"
+severity: info
+action: Rule precedence definition
+rationale: Resolves conflicts in case of rule overlaps
+tags: [meta]
+---
+
+# Rule 04: Precedence and Meta
+
+Precedence order for rules in this repository:
+1. `rules/02-security.md` (Highest priority hard constraints)
+2. `rules/01-position.md` (Context constraints)
+3. `rules/03-style.md` (Styling soft guidelines)
