@@ -13,6 +13,7 @@ import { CursorAdapter } from "../../translator/adapters/cursor.js";
 import { GeminiAdapter } from "../../translator/adapters/gemini.js";
 import { GenericAdapter } from "../../translator/adapters/generic.js";
 import { KiroAdapter } from "../../translator/adapters/kiro.js";
+import { OpenDevAdapter } from "../../translator/adapters/opendev.js";
 import { PIAdapter } from "../../translator/adapters/pi.js";
 import { generateComplianceReport } from "../../validator/compliance.js";
 import { EXIT_CODES } from "../../validator/index.js";
@@ -306,6 +307,8 @@ export function createDoctorCommand(): Command {
             return new KiroAdapter();
           case "antigravity":
             return new AntigravityAdapter();
+          case "opendev":
+            return new OpenDevAdapter();
           default:
             return new GenericAdapter();
         }

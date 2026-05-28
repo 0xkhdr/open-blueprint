@@ -127,9 +127,9 @@ bun test               # no regressions
 ## Domain 02 — Backend Expansion
 
 **Spec File:** `specs/02-BACKEND-EXPANSION.md`
-**Status:** ✅ ALREADY IMPLEMENTED — verify, fix bugs, add missing AGENTS.md calls
+**Status:** ✅ COMPLETE — all 10 adapters verified, opendev created, copilot path fixed, round-trip tests added
 **Effort:** ~4h
-**Commit:** `feat(backends): verify all 10 adapters, add parity matrix`
+**Commit:** `feat(backends): add opendev adapter, fix copilot path, round-trip tests, parity matrix`
 
 ### Key Files to Inspect
 - `src/translator/adapters/` — all 10 adapter files
@@ -174,10 +174,10 @@ bun test tests/integration/backends/
 ```
 
 ### Done Criteria
-- [ ] All 10 adapters pass typecheck with correct interface
-- [ ] All 10 adapters call `generateAgentsMD()` in render()
-- [ ] Round-trip tests pass for 3 backend pairs
-- [ ] `docs/backend-parity.md` published with no `?` cells
+- [x] All 10 adapters pass typecheck with correct interface
+- [x] All 10 adapters call `generateAgentsMD()` in render()
+- [x] Round-trip tests pass for 3 backend pairs
+- [x] `docs/backend-parity.md` published with no `?` cells
 
 ---
 

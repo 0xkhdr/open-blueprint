@@ -11,6 +11,7 @@ import { CursorAdapter } from "../../translator/adapters/cursor.js";
 import { GeminiAdapter } from "../../translator/adapters/gemini.js";
 import { GenericAdapter } from "../../translator/adapters/generic.js";
 import { KiroAdapter } from "../../translator/adapters/kiro.js";
+import { OpenDevAdapter } from "../../translator/adapters/opendev.js";
 import { PIAdapter } from "../../translator/adapters/pi.js";
 import { detect } from "../../detector/index.js";
 import { resolveTemplatePack } from "../../templater/selector.js";
@@ -27,6 +28,7 @@ const VALID_BACKENDS = [
   "gemini",
   "kiro",
   "antigravity",
+  "opendev",
 ] as const;
 type Backend = (typeof VALID_BACKENDS)[number];
 
@@ -50,6 +52,8 @@ function getAdapter(backend: string) {
       return new KiroAdapter();
     case "antigravity":
       return new AntigravityAdapter();
+    case "opendev":
+      return new OpenDevAdapter();
     default:
       return null;
   }

@@ -107,10 +107,15 @@ export class CopilotAdapter implements BlueprintAdapter {
     fs.mkdirSync(path.join(copilotDir, "rules"), { recursive: true });
     fs.mkdirSync(path.join(copilotDir, "skills"), { recursive: true });
 
-    // 1. Main instructions file
-    const instructionsPath = path.join(projectRoot, "copilot-instructions.md");
+    // 1. Main instructions file (.github/copilot/instructions.md)
+    const instructionsPath = path.join(copilotDir, "instructions.md");
     fs.writeFileSync(instructionsPath, ir.spatial_anchor.surface, "utf-8");
     writtenFiles.push(instructionsPath);
+
+    // 1b. Root fallback for compatibility
+    const rootInstructionsPath = path.join(projectRoot, "copilot-instructions.md");
+    fs.writeFileSync(rootInstructionsPath, ir.spatial_anchor.surface, "utf-8");
+    writtenFiles.push(rootInstructionsPath);
 
     // 2. Rules (Copilot-specific formatting)
     for (const rule of ir.rules) {
