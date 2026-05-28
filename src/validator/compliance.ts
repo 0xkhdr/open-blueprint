@@ -33,10 +33,7 @@ export interface ComplianceReport {
   overall_score: number; // 0-100
 }
 
-const FRAMEWORK_CHECKLISTS: Record<
-  ComplianceFramework,
-  ComplianceCheckItem[]
-> = {
+const FRAMEWORK_CHECKLISTS: Record<ComplianceFramework, ComplianceCheckItem[]> = {
   eu_ai_act: [
     {
       id: "eu_ai_act_risk_tier",
@@ -54,18 +51,15 @@ const FRAMEWORK_CHECKLISTS: Record<
       id: "eu_ai_act_compliance_mapped",
       description: "EU AI Act must be explicitly mapped in compliance framework",
       remediation: "Add 'eu_ai_act' to compliance.frameworks array",
-      check: (ir) =>
-        ir.compliance?.frameworks?.includes("eu_ai_act") || false,
+      check: (ir) => ir.compliance?.frameworks?.includes("eu_ai_act") || false,
     },
     {
       id: "eu_ai_act_approval_mode",
       description: "Approval mode must be set for high-risk operations",
-      remediation:
-        "Set settings.approval_mode to confirm or read-only for high-risk tier",
+      remediation: "Set settings.approval_mode to confirm or read-only for high-risk tier",
       check: (ir) => {
         if (!ir.settings?.approval_mode) return false;
-        if (ir.risk?.risk_tier === "critical" && ir.settings.approval_mode === "auto")
-          return false;
+        if (ir.risk?.risk_tier === "critical" && ir.settings.approval_mode === "auto") return false;
         return true;
       },
     },
@@ -118,22 +112,19 @@ const FRAMEWORK_CHECKLISTS: Record<
       id: "nist_ai_rmf_escalation",
       description: "Escalation procedures must be defined",
       remediation: "Add escalation_rules to risk layer",
-      check: (ir) =>
-        !!ir.risk?.escalation_rules && ir.risk.escalation_rules.length > 0,
+      check: (ir) => !!ir.risk?.escalation_rules && ir.risk.escalation_rules.length > 0,
     },
     {
       id: "nist_ai_rmf_audit",
       description: "Audit logging must be configured",
       remediation: "Enable audit.audit_enabled and set log_level",
-      check: (ir) =>
-        ir.audit?.audit_enabled === true && !!ir.audit?.log_level,
+      check: (ir) => ir.audit?.audit_enabled === true && !!ir.audit?.log_level,
     },
     {
       id: "nist_ai_rmf_compliance_mapped",
       description: "NIST AI RMF framework must be in compliance list",
       remediation: "Add 'nist_ai_rmf' to compliance.frameworks",
-      check: (ir) =>
-        ir.compliance?.frameworks?.includes("nist_ai_rmf") || false,
+      check: (ir) => ir.compliance?.frameworks?.includes("nist_ai_rmf") || false,
     },
   ],
 
@@ -160,8 +151,7 @@ const FRAMEWORK_CHECKLISTS: Record<
       id: "gdpr_compliance_mapped",
       description: "GDPR must be in compliance framework list",
       remediation: "Add 'gdpr' to compliance.frameworks",
-      check: (ir) =>
-        ir.compliance?.frameworks?.includes("gdpr") || false,
+      check: (ir) => ir.compliance?.frameworks?.includes("gdpr") || false,
     },
   ],
 
@@ -176,8 +166,7 @@ const FRAMEWORK_CHECKLISTS: Record<
       id: "hipaa_rbac",
       description: "Role-based access control required for PHI access",
       remediation: "Enable identity.rbac_enabled and define roles",
-      check: (ir) =>
-        ir.identity?.rbac_enabled === true && (ir.identity?.roles?.length || 0) > 0,
+      check: (ir) => ir.identity?.rbac_enabled === true && (ir.identity?.roles?.length || 0) > 0,
     },
     {
       id: "hipaa_secrets",
@@ -189,8 +178,7 @@ const FRAMEWORK_CHECKLISTS: Record<
       id: "hipaa_compliance_mapped",
       description: "HIPAA must be in compliance framework list",
       remediation: "Add 'hipaa' to compliance.frameworks",
-      check: (ir) =>
-        ir.compliance?.frameworks?.includes("hipaa") || false,
+      check: (ir) => ir.compliance?.frameworks?.includes("hipaa") || false,
     },
   ],
 
@@ -213,7 +201,9 @@ const FRAMEWORK_CHECKLISTS: Record<
       remediation: "Set settings.approval_mode to confirm for high-risk systems",
       check: (ir) => {
         if (ir.risk?.risk_tier === "critical") {
-          return ir.settings?.approval_mode === "confirm" || ir.settings?.approval_mode === "read-only";
+          return (
+            ir.settings?.approval_mode === "confirm" || ir.settings?.approval_mode === "read-only"
+          );
         }
         return true;
       },
@@ -222,8 +212,7 @@ const FRAMEWORK_CHECKLISTS: Record<
       id: "soc2_compliance_mapped",
       description: "SOC 2 must be in compliance framework list",
       remediation: "Add 'soc2' to compliance.frameworks",
-      check: (ir) =>
-        ir.compliance?.frameworks?.includes("soc2") || false,
+      check: (ir) => ir.compliance?.frameworks?.includes("soc2") || false,
     },
   ],
 };

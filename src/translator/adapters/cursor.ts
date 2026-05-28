@@ -3,8 +3,9 @@ import * as path from "node:path";
 import fg from "fast-glob";
 import matter from "gray-matter";
 import type { BlueprintAdapter } from "../index.js";
-import type { BlueprintIR, Persona, Rule, Skill } from "../ir.js";
+import type { BlueprintIR, MCPServer, Persona, Rule, Skill } from "../ir.js";
 import { generateAgentsMD } from "./agents-md.js";
+import { generateMCPJson } from "./mcp-json.js";
 
 export class CursorAdapter implements BlueprintAdapter {
   async parse(projectRoot: string): Promise<BlueprintIR> {
@@ -124,6 +125,36 @@ export class CursorAdapter implements BlueprintAdapter {
       }
     }
 
+    // 4. MCP Servers (if .cursor/mcp.json exists)
+    let mcpServers: MCPServer[] = [];
+    const mcpPath = path.join(cursorDir, "mcp.json");
+    if (fs.existsSync(mcpPath)) {
+      try {
+        const content = fs.readFileSync(mcpPath, "utf-8");
+        const mcpJson = JSON.parse(content);
+        if (mcpJson.mcpServers && typeof mcpJson.mcpServers === "object") {
+          for (const [name, cfg] of Object.entries(mcpJson.mcpServers)) {
+            const server = cfg as Record<string, unknown>;
+            mcpServers.push({
+              name,
+              endpoint: typeof server.args === "string" ? server.args : "",
+              auth_scope:
+                typeof server.env === "object" && server.env
+                  ? Object.keys(server.env as Record<string, unknown>)
+                  : undefined,
+              tools: Array.isArray(server.tools) ? (server.tools as string[]) : undefined,
+              risk_level:
+                typeof server.risk_level === "string"
+                  ? (server.risk_level as "low" | "medium" | "high")
+                  : undefined,
+            });
+          }
+        }
+      } catch (_e) {
+        // Ignore parse errors
+      }
+    }
+
     return {
       version: "2.0",
       spatial_anchor: {
@@ -136,6 +167,7 @@ export class CursorAdapter implements BlueprintAdapter {
       rules,
       skills,
       hooks: [], // Cursor doesn't support hooks
+      mcp_servers: mcpServers.length > 0 ? mcpServers : undefined,
       meta: {
         rule_precedence: [],
         conflict_resolution: "precedence-based",
@@ -237,6 +269,14 @@ export class CursorAdapter implements BlueprintAdapter {
     const agentsMDPath = path.join(projectRoot, "AGENTS.md");
     fs.writeFileSync(agentsMDPath, agentsMD, "utf-8");
     writtenFiles.push(agentsMDPath);
+
+    // MCP JSON (if MCP servers defined)
+    if (ir.mcp_servers?.length) {
+      const mcpJson = generateMCPJson(ir);
+      const mcpPathJson = path.join(cursorDir, "mcp.json");
+      fs.writeFileSync(mcpPathJson, mcpJson, "utf-8");
+      writtenFiles.push(mcpPathJson);
+    }
 
     return writtenFiles;
   }

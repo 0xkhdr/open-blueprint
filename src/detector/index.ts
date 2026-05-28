@@ -216,11 +216,7 @@ function detectRiskTier(fp: Fingerprint): RiskTier {
 }
 
 function detectApprovalMode(riskTier: RiskTier): ApprovalMode {
-  return riskTier === "critical"
-    ? "read-only"
-    : riskTier === "high"
-      ? "confirm"
-      : "auto";
+  return riskTier === "critical" ? "read-only" : riskTier === "high" ? "confirm" : "auto";
 }
 
 function estimateMonthlyTokens(fp: Fingerprint): number {

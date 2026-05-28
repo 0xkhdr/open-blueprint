@@ -3,35 +3,41 @@ import * as path from "node:path";
 import fg from "fast-glob";
 import type { Fingerprint } from "../detector/fingerprint.js";
 import type { BackendManifest } from "../templater/selector.js";
+import { AntigravityAdapter } from "../translator/adapters/antigravity.js";
+import { ClaudeAdapter } from "../translator/adapters/claude.js";
+import { CodexAdapter } from "../translator/adapters/codex.js";
+import { CopilotAdapter } from "../translator/adapters/copilot.js";
+import { CursorAdapter } from "../translator/adapters/cursor.js";
+import { GeminiAdapter } from "../translator/adapters/gemini.js";
+import { GenericAdapter } from "../translator/adapters/generic.js";
+import { KiroAdapter } from "../translator/adapters/kiro.js";
+import { PIAdapter } from "../translator/adapters/pi.js";
 import { loadCache, saveCache } from "./cache.js";
 import { validateDrift } from "./drift.js";
+import {
+  validateAudit,
+  validateCommands,
+  validateCompliance,
+  validateIdentity,
+  validateMCPServers,
+  validateOrchestration,
+  validateRegistry,
+  validateRisk,
+  validateSettings,
+} from "./layers.js";
 import { validateLogical } from "./logical.js";
+import { validateRBAC } from "./rbac.js";
 import { validateSemantic } from "./semantic.js";
 import type { ValidationError } from "./structural.js";
 import { validateStructuralBatch } from "./structural.js";
-import {
-  validateSettings,
-  validateCommands,
-  validateMCPServers,
-  validateIdentity,
-  validateAudit,
-  validateCompliance,
-  validateRisk,
-  validateRegistry,
-  validateOrchestration,
-} from "./layers.js";
-import { ClaudeAdapter } from "../translator/adapters/claude.js";
-import { CursorAdapter } from "../translator/adapters/cursor.js";
-import { GenericAdapter } from "../translator/adapters/generic.js";
-import { CodexAdapter } from "../translator/adapters/codex.js";
-import { PIAdapter } from "../translator/adapters/pi.js";
-import { CopilotAdapter } from "../translator/adapters/copilot.js";
-import { GeminiAdapter } from "../translator/adapters/gemini.js";
-import { KiroAdapter } from "../translator/adapters/kiro.js";
-import { AntigravityAdapter } from "../translator/adapters/antigravity.js";
-import { validateRBAC } from "./rbac.js";
 
-export type ValidationLevel = "structural" | "semantic" | "logical" | "drift" | "governance" | "all";
+export type ValidationLevel =
+  | "structural"
+  | "semantic"
+  | "logical"
+  | "drift"
+  | "governance"
+  | "all";
 
 export interface ValidatorOptions {
   level: ValidationLevel;

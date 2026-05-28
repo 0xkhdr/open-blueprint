@@ -9,7 +9,7 @@ import { generateAgentsMD } from "./agents-md.js";
 export class KiroAdapter implements BlueprintAdapter {
   async parse(projectRoot: string): Promise<BlueprintIR> {
     // 1. Spatial Anchor
-    let anchorPath = path.join(projectRoot, "product.md");
+    const anchorPath = path.join(projectRoot, "product.md");
 
     let projectName = "unknown";
     let anchorContent = "";
@@ -123,7 +123,7 @@ This document describes the product vision and guidelines for Kiro-driven develo
     writtenFiles.push(productPath);
 
     // 2. structure.md - Architecture structure
-    let structureMD = `# Project Structure
+    const structureMD = `# Project Structure
 
 ## Overview
 
@@ -241,7 +241,7 @@ ${rule.rationale ? `**Reason:** ${rule.rationale}` : ""}
     // 6. Skills in dedicated directory
     for (const skill of ir.skills) {
       const skillPath = path.join(projectRoot, "skills", `${skill.name.toLowerCase()}.md`);
-      let content = `---
+      const content = `---
 name: ${skill.name}
 description: ${skill.description}
 when_to_use: ${skill.when_to_use}

@@ -1,11 +1,14 @@
 import type { Identity } from "../translator/ir.js";
 import type { ValidationError } from "./structural.js";
 
-export function validateRBAC(ir: { identity?: Identity }, blueprintFile: string = ""): ValidationError[] {
+export function validateRBAC(
+  ir: { identity?: Identity },
+  blueprintFile: string = ""
+): ValidationError[] {
   const errors: ValidationError[] = [];
   const identity = ir.identity;
 
-  if (!identity || !identity.rbac_enabled) {
+  if (!identity?.rbac_enabled) {
     return errors;
   }
 

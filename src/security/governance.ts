@@ -13,9 +13,7 @@ export function generateEnvTemplate(ir: BlueprintIR): string {
     for (const server of ir.mcp_servers) {
       if (server.auth_scope && server.auth_scope.length > 0) {
         for (const scope of server.auth_scope) {
-          const envKey = scope
-            .toUpperCase()
-            .replace(/[^A-Z0-9_]/g, "_");
+          const envKey = scope.toUpperCase().replace(/[^A-Z0-9_]/g, "_");
           if (!envVars.has(envKey)) {
             lines.push(`${envKey}=# ${server.name}: ${scope} credentials`);
             envVars.add(envKey);
@@ -61,7 +59,7 @@ export function generateEnvTemplate(ir: BlueprintIR): string {
   }
 
   // Scan compliance for framework-specific credentials
-  if (ir.compliance && ir.compliance.frameworks) {
+  if (ir.compliance?.frameworks) {
     lines.push("# Compliance Framework Credentials");
     for (const framework of ir.compliance.frameworks) {
       switch (framework) {
@@ -87,13 +85,9 @@ export function generateEnvTemplate(ir: BlueprintIR): string {
   }
 
   lines.push("# Standard Blueprint Variables");
-  lines.push(
-    "BP_PROJECT_ROOT=# Root directory of this blueprint (usually '.')"
-  );
+  lines.push("BP_PROJECT_ROOT=# Root directory of this blueprint (usually '.')");
   lines.push("BP_BACKEND=# Primary backend (claude, cursor, codex, pi, etc.)");
-  lines.push(
-    "BP_ENVIRONMENT=# Deployment environment (dev, staging, production)"
-  );
+  lines.push("BP_ENVIRONMENT=# Deployment environment (dev, staging, production)");
 
   return lines.join("\n");
 }

@@ -40,9 +40,7 @@ export function generateRunbook(ir: BlueprintIR): string {
 
     for (const role of ir.identity.roles) {
       const perms = role.permissions?.join(", ") || "none";
-      lines.push(
-        `| ${role.name} | ${perms} | [Configure] |`
-      );
+      lines.push(`| ${role.name} | ${perms} | [Configure] |`);
     }
     lines.push("");
 
@@ -56,10 +54,7 @@ export function generateRunbook(ir: BlueprintIR): string {
   lines.push("## Response Procedure");
   lines.push("");
 
-  if (
-    ir.risk?.escalation_rules &&
-    ir.risk.escalation_rules.length > 0
-  ) {
+  if (ir.risk?.escalation_rules && ir.risk.escalation_rules.length > 0) {
     let stepNum = 1;
     for (const rule of ir.risk.escalation_rules) {
       lines.push(`### Step ${stepNum}: ${rule.condition || "On Trigger"}`);
@@ -84,9 +79,7 @@ export function generateRunbook(ir: BlueprintIR): string {
 
       lines.push("### Step 3: Isolate System");
       lines.push("");
-      lines.push(
-        "Take the affected agent offline to prevent further damage."
-      );
+      lines.push("Take the affected agent offline to prevent further damage.");
       lines.push("");
 
       lines.push("### Step 4: Document");
@@ -99,9 +92,7 @@ export function generateRunbook(ir: BlueprintIR): string {
     } else if (riskTier === "high") {
       lines.push("### Step 2: Notify Team");
       lines.push("");
-      lines.push(
-        "Alert the incident response team through standard channels."
-      );
+      lines.push("Alert the incident response team through standard channels.");
       lines.push("");
 
       lines.push("### Step 3: Assessment");
@@ -136,9 +127,7 @@ export function generateRunbook(ir: BlueprintIR): string {
     }
 
     if (ir.audit.retention_days) {
-      lines.push(
-        `**Retention Period**: ${ir.audit.retention_days} days`
-      );
+      lines.push(`**Retention Period**: ${ir.audit.retention_days} days`);
     }
 
     if (ir.audit.compliance_checkpoints && ir.audit.compliance_checkpoints.length > 0) {
@@ -174,12 +163,8 @@ export function generateRunbook(ir: BlueprintIR): string {
 
   lines.push("---");
   lines.push("");
-  lines.push(
-    "*This runbook is automatically generated from blueprint governance configuration.*"
-  );
-  lines.push(
-    "*Last updated: " + new Date().toISOString() + "*"
-  );
+  lines.push("*This runbook is automatically generated from blueprint governance configuration.*");
+  lines.push(`*Last updated: ${new Date().toISOString()}*`);
 
   return lines.join("\n");
 }

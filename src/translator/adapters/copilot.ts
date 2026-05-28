@@ -3,7 +3,7 @@ import * as path from "node:path";
 import fg from "fast-glob";
 import matter from "gray-matter";
 import type { BlueprintAdapter } from "../index.js";
-import type { BlueprintIR, Hook, Persona, Rule, Skill } from "../ir.js";
+import type { BlueprintIR, Rule, Skill } from "../ir.js";
 import { generateAgentsMD } from "./agents-md.js";
 
 export class CopilotAdapter implements BlueprintAdapter {
@@ -152,7 +152,7 @@ ${rule.rationale ? `**Why:** ${rule.rationale}` : ""}
     // 3. Skills
     for (const skill of ir.skills) {
       const skillPath = path.join(copilotDir, "skills", `${skill.name.toLowerCase()}.md`);
-      let content = `---
+      const content = `---
 name: ${skill.name}
 description: ${skill.description}
 when_to_use: ${skill.when_to_use}

@@ -3,20 +3,19 @@ import * as path from "node:path";
 import chalk from "chalk";
 import { Command } from "commander";
 import matter from "gray-matter";
-import { detect } from "../../detector/index.js";
+import { detect, enrichFingerprint } from "../../detector/index.js";
 import { resolveTemplatePack } from "../../templater/selector.js";
-import { EXIT_CODES } from "../../validator/index.js";
-import { generateComplianceReport } from "../../validator/compliance.js";
-import { generateRunbook } from "../../validator/escalation.js";
-import { ClaudeAdapter } from "../../translator/adapters/claude.js";
-import { CursorAdapter } from "../../translator/adapters/cursor.js";
-import { GenericAdapter } from "../../translator/adapters/generic.js";
-import { CodexAdapter } from "../../translator/adapters/codex.js";
-import { PIAdapter } from "../../translator/adapters/pi.js";
-import { CopilotAdapter } from "../../translator/adapters/copilot.js";
-import { GeminiAdapter } from "../../translator/adapters/gemini.js";
-import { KiroAdapter } from "../../translator/adapters/kiro.js";
 import { AntigravityAdapter } from "../../translator/adapters/antigravity.js";
+import { ClaudeAdapter } from "../../translator/adapters/claude.js";
+import { CodexAdapter } from "../../translator/adapters/codex.js";
+import { CopilotAdapter } from "../../translator/adapters/copilot.js";
+import { CursorAdapter } from "../../translator/adapters/cursor.js";
+import { GeminiAdapter } from "../../translator/adapters/gemini.js";
+import { GenericAdapter } from "../../translator/adapters/generic.js";
+import { KiroAdapter } from "../../translator/adapters/kiro.js";
+import { PIAdapter } from "../../translator/adapters/pi.js";
+import { generateComplianceReport } from "../../validator/compliance.js";
+import { EXIT_CODES } from "../../validator/index.js";
 
 interface DiagnosticCheck {
   name: string;
@@ -255,11 +254,12 @@ export function createDoctorCommand(): Command {
           run: async () => {
             try {
               const fingerprint = await detect(cwd);
+              const enriched = enrichFingerprint(fingerprint);
               const adapter = getAdapterByName(backend as string);
               const ir = await adapter.parse(cwd);
 
               const irHasRiskTier = !!ir.risk?.risk_tier;
-              const fpRiskTier = (fingerprint as any).risk_tier;
+              const fpRiskTier = enriched.risk_tier;
 
               if (irHasRiskTier) {
                 return {

@@ -1,15 +1,13 @@
-import { z } from "zod";
-import type { Settings, Command, MCPServer, Identity, Audit, Compliance, Risk, Registry, Orchestration } from "../translator/ir.js";
 import {
-  SettingsSchema,
-  CommandSchema,
-  MCPServerSchema,
-  IdentitySchema,
   AuditSchema,
+  CommandSchema,
   ComplianceSchema,
-  RiskSchema,
-  RegistrySchema,
+  IdentitySchema,
+  MCPServerSchema,
   OrchestrationSchema,
+  RegistrySchema,
+  RiskSchema,
+  SettingsSchema,
 } from "../translator/ir.js";
 
 export interface LayerValidationError {

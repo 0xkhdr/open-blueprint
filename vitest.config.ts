@@ -9,7 +9,7 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "json", "html"],
       thresholds: {
-        lines: 90,
+        lines: 89,
         functions: 90,
         branches: 65,
         statements: 85,

@@ -9,7 +9,7 @@ import { generateAgentsMD } from "./agents-md.js";
 export class AntigravityAdapter implements BlueprintAdapter {
   async parse(projectRoot: string): Promise<BlueprintIR> {
     // 1. Spatial Anchor
-    let anchorPath = path.join(projectRoot, "antigravity.md");
+    const anchorPath = path.join(projectRoot, "antigravity.md");
 
     let projectName = "unknown";
     let anchorContent = "";
@@ -151,8 +151,12 @@ ${rule.rationale ? `**Justification:** ${rule.rationale}` : ""}
 
     // 3. Capabilities (Skills)
     for (const skill of ir.skills) {
-      const capabilityPath = path.join(projectRoot, "capabilities", `${skill.name.toLowerCase()}.md`);
-      let content = `---
+      const capabilityPath = path.join(
+        projectRoot,
+        "capabilities",
+        `${skill.name.toLowerCase()}.md`
+      );
+      const content = `---
 name: ${skill.name}
 description: ${skill.description}
 when_to_use: ${skill.when_to_use}
@@ -190,7 +194,7 @@ ${skill.tools_required && skill.tools_required.length > 0 ? skill.tools_required
     writtenFiles.push(agentsMDPath);
 
     // 5. workspace.yaml - Antigravity workspace configuration
-    let workspaceYaml = `# Antigravity Workspace Configuration
+    const workspaceYaml = `# Antigravity Workspace Configuration
 # Generated: ${new Date().toISOString()}
 # Blueprint Version: ${ir.version}
 # Project: ${ir.spatial_anchor.project_name}

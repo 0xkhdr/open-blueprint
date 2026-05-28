@@ -78,6 +78,38 @@ describe("exitCodeForResult", () => {
       filesChecked: 5,
     };
     expect(exitCodeForResult(res)).toBe(EXIT_CODES.DRIFT_DETECTED);
+
+    const res2: ValidationResult = { ...res, warnings: [{ file: "CLAUDE.md", type: "FINGERPRINT_DELTA", severity: "warning", message: "Drift", resolution: "Fix" }] };
+    expect(exitCodeForResult(res2)).toBe(EXIT_CODES.DRIFT_DETECTED);
+
+    const res3: ValidationResult = { ...res, warnings: [{ file: "CLAUDE.md", type: "ENTRY_POINT_DRIFT", severity: "warning", message: "Drift", resolution: "Fix" }] };
+    expect(exitCodeForResult(res3)).toBe(EXIT_CODES.DRIFT_DETECTED);
+
+    const res4: ValidationResult = { ...res, warnings: [{ file: "CLAUDE.md", type: "UNCOVERED_DIRECTORY", severity: "warning", message: "Drift", resolution: "Fix" }] };
+    expect(exitCodeForResult(res4)).toBe(EXIT_CODES.DRIFT_DETECTED);
+
+    const res5: ValidationResult = { ...res, warnings: [{ file: "CLAUDE.md", type: "DEPENDENCY_DRIFT", severity: "warning", message: "Drift", resolution: "Fix" }] };
+    expect(exitCodeForResult(res5)).toBe(EXIT_CODES.DRIFT_DETECTED);
+  });
+
+  it("returns DRIFT_DETECTED (5) when passed is false but only drift warnings are present and no specific errors match", () => {
+    const res: ValidationResult = {
+      passed: false,
+      errors: [],
+      warnings: [
+        {
+          file: "CLAUDE.md",
+          type: "UNCOVERED_DIRECTORY",
+          severity: "warning",
+          message: "Drift",
+          resolution: "Fix",
+        },
+      ],
+      infos: [],
+      level: "all",
+      filesChecked: 5,
+    };
+    expect(exitCodeForResult(res)).toBe(EXIT_CODES.DRIFT_DETECTED);
   });
 
   it("returns LOGICAL_FAILURE (4) when logical errors are present", () => {

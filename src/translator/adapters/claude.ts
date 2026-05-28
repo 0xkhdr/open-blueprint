@@ -3,8 +3,10 @@ import * as path from "node:path";
 import fg from "fast-glob";
 import matter from "gray-matter";
 import type { BlueprintAdapter } from "../index.js";
-import type { BlueprintIR, Hook, Persona, Rule, Skill } from "../ir.js";
+import type { BlueprintIR, Hook, MCPServer, Persona, Rule, Skill } from "../ir.js";
 import { generateAgentsMD } from "./agents-md.js";
+import { generateMCPJson } from "./mcp-json.js";
+import { generateMemoryConfig, getMemoryDirectories } from "./memory.js";
 
 export class ClaudeAdapter implements BlueprintAdapter {
   async parse(projectRoot: string): Promise<BlueprintIR> {
@@ -167,6 +169,36 @@ export class ClaudeAdapter implements BlueprintAdapter {
       }
     }
 
+    // 7. MCP Servers (if .claude/mcp.json exists)
+    const mcpServers: MCPServer[] = [];
+    const mcpPath = path.join(claudeDir, "mcp.json");
+    if (fs.existsSync(mcpPath)) {
+      try {
+        const content = fs.readFileSync(mcpPath, "utf-8");
+        const mcpJson = JSON.parse(content);
+        if (mcpJson.mcpServers && typeof mcpJson.mcpServers === "object") {
+          for (const [name, cfg] of Object.entries(mcpJson.mcpServers)) {
+            const server = cfg as Record<string, unknown>;
+            mcpServers.push({
+              name,
+              endpoint: typeof server.args === "string" ? server.args : "",
+              auth_scope:
+                typeof server.env === "object" && server.env
+                  ? Object.keys(server.env as Record<string, unknown>)
+                  : undefined,
+              tools: Array.isArray(server.tools) ? (server.tools as string[]) : undefined,
+              risk_level:
+                typeof server.risk_level === "string"
+                  ? (server.risk_level as "low" | "medium" | "high")
+                  : undefined,
+            });
+          }
+        }
+      } catch (_e) {
+        // Ignore parse errors
+      }
+    }
+
     return {
       version: "2.0",
       spatial_anchor: {
@@ -179,6 +211,7 @@ export class ClaudeAdapter implements BlueprintAdapter {
       rules,
       skills,
       hooks,
+      mcp_servers: mcpServers.length > 0 ? mcpServers : undefined,
       meta: {
         rule_precedence: rulePrecedence,
         conflict_resolution: "precedence-based",
@@ -292,6 +325,50 @@ export class ClaudeAdapter implements BlueprintAdapter {
     const agentsMDPath = path.join(projectRoot, "AGENTS.md");
     fs.writeFileSync(agentsMDPath, agentsMD, "utf-8");
     writtenFiles.push(agentsMDPath);
+
+    // 7. MCP JSON (if MCP servers defined)
+    if (ir.mcp_servers?.length) {
+      const mcpJson = generateMCPJson(ir);
+      const mcpPathJson = path.join(claudeDir, "mcp.json");
+      fs.writeFileSync(mcpPathJson, mcpJson, "utf-8");
+      writtenFiles.push(mcpPathJson);
+    }
+
+    // 8. Memory Governance (if persistent memory enabled)
+    if (ir.orchestration?.persistent_memory?.enabled) {
+      const memoryDirs = getMemoryDirectories(ir, claudeDir);
+      for (const dir of memoryDirs) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      const memoryConfig = generateMemoryConfig(ir);
+      const memoryPathYaml = path.join(claudeDir, "memory", "memory.yaml");
+      fs.mkdirSync(path.dirname(memoryPathYaml), { recursive: true });
+      fs.writeFileSync(memoryPathYaml, memoryConfig, "utf-8");
+      writtenFiles.push(memoryPathYaml);
+    }
+
+    // 9. Agent Registry YAML (if agent registry defined)
+    if (ir.agent_registry?.agents?.length) {
+      fs.mkdirSync(path.join(claudeDir, "agents"), { recursive: true });
+      let registryYaml = "agents:\n";
+      for (const agent of ir.agent_registry.agents) {
+        registryYaml += `  - name: "${agent.name}"\n`;
+        registryYaml += `    owner: "${agent.owner}"\n`;
+        registryYaml += `    purpose: "${agent.purpose}"\n`;
+        if (agent.risk_tier) registryYaml += `    risk_tier: "${agent.risk_tier}"\n`;
+        if (agent.eval_status) registryYaml += `    eval_status: "${agent.eval_status}"\n`;
+        if (agent.version) registryYaml += `    version: "${agent.version}"\n`;
+        if (agent.capabilities?.length) {
+          registryYaml += `    capabilities:\n`;
+          for (const cap of agent.capabilities) {
+            registryYaml += `      - "${cap}"\n`;
+          }
+        }
+      }
+      const registryPath = path.join(claudeDir, "agents", "registry.yaml");
+      fs.writeFileSync(registryPath, registryYaml, "utf-8");
+      writtenFiles.push(registryPath);
+    }
 
     return writtenFiles;
   }

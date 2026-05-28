@@ -5,6 +5,8 @@ import matter from "gray-matter";
 import type { BlueprintAdapter } from "../index.js";
 import type { BlueprintIR, Hook, Persona, Rule, Skill } from "../ir.js";
 import { generateAgentsMD } from "./agents-md.js";
+import { generateTeamsYaml } from "./teams-yaml.js";
+import { generateChainsYaml } from "./chains-yaml.js";
 
 export class PIAdapter implements BlueprintAdapter {
   async parse(projectRoot: string): Promise<BlueprintIR> {
@@ -74,8 +76,7 @@ export class PIAdapter implements BlueprintAdapter {
           reasoning_style:
             typeof data.reasoning_style === "string" ? data.reasoning_style : "methodical",
           constraints,
-          allowed_tools:
-            Array.isArray(data.allowed_tools) ? data.allowed_tools : undefined,
+          allowed_tools: Array.isArray(data.allowed_tools) ? data.allowed_tools : undefined,
         });
       } catch {
         // Skip malformed files
@@ -247,7 +248,7 @@ ${rule.rationale || "No details provided"}
     // 4. Skills
     for (const skill of ir.skills) {
       const skillPath = path.join(piDir, "skills", `${skill.name.toLowerCase()}.md`);
-      let content = `---
+      const content = `---
 name: ${skill.name}
 description: ${skill.description}
 when_to_use: ${skill.when_to_use}
@@ -416,20 +417,7 @@ export default config;
 
     // 8. teams.yaml (if teams defined)
     if (ir.orchestration?.agent_teams && ir.orchestration.agent_teams.length > 0) {
-      let teamsYaml = `# PI Agent Teams Configuration
-# Generated: ${new Date().toISOString()}
-
-teams:
-`;
-      for (const team of ir.orchestration.agent_teams) {
-        teamsYaml += `  - name: ${team.team_name}
-    agents:
-`;
-        for (const agent of team.agents) {
-          teamsYaml += `      - ${agent}\n`;
-        }
-      }
-
+      const teamsYaml = generateTeamsYaml(ir);
       const teamsPath = path.join(projectRoot, "teams.yaml");
       fs.writeFileSync(teamsPath, teamsYaml, "utf-8");
       writtenFiles.push(teamsPath);
@@ -437,21 +425,7 @@ teams:
 
     // 9. chains.yaml (if chains defined)
     if (ir.orchestration?.agent_chains && ir.orchestration.agent_chains.length > 0) {
-      let chainsYaml = `# PI Agent Chains Configuration
-# Generated: ${new Date().toISOString()}
-
-chains:
-`;
-      for (const chain of ir.orchestration.agent_chains) {
-        chainsYaml += `  - name: ${chain.chain_name}
-    sequence:
-`;
-        for (const agent of chain.sequence) {
-          chainsYaml += `      - ${agent}\n`;
-        }
-        chainsYaml += `    parallel: ${chain.parallel_mode || false}\n`;
-      }
-
+      const chainsYaml = generateChainsYaml(ir);
       const chainsPath = path.join(projectRoot, "chains.yaml");
       fs.writeFileSync(chainsPath, chainsYaml, "utf-8");
       writtenFiles.push(chainsPath);

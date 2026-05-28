@@ -30,7 +30,8 @@ const SECRET_PATTERNS = [
   {
     name: "Slack Token",
     regex: /\bxox[baprs]-[0-9]{10,13}-[0-9]{10,13}-[a-zA-Z0-9-_]{24,34}\b/i,
-    resolution: "Revoke the Slack token immediately. A compromised token can be used to access Slack workspace.",
+    resolution:
+      "Revoke the Slack token immediately. A compromised token can be used to access Slack workspace.",
   },
   {
     name: "Azure Storage SAS Token",
@@ -39,13 +40,16 @@ const SECRET_PATTERNS = [
   },
   {
     name: "SSH Private Key",
-    regex: /-----BEGIN[ A-Z0-9_-]*(?:RSA|DSA|OPENSSH|EC|PGP|ENCRYPTED)[ A-Z0-9_-]*PRIVATE KEY[^-]*-----/i,
-    resolution: "SSH private keys must never be committed. Revoke and rotate keys, use ssh-agent or key management system.",
+    regex:
+      /-----BEGIN[ A-Z0-9_-]*(?:RSA|DSA|OPENSSH|EC|PGP|ENCRYPTED)[ A-Z0-9_-]*PRIVATE KEY[^-]*-----/i,
+    resolution:
+      "SSH private keys must never be committed. Revoke and rotate keys, use ssh-agent or key management system.",
   },
   {
     name: "Bearer Token",
     regex: /\b[Bb]earer\s+[A-Za-z0-9+/]{20,}(?:[=]{0,2})\b/i,
-    resolution: "Bearer tokens in code are security risks. Store tokens in environment variables or secrets managers.",
+    resolution:
+      "Bearer tokens in code are security risks. Store tokens in environment variables or secrets managers.",
   },
 ];
 

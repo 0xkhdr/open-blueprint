@@ -9,7 +9,7 @@ import { generateAgentsMD } from "./agents-md.js";
 export class GeminiAdapter implements BlueprintAdapter {
   async parse(projectRoot: string): Promise<BlueprintIR> {
     // 1. Spatial Anchor
-    let anchorPath = path.join(projectRoot, "gemini.md");
+    const anchorPath = path.join(projectRoot, "gemini.md");
 
     let projectName = "unknown";
     let anchorContent = "";
@@ -146,7 +146,7 @@ ${rule.rationale ? `**Reason:** ${rule.rationale}` : ""}
     // 3. Skills
     for (const skill of ir.skills) {
       const skillPath = path.join(projectRoot, "skills", `${skill.name.toLowerCase()}.md`);
-      let content = `---
+      const content = `---
 name: ${skill.name}
 description: ${skill.description}
 when_to_use: ${skill.when_to_use}

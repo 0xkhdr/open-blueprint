@@ -74,8 +74,7 @@ export class CodexAdapter implements BlueprintAdapter {
           reasoning_style:
             typeof data.reasoning_style === "string" ? data.reasoning_style : "methodical",
           constraints,
-          allowed_tools:
-            Array.isArray(data.allowed_tools) ? data.allowed_tools : undefined,
+          allowed_tools: Array.isArray(data.allowed_tools) ? data.allowed_tools : undefined,
         });
       } catch {
         // Skip malformed files
@@ -253,7 +252,7 @@ ${rule.rationale || "No details provided"}
     // 4. Skills
     for (const skill of ir.skills) {
       const skillPath = path.join(codexDir, "skills", `${skill.name.toLowerCase()}.md`);
-      let content = `---
+      const content = `---
 name: ${skill.name}
 description: ${skill.description}
 when_to_use: ${skill.when_to_use}
