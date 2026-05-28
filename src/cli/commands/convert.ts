@@ -6,10 +6,26 @@ import ora from "ora";
 import { ClaudeAdapter } from "../../translator/adapters/claude.js";
 import { CursorAdapter } from "../../translator/adapters/cursor.js";
 import { GenericAdapter } from "../../translator/adapters/generic.js";
+import { CodexAdapter } from "../../translator/adapters/codex.js";
+import { PIAdapter } from "../../translator/adapters/pi.js";
+import { CopilotAdapter } from "../../translator/adapters/copilot.js";
+import { GeminiAdapter } from "../../translator/adapters/gemini.js";
+import { KiroAdapter } from "../../translator/adapters/kiro.js";
+import { AntigravityAdapter } from "../../translator/adapters/antigravity.js";
 import { BlueprintIRSchema } from "../../translator/ir.js";
 import { EXIT_CODES } from "../../validator/index.js";
 
-const VALID_BACKENDS = ["claude", "cursor", "generic"] as const;
+const VALID_BACKENDS = [
+  "claude",
+  "cursor",
+  "generic",
+  "codex",
+  "pi",
+  "copilot",
+  "gemini",
+  "kiro",
+  "antigravity",
+] as const;
 type Backend = (typeof VALID_BACKENDS)[number];
 
 function getAdapter(backend: string) {
@@ -20,6 +36,18 @@ function getAdapter(backend: string) {
       return new CursorAdapter();
     case "generic":
       return new GenericAdapter();
+    case "codex":
+      return new CodexAdapter();
+    case "pi":
+      return new PIAdapter();
+    case "copilot":
+      return new CopilotAdapter();
+    case "gemini":
+      return new GeminiAdapter();
+    case "kiro":
+      return new KiroAdapter();
+    case "antigravity":
+      return new AntigravityAdapter();
     default:
       return null;
   }
@@ -28,8 +56,14 @@ function getAdapter(backend: string) {
 export function createConvertCommand(): Command {
   return new Command("convert")
     .description("Translate blueprint between backends")
-    .requiredOption("--from <backend>", "Source backend (claude | cursor | generic)")
-    .requiredOption("--to <backend>", "Target backend (claude | cursor | generic)")
+    .requiredOption(
+      "--from <backend>",
+      "Source backend (claude | cursor | generic | codex | pi | copilot | gemini | kiro | antigravity)"
+    )
+    .requiredOption(
+      "--to <backend>",
+      "Target backend (claude | cursor | generic | codex | pi | copilot | gemini | kiro | antigravity)"
+    )
     .option("--input <path>", "Source directory (default: .)", ".")
     .option("--output <path>", "Output directory (default: same as input)", ".")
     .action(async (opts: { from: string; to: string; input: string; output: string }) => {
