@@ -337,5 +337,132 @@ export function createRuleCommand(): Command {
       process.exit(EXIT_CODES.SUCCESS);
     });
 
+  // Rule pack management
+  cmd
+    .command("pack:list")
+    .description("List all available rule packs")
+    .action(async () => {
+      const { listRulePacks } = await import("../../rule-library/packs.js");
+      const packs = listRulePacks();
+      console.log(chalk.bold("Available Rule Packs:\n"));
+      for (const pack of packs) {
+        console.log(chalk.cyan(`  ${pack.id}`));
+        console.log(`    Name: ${pack.name}`);
+        console.log(`    Framework: ${pack.framework}`);
+        console.log(`    Rules: ${pack.rules.length}`);
+        console.log(`    Tags: ${pack.tags.join(", ")}`);
+        console.log("");
+      }
+    });
+
+  cmd
+    .command("pack:info <id>")
+    .description("Get information about a specific rule pack")
+    .action(async (id: string) => {
+      const { getRulePack } = await import("../../rule-library/packs.js");
+      const pack = getRulePack(id);
+      if (!pack) {
+        console.error(chalk.red(`Error: Rule pack not found: ${id}`));
+        process.exit(1);
+      }
+      console.log(chalk.bold(`${pack.name} (${pack.id})`));
+      console.log(`Version: ${pack.version}`);
+      console.log(`Framework: ${pack.framework}`);
+      console.log(`Author: ${pack.author}`);
+      console.log(`Description: ${pack.description}`);
+      console.log(`Rules: ${pack.rules.length}`);
+      console.log(`Tags: ${pack.tags.join(", ")}`);
+      console.log("");
+      console.log(chalk.bold("Rules:"));
+      for (const rule of pack.rules) {
+        console.log(`  - ${rule.id} (${rule.severity})`);
+        if (rule.rationale) {
+          console.log(`    ${rule.rationale}`);
+        }
+      }
+    });
+
+  cmd
+    .command("pack:search <query>")
+    .description("Search rule packs by name, description, or tags")
+    .action(async (query: string) => {
+      const { createRuleLibraryManager } = await import(
+        "../../rule-library/manager.js"
+      );
+      const manager = createRuleLibraryManager();
+      const results = manager.searchPacks(query);
+      if (results.length === 0) {
+        console.log(chalk.yellow(`No rule packs found matching: ${query}`));
+        process.exit(0);
+      }
+      console.log(chalk.bold(`Found ${results.length} pack(s):\n`));
+      for (const pack of results) {
+        console.log(chalk.cyan(`  ${pack.id}`));
+        console.log(`    ${pack.description}`);
+      }
+    });
+
+  cmd
+    .command("pack:install <packId>")
+    .description("Install a rule pack into the blueprint")
+    .option("--input <path>", "Input blueprint file (JSON)", "blueprint.json")
+    .option("--output <path>", "Output file (default: overwrite input)")
+    .option(
+      "--merge",
+      "Merge rules (add new, keep existing)",
+      false
+    )
+    .option("--force", "Replace all rules with pack rules", false)
+    .action(async (packId: string, options) => {
+      const { createRuleLibraryManager } = await import(
+        "../../rule-library/manager.js"
+      );
+      const { BlueprintIRSchema } = await import("../../translator/ir.js");
+      const manager = createRuleLibraryManager();
+
+      const inputPath = path.resolve(options.input);
+      if (!fs.existsSync(inputPath)) {
+        console.error(
+          chalk.red(`Error: Blueprint file not found: ${options.input}`)
+        );
+        process.exit(1);
+      }
+
+      // Load blueprint
+      const content = fs.readFileSync(inputPath, "utf-8");
+      let blueprint;
+      try {
+        blueprint = BlueprintIRSchema.parse(JSON.parse(content));
+      } catch (err) {
+        console.error(chalk.red("Error: Failed to parse blueprint"));
+        if (err instanceof Error) {
+          console.error(chalk.dim(err.message));
+        }
+        process.exit(1);
+      }
+
+      // Install pack
+      const result = manager.installPack(blueprint, packId, {
+        merge: options.merge,
+        force: options.force,
+        validate: true,
+      });
+
+      if (!result.success) {
+        console.error(chalk.red(`Error: ${result.message}`));
+        process.exit(1);
+      }
+
+      // Write output
+      const outputPath = options.output || options.input;
+      fs.writeFileSync(
+        path.resolve(outputPath),
+        JSON.stringify(result.blueprint, null, 2)
+      );
+
+      console.log(chalk.green(`✓ ${result.message}`));
+      console.log(`  Output: ${outputPath}`);
+    });
+
   return cmd;
 }
