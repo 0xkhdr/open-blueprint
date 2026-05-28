@@ -90,6 +90,9 @@ function selectTemplatePack(fingerprint: Fingerprint, backend: string): string {
     ruby: {
       rails: "ruby-rails",
     },
+    php: {
+      laravel: "laravel",
+    },
   };
 
   const langMap = langFrameworkMap[primaryLang];

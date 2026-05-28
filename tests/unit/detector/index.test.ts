@@ -57,4 +57,15 @@ describe("detector index", () => {
     const fingerprint = await detect(tmpDir);
     expect(fingerprint.project.git_workflow).toBe("github-flow");
   });
+
+  it("detects PHP/Laravel entry points correctly", async () => {
+    touchFile(tmpDir, "composer.json", JSON.stringify({ require: { "laravel/framework": "^10.0" } }));
+    touchFile(tmpDir, "artisan", "#!/usr/bin/env php");
+    touchFile(tmpDir, "public/index.php", "<?php");
+
+    const fingerprint = await detect(tmpDir);
+    expect(fingerprint.languages.find(l => l.name === "php")).toBeDefined();
+    expect(fingerprint.frameworks.find(f => f.name === "laravel")).toBeDefined();
+    expect(fingerprint.entry_points).toContainEqual({ path: "public/index.php", type: "server" });
+  });
 });

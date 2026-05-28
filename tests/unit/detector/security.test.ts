@@ -96,6 +96,20 @@ describe("detectSecurity", () => {
     expect(mavenSignals.has_auth).toBe(true);
   });
 
+  it("detects security signals from composer.json files", () => {
+    touchFile(tmpDir, "composer.json", JSON.stringify({
+      require: {
+        "laravel/sanctum": "^3.0",
+        "guzzlehttp/guzzle": "^7.0",
+        "vlucas/phpdotenv": "^5.5",
+      }
+    }));
+    const composerSignals = detectSecurity(tmpDir);
+    expect(composerSignals.has_auth).toBe(true);
+    expect(composerSignals.has_external_apis).toBe(true);
+    expect(composerSignals.has_secrets_manager).toBe(true);
+  });
+
   it("returns false for all signals on empty dir", () => {
     const signals = detectSecurity(tmpDir);
     expect(signals.has_auth).toBe(false);

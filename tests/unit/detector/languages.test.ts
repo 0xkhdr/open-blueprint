@@ -83,6 +83,14 @@ describe("detectLanguages", () => {
     expect(py?.confidence).toBeGreaterThanOrEqual(0.9);
   });
 
+  it("detects PHP from composer.json", () => {
+    touchFile(tmpDir, "composer.json", "{}");
+    const langs = detectLanguages(tmpDir);
+    const php = langs.find((l) => l.name === "php");
+    expect(php).toBeDefined();
+    expect(php?.confidence).toBeGreaterThanOrEqual(0.9);
+  });
+
   it("returns empty array for empty dir", () => {
     const langs = detectLanguages(tmpDir);
     expect(langs).toEqual([]);

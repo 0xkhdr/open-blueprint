@@ -231,6 +231,25 @@ const FRAMEWORK_RULES: FrameworkRule[] = [
       return 0;
     },
   },
+  {
+    name: "laravel",
+    detect: (root) => {
+      const composerPath = path.join(root, "composer.json");
+      const hasArtisan = fileExists(path.join(root, "artisan"));
+      if (fileExists(composerPath)) {
+        try {
+          const content = fs.readFileSync(composerPath, "utf-8");
+          const hasDep = content.includes("laravel/framework");
+          if (hasDep && hasArtisan) return 0.95;
+          if (hasDep) return 0.85;
+        } catch {
+          /* skip */
+        }
+      }
+      if (hasArtisan) return 0.7;
+      return 0;
+    },
+  },
 ];
 
 export function detectFrameworks(projectRoot: string): FrameworkSignal[] {

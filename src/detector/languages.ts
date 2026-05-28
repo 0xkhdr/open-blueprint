@@ -79,6 +79,12 @@ const LANGUAGE_RULES: LangRule[] = [
     mediumConfidenceFiles: [],
     srcExtensions: [".swift"],
   },
+  {
+    name: "php",
+    highConfidenceFiles: ["composer.json", "composer.lock"],
+    mediumConfidenceFiles: ["phpunit.xml", "artisan"],
+    srcExtensions: [".php"],
+  },
 ];
 
 function fileExists(filePath: string): boolean {

@@ -36,6 +36,15 @@ const AUTH_PACKAGES: Record<string, string[]> = {
   cargo: ["jsonwebtoken", "casbin", "actix-web-httpauth", "axum-login"],
   go: ["golang-jwt", "casbin", "go-jose", "goth"],
   maven: ["spring-security", "spring-boot-starter-security", "shiro-core"],
+  composer: [
+    "laravel/sanctum",
+    "laravel/passport",
+    "laravel/fortify",
+    "laravel/breeze",
+    "laravel/jetstream",
+    "tymon/jwt-auth",
+    "firebase/php-jwt",
+  ],
 };
 
 /** Packages that signal external API calls */
@@ -56,6 +65,7 @@ const API_PACKAGES: Record<string, string[]> = {
   cargo: ["reqwest", "hyper", "ureq"],
   go: ["resty", "grpc", "google.golang.org/grpc"],
   maven: ["okhttp", "retrofit", "spring-web", "feign"],
+  composer: ["guzzlehttp/guzzle", "symfony/http-client", "aws/aws-sdk-php", "google/apiclient"],
 };
 
 /** Packages/files that signal secrets management */
@@ -70,6 +80,7 @@ const SECRETS_PACKAGES: Record<string, string[]> = {
   pip: ["hvac", "boto3", "google-cloud-secret-manager"],
   cargo: ["vaultrs"],
   go: ["vault/api", "github.com/hashicorp/vault"],
+  composer: ["vlucas/phpdotenv", "josegonzalez/dotenv"],
 };
 
 function fileExists(filePath: string): boolean {
@@ -133,6 +144,10 @@ function detectAuth(root: string): boolean {
     readFile(path.join(root, "build.gradle")) ?? readFile(path.join(root, "build.gradle.kts"));
   if (gradle && contentMatchesAny(gradle, AUTH_PACKAGES.maven ?? [])) return true;
 
+  // PHP (composer.json)
+  const composer = readFile(path.join(root, "composer.json"));
+  if (composer && contentMatchesAny(composer, AUTH_PACKAGES.composer ?? [])) return true;
+
   // Auth-related directories (any language)
   const authDirs = ["auth", "authentication", "middleware/auth", "src/auth", "src/authentication"];
   for (const d of authDirs) {
@@ -174,6 +189,9 @@ function detectExternalApis(root: string): boolean {
   const pom = readFile(path.join(root, "pom.xml"));
   if (pom && contentMatchesAny(pom, API_PACKAGES.maven ?? [])) return true;
 
+  const composer = readFile(path.join(root, "composer.json"));
+  if (composer && contentMatchesAny(composer, API_PACKAGES.composer ?? [])) return true;
+
   return false;
 }
 
@@ -205,6 +223,9 @@ function detectSecretsManager(root: string): boolean {
 
   const goMod = readFile(path.join(root, "go.mod"));
   if (goMod && contentMatchesAny(goMod, SECRETS_PACKAGES.go ?? [])) return true;
+
+  const composer = readFile(path.join(root, "composer.json"));
+  if (composer && contentMatchesAny(composer, SECRETS_PACKAGES.composer ?? [])) return true;
 
   // Vault config files (any ecosystem)
   const vaultFiles = [".env.vault", "vault.hcl", ".vault", ".secrets"];

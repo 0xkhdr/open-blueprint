@@ -12,6 +12,7 @@ export const LanguageNameSchema = z.enum([
   "cpp",
   "csharp",
   "swift",
+  "php",
 ]);
 
 export const FingerprintSchema = z.object({

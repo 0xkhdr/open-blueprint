@@ -141,11 +141,17 @@ function detectEntryPoints(root: string, frameworks: Array<{ name: string }>): E
     "index.ts",
     "server.js",
     "app.js",
+    "public/index.php",
+    "index.php",
+    "artisan",
   ];
   for (const f of serverFiles) {
     if (fileExists(path.join(root, f))) {
       const type: "server" | "ui" | "library" | "cli" =
-        hasFramework("nestjs") || hasFramework("express") || hasFramework("fastapi")
+        hasFramework("nestjs") ||
+        hasFramework("express") ||
+        hasFramework("fastapi") ||
+        hasFramework("laravel")
           ? "server"
           : hasFramework("nextjs") || hasFramework("react") || hasFramework("vue")
             ? "ui"

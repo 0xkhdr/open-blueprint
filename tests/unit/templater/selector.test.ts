@@ -40,4 +40,15 @@ describe("templater selector", () => {
   it("throws error when backend manifest is completely missing", () => {
     expect(() => resolveTemplatePack(MOCK_FINGERPRINT, "nonexistent-backend")).toThrow();
   });
+
+  it("resolves template pack for php/laravel with fallback", () => {
+    const fingerprint: Fingerprint = {
+      ...MOCK_FINGERPRINT,
+      languages: [{ name: "php", confidence: 0.9, primary: true }],
+      frameworks: [{ name: "laravel", confidence: 0.9 }],
+    };
+    const pack = resolveTemplatePack(fingerprint, "claude");
+    expect(pack).toBeDefined();
+    expect(pack.manifest.backend).toBe("claude");
+  });
 });

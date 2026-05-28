@@ -38,6 +38,8 @@ function detectPackageManager(root: string): string | undefined {
   if (fileExists(path.join(root, "go.mod"))) return "go modules";
   if (fileExists(path.join(root, "Cargo.lock"))) return "cargo";
   if (fileExists(path.join(root, "Gemfile.lock"))) return "bundler";
+  if (fileExists(path.join(root, "composer.lock")) || fileExists(path.join(root, "composer.json")))
+    return "composer";
   return undefined;
 }
 
@@ -59,6 +61,17 @@ function detectTestRunner(root: string): string | undefined {
   if (fileExists(path.join(root, "go.mod"))) return "go test";
   if (fileExists(path.join(root, "Cargo.toml"))) return "cargo test";
   if (fileExists(path.join(root, "Gemfile"))) return "rspec";
+  if (fileExists(path.join(root, "phpunit.xml"))) {
+    const composerPath = path.join(root, "composer.json");
+    if (fileExists(composerPath)) {
+      try {
+        const content = fs.readFileSync(composerPath, "utf-8");
+        if (content.includes("pestphp/pest")) return "pest";
+      } catch {}
+    }
+    return "phpunit";
+  }
+  if (fileExists(path.join(root, "tests/Pest.php"))) return "pest";
   return undefined;
 }
 
@@ -81,6 +94,14 @@ function detectTestCommand(root: string, testRunner: string | undefined): string
   if (testRunner === "go test") return "go test ./...";
   if (testRunner === "cargo test") return "cargo test";
   if (testRunner === "rspec") return "bundle exec rspec";
+  if (testRunner === "phpunit") {
+    if (fileExists(path.join(root, "artisan"))) return "php artisan test";
+    return "vendor/bin/phpunit";
+  }
+  if (testRunner === "pest") {
+    if (fileExists(path.join(root, "artisan"))) return "php artisan test";
+    return "vendor/bin/pest";
+  }
   return undefined;
 }
 
@@ -100,6 +121,7 @@ function detectBuildTool(root: string): string | undefined {
   if (fileExists(path.join(root, "nx.json"))) return "nx";
   if (fileExists(path.join(root, "Makefile"))) return "make";
   if (fileExists(path.join(root, "Dockerfile"))) return "docker";
+  if (fileExists(path.join(root, "webpack.mix.js"))) return "laravel-mix";
   return undefined;
 }
 
@@ -128,6 +150,19 @@ function detectLinter(root: string): string | undefined {
     return "golangci-lint";
   if (fileExists(path.join(root, ".rubocop.yml"))) return "rubocop";
   if (fileExists(path.join(root, "clippy.toml"))) return "clippy";
+  if (fileExists(path.join(root, "pint.json"))) return "laravel-pint";
+  if (
+    fileExists(path.join(root, "phpstan.neon")) ||
+    fileExists(path.join(root, "phpstan.neon.dist"))
+  )
+    return "phpstan";
+  if (
+    fileExists(path.join(root, ".php-cs-fixer.php")) ||
+    fileExists(path.join(root, ".php-cs-fixer.dist.php"))
+  )
+    return "php-cs-fixer";
+  if (fileExists(path.join(root, "phpcs.xml")) || fileExists(path.join(root, "ruleset.xml")))
+    return "phpcs";
   return undefined;
 }
 
@@ -151,6 +186,12 @@ function detectFormatter(root: string): string | undefined {
     if (content?.includes("[tool.ruff.format]")) return "ruff";
   }
   if (fileExists(path.join(root, ".black"))) return "black";
+  if (fileExists(path.join(root, "pint.json"))) return "laravel-pint";
+  if (
+    fileExists(path.join(root, ".php-cs-fixer.php")) ||
+    fileExists(path.join(root, ".php-cs-fixer.dist.php"))
+  )
+    return "php-cs-fixer";
   return undefined;
 }
 

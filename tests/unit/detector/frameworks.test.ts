@@ -114,6 +114,15 @@ describe("detectFrameworks", () => {
     expect(fw.find((f) => f.name === "actix-web")).toBeDefined();
   });
 
+  it("detects Laravel from composer.json + artisan", () => {
+    touchFile(tmpDir, "composer.json", JSON.stringify({ require: { "laravel/framework": "^10.0" } }));
+    touchFile(tmpDir, "artisan", "#!/usr/bin/env php");
+    const fw = detectFrameworks(tmpDir);
+    const laravel = fw.find((f) => f.name === "laravel");
+    expect(laravel).toBeDefined();
+    expect(laravel?.confidence).toBeGreaterThanOrEqual(0.9);
+  });
+
   it("returns empty for blank project", () => {
     const fw = detectFrameworks(tmpDir);
     expect(fw).toEqual([]);

@@ -60,6 +60,11 @@ describe("detectTooling", () => {
       touchFile(tmpDir, "Cargo.lock");
       expect(detectTooling(tmpDir).package_manager).toBe("cargo");
     });
+
+    it("detects composer from composer.json", () => {
+      touchFile(tmpDir, "composer.json");
+      expect(detectTooling(tmpDir).package_manager).toBe("composer");
+    });
   });
 
   describe("test_runner", () => {
@@ -87,6 +92,26 @@ describe("detectTooling", () => {
       touchFile(tmpDir, "Cargo.toml");
       expect(detectTooling(tmpDir).test_runner).toBe("cargo test");
     });
+
+    it("detects phpunit from phpunit.xml", () => {
+      touchFile(tmpDir, "phpunit.xml");
+      expect(detectTooling(tmpDir).test_runner).toBe("phpunit");
+      expect(detectTooling(tmpDir).test_command).toBe("vendor/bin/phpunit");
+    });
+
+    it("detects pest from composer.json showing pest dependency", () => {
+      touchFile(tmpDir, "phpunit.xml");
+      touchFile(tmpDir, "composer.json", JSON.stringify({ "require-dev": { "pestphp/pest": "^2.0" } }));
+      expect(detectTooling(tmpDir).test_runner).toBe("pest");
+      expect(detectTooling(tmpDir).test_command).toBe("vendor/bin/pest");
+    });
+
+    it("detects php artisan test when artisan is present", () => {
+      touchFile(tmpDir, "phpunit.xml");
+      touchFile(tmpDir, "artisan");
+      expect(detectTooling(tmpDir).test_runner).toBe("phpunit");
+      expect(detectTooling(tmpDir).test_command).toBe("php artisan test");
+    });
   });
 
   describe("build_tool", () => {
@@ -109,6 +134,11 @@ describe("detectTooling", () => {
       touchFile(tmpDir, "nx.json");
       expect(detectTooling(tmpDir).build_tool).toBe("nx");
     });
+
+    it("detects laravel-mix from webpack.mix.js", () => {
+      touchFile(tmpDir, "webpack.mix.js");
+      expect(detectTooling(tmpDir).build_tool).toBe("laravel-mix");
+    });
   });
 
   describe("linter", () => {
@@ -125,6 +155,28 @@ describe("detectTooling", () => {
     it("detects ruff from pyproject.toml", () => {
       touchFile(tmpDir, "pyproject.toml", "[tool.ruff]\nline-length = 88");
       expect(detectTooling(tmpDir).linter).toBe("ruff");
+    });
+
+    it("detects laravel-pint from pint.json", () => {
+      touchFile(tmpDir, "pint.json");
+      expect(detectTooling(tmpDir).linter).toBe("laravel-pint");
+      expect(detectTooling(tmpDir).formatter).toBe("laravel-pint");
+    });
+
+    it("detects phpstan from phpstan.neon", () => {
+      touchFile(tmpDir, "phpstan.neon");
+      expect(detectTooling(tmpDir).linter).toBe("phpstan");
+    });
+
+    it("detects phpcs from phpcs.xml", () => {
+      touchFile(tmpDir, "phpcs.xml");
+      expect(detectTooling(tmpDir).linter).toBe("phpcs");
+    });
+
+    it("detects php-cs-fixer from .php-cs-fixer.php", () => {
+      touchFile(tmpDir, ".php-cs-fixer.php");
+      expect(detectTooling(tmpDir).linter).toBe("php-cs-fixer");
+      expect(detectTooling(tmpDir).formatter).toBe("php-cs-fixer");
     });
   });
 
