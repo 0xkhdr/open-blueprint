@@ -30,6 +30,7 @@ export const SkillSchema = z.object({
   when_to_use: z.string(),
   tools_required: z.array(z.string()),
   procedure: z.string(),
+  disable_model_invocation: z.boolean().optional(),
 });
 
 export const HookSchema = z.object({
@@ -43,6 +44,7 @@ export const MetaSchema = z.object({
   conflict_resolution: z.string(),
   source_backend: z.string(),
   target_backend: z.string(),
+  schema_version: z.enum(["1.0", "2.0"]).default("2.0").optional(),
 });
 
 // Layer 6: Settings
@@ -420,3 +422,10 @@ export type Metrics = z.infer<typeof MetricsSchema>;
 export type Alerting = z.infer<typeof AlertingSchema>;
 export type SemanticDrift = z.infer<typeof SemanticDriftSchema>;
 export type BlueprintIR = z.infer<typeof BlueprintIRSchema>;
+
+export function isV2(ir: BlueprintIR): boolean {
+  return ir.meta?.schema_version === "2.0" || ir.settings !== undefined || ir.mcp_servers !== undefined;
+}
+export function isV1(ir: BlueprintIR): boolean {
+  return !isV2(ir);
+}

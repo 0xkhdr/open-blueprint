@@ -57,7 +57,7 @@ bun build --compile src/cli/index.ts --outfile bp  # build binary
 ## Domain 01 — IR Schema Foundation
 
 **Spec File:** `specs/01-IR-SCHEMA-FOUNDATION.md`
-**Status:** ✅ ALREADY IMPLEMENTED — verify + minor additions only
+**Status:** ✅ COMPLETE — all tasks implemented and verified
 **Effort:** ~2h
 **Commit:** `feat(ir): verify and export all v2.0 types`
 
@@ -117,10 +117,10 @@ bun test               # no regressions
 ```
 
 ### Done Criteria
-- [ ] All 18 types explicitly exported
-- [ ] `schema_version` and `disable_model_invocation` present (or confirmed present)
-- [ ] `isV1()` / `isV2()` exported from `src/translator/ir.ts`
-- [ ] Tests pass, no typecheck errors
+- [x] All 18 types explicitly exported
+- [x] `schema_version` and `disable_model_invocation` present (or confirmed present)
+- [x] `isV1()` / `isV2()` exported from `src/translator/ir.ts`
+- [x] Tests pass, no typecheck errors
 
 ---
 
