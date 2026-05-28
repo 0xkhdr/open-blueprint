@@ -1,6 +1,7 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { randomUUID } from "node:crypto";
 
 export interface AuditLogEntry {
   timestamp: string;
@@ -9,9 +10,18 @@ export interface AuditLogEntry {
   user: string;
   status: "success" | "failure";
   error?: string;
+  correlation_id: string;
+  log_level: "debug" | "info" | "warn" | "error";
+  compliance_checkpoints?: string[];
 }
 
-export function logAudit(entry: Omit<AuditLogEntry, "timestamp" | "user">): void {
+export function createCorrelationId(): string {
+  return randomUUID();
+}
+
+export function logAudit(
+  entry: Omit<AuditLogEntry, "timestamp" | "user" | "correlation_id">
+): void {
   const auditDir = path.join(os.homedir(), ".bp");
   const dateStr = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
   const auditFile = path.join(auditDir, `audit-${dateStr}.log`);
@@ -19,7 +29,9 @@ export function logAudit(entry: Omit<AuditLogEntry, "timestamp" | "user">): void
   const fullEntry: AuditLogEntry = {
     timestamp: new Date().toISOString(),
     user: os.userInfo().username || "unknown",
+    correlation_id: createCorrelationId(),
     ...entry,
+    log_level: entry.log_level || (entry.status === "failure" ? "error" : "info"),
   };
 
   try {

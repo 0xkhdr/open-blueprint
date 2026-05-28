@@ -12,7 +12,7 @@ import type { ValidationLevel } from "../../validator/index.js";
 import { EXIT_CODES, exitCodeForResult, runValidator } from "../../validator/index.js";
 import type { ValidationError } from "../../validator/structural.js";
 
-const VALID_LEVELS = ["structural", "semantic", "logical", "drift", "all"] as const;
+const VALID_LEVELS = ["structural", "semantic", "logical", "drift", "governance", "all"] as const;
 
 function formatError(err: ValidationError, cwd: string): void {
   const loc = err.line ? `:${err.line}` : "";

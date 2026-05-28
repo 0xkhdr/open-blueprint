@@ -46,6 +46,7 @@ program.hook("preAction", (_thisCommand, actionCommand) => {
       command: actionCommand.name(),
       args: actionCommand.args,
       status: "success",
+      log_level: "info",
     });
   } catch {
     // ESM dynamic import fallback
@@ -55,6 +56,7 @@ program.hook("preAction", (_thisCommand, actionCommand) => {
           command: actionCommand.name(),
           args: actionCommand.args,
           status: "success",
+          log_level: "info",
         });
       })
       .catch(() => {});

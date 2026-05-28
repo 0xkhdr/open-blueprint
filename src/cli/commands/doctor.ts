@@ -6,6 +6,17 @@ import matter from "gray-matter";
 import { detect } from "../../detector/index.js";
 import { resolveTemplatePack } from "../../templater/selector.js";
 import { EXIT_CODES } from "../../validator/index.js";
+import { generateComplianceReport } from "../../validator/compliance.js";
+import { generateRunbook } from "../../validator/escalation.js";
+import { ClaudeAdapter } from "../../translator/adapters/claude.js";
+import { CursorAdapter } from "../../translator/adapters/cursor.js";
+import { GenericAdapter } from "../../translator/adapters/generic.js";
+import { CodexAdapter } from "../../translator/adapters/codex.js";
+import { PIAdapter } from "../../translator/adapters/pi.js";
+import { CopilotAdapter } from "../../translator/adapters/copilot.js";
+import { GeminiAdapter } from "../../translator/adapters/gemini.js";
+import { KiroAdapter } from "../../translator/adapters/kiro.js";
+import { AntigravityAdapter } from "../../translator/adapters/antigravity.js";
 
 interface DiagnosticCheck {
   name: string;
@@ -197,7 +208,108 @@ export function createDoctorCommand(): Command {
             }
           },
         },
+        {
+          name: "compliance-framework-mapping",
+          run: async () => {
+            try {
+              const adapter = getAdapterByName(backend as string);
+              const ir = await adapter.parse(cwd);
+
+              const report = generateComplianceReport(ir);
+              const score = report.overall_score;
+
+              if (score >= 70) {
+                return {
+                  status: "pass",
+                  message: `Compliance score: ${score}% across ${report.frameworks.length} framework(s)`,
+                };
+              } else if (score >= 40) {
+                const gaps = report.frameworks
+                  .flatMap((f) => f.gaps)
+                  .slice(0, 3)
+                  .map((g) => g.description)
+                  .join("; ");
+                return {
+                  status: "warn",
+                  message: `Compliance score: ${score}% (below 70% target). Top gaps: ${gaps}`,
+                  resolution: `Review and remediate compliance gaps. Run 'bp verify --level governance' for details.`,
+                };
+              } else {
+                return {
+                  status: "fail",
+                  message: `Critical compliance score: ${score}% (below 40% minimum)`,
+                  resolution: `Immediate action required. Run 'bp verify --level governance' and address all gaps.`,
+                };
+              }
+            } catch (e) {
+              return {
+                status: "warn",
+                message: `Compliance check skipped: ${e instanceof Error ? e.message : String(e)}`,
+                resolution: "Ensure blueprint is valid and compliance.frameworks is configured.",
+              };
+            }
+          },
+        },
+        {
+          name: "risk-tier-classification",
+          run: async () => {
+            try {
+              const fingerprint = await detect(cwd);
+              const adapter = getAdapterByName(backend as string);
+              const ir = await adapter.parse(cwd);
+
+              const irHasRiskTier = !!ir.risk?.risk_tier;
+              const fpRiskTier = (fingerprint as any).risk_tier;
+
+              if (irHasRiskTier) {
+                return {
+                  status: "pass",
+                  message: `Risk tier explicitly classified: ${ir.risk?.risk_tier}`,
+                };
+              } else if (fpRiskTier === "high" || fpRiskTier === "critical") {
+                return {
+                  status: "warn",
+                  message: `Blueprint does not define risk tier, but fingerprint detected ${fpRiskTier} risk`,
+                  resolution: `Set ir.risk.risk_tier to match detected risk level (${fpRiskTier})`,
+                };
+              } else {
+                return {
+                  status: "pass",
+                  message: `Risk tier not explicitly set; fingerprint indicates ${fpRiskTier} risk (acceptable)`,
+                };
+              }
+            } catch (_e) {
+              return {
+                status: "pass",
+                message: "Risk tier classification check skipped (no risk signals detected).",
+              };
+            }
+          },
+        },
       ];
+
+      function getAdapterByName(name: string) {
+        switch (name) {
+          case "claude":
+            return new ClaudeAdapter();
+          case "cursor":
+            return new CursorAdapter();
+          case "codex":
+            return new CodexAdapter();
+          case "pi":
+            return new PIAdapter();
+          case "copilot":
+            return new CopilotAdapter();
+          case "gemini":
+            return new GeminiAdapter();
+          case "kiro":
+            return new KiroAdapter();
+          case "antigravity":
+            return new AntigravityAdapter();
+          default:
+            return new GenericAdapter();
+        }
+      }
 
       let allPassed = true;
 

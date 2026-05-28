@@ -2,12 +2,6 @@ import type { ValidationError } from "../validator/structural.js";
 
 const SECRET_PATTERNS = [
   {
-    name: "Private Key Header",
-    regex: /-----BEGIN[ A-Z0-9_-]+PRIVATE KEY-----/i,
-    resolution:
-      "Remove the private key from the configuration and load it from environment variables or a secrets manager instead.",
-  },
-  {
     name: "JSON Web Token (JWT)",
     regex: /\beyJhbGciOi[a-zA-Z0-9-_]+\.[a-zA-Z0-9-_]+\.[a-zA-Z0-9-_]+\b/i,
     resolution: "Revoke this token and replace it with a reference to a secrets manager.",
@@ -32,6 +26,26 @@ const SECRET_PATTERNS = [
     name: "AWS Access Key",
     regex: /\bAKIA[0-9A-Z]{16}\b/i,
     resolution: "Revoke the AWS credentials immediately.",
+  },
+  {
+    name: "Slack Token",
+    regex: /\bxox[baprs]-[0-9]{10,13}-[0-9]{10,13}-[a-zA-Z0-9-_]{24,34}\b/i,
+    resolution: "Revoke the Slack token immediately. A compromised token can be used to access Slack workspace.",
+  },
+  {
+    name: "Azure Storage SAS Token",
+    regex: /sv=\d{4}-\d{2}-\d{2}[&a-zA-Z0-9-_=]{50,}/i,
+    resolution: "Revoke the Azure SAS token immediately to prevent unauthorized storage access.",
+  },
+  {
+    name: "SSH Private Key",
+    regex: /-----BEGIN[ A-Z0-9_-]*(?:RSA|DSA|OPENSSH|EC|PGP|ENCRYPTED)[ A-Z0-9_-]*PRIVATE KEY[^-]*-----/i,
+    resolution: "SSH private keys must never be committed. Revoke and rotate keys, use ssh-agent or key management system.",
+  },
+  {
+    name: "Bearer Token",
+    regex: /\b[Bb]earer\s+[A-Za-z0-9+/]{20,}(?:[=]{0,2})\b/i,
+    resolution: "Bearer tokens in code are security risks. Store tokens in environment variables or secrets managers.",
   },
 ];
 

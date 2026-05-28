@@ -9,8 +9,29 @@ import { validateLogical } from "./logical.js";
 import { validateSemantic } from "./semantic.js";
 import type { ValidationError } from "./structural.js";
 import { validateStructuralBatch } from "./structural.js";
+import {
+  validateSettings,
+  validateCommands,
+  validateMCPServers,
+  validateIdentity,
+  validateAudit,
+  validateCompliance,
+  validateRisk,
+  validateRegistry,
+  validateOrchestration,
+} from "./layers.js";
+import { ClaudeAdapter } from "../translator/adapters/claude.js";
+import { CursorAdapter } from "../translator/adapters/cursor.js";
+import { GenericAdapter } from "../translator/adapters/generic.js";
+import { CodexAdapter } from "../translator/adapters/codex.js";
+import { PIAdapter } from "../translator/adapters/pi.js";
+import { CopilotAdapter } from "../translator/adapters/copilot.js";
+import { GeminiAdapter } from "../translator/adapters/gemini.js";
+import { KiroAdapter } from "../translator/adapters/kiro.js";
+import { AntigravityAdapter } from "../translator/adapters/antigravity.js";
+import { validateRBAC } from "./rbac.js";
 
-export type ValidationLevel = "structural" | "semantic" | "logical" | "drift" | "all";
+export type ValidationLevel = "structural" | "semantic" | "logical" | "drift" | "governance" | "all";
 
 export interface ValidatorOptions {
   level: ValidationLevel;
@@ -62,6 +83,177 @@ async function collectBlueprintFiles(
   });
 
   return files;
+}
+
+async function validateGovernance(
+  projectRoot: string,
+  manifest: BackendManifest
+): Promise<ValidationError[]> {
+  try {
+    const adapter = getAdapterByName(manifest.backend);
+    const ir = await adapter.parse(projectRoot);
+
+    const errors: ValidationError[] = [];
+    const blueprintFile = manifest.file_patterns.anchor[0]
+      ? path.join(projectRoot, manifest.file_patterns.anchor[0])
+      : path.join(projectRoot, ".claude", "blueprint.json");
+
+    // Validate each enterprise layer
+    if (ir.settings) {
+      const settingsErrors = validateSettings(ir.settings);
+      errors.push(
+        ...settingsErrors.map((e) => ({
+          file: blueprintFile,
+          type: "GOVERNANCE_SETTINGS_INVALID",
+          severity: "error" as const,
+          message: `Settings layer: ${e.message}`,
+          resolution: `Fix settings configuration at ${e.field || "root"}`,
+        }))
+      );
+    }
+
+    if (ir.commands && ir.commands.length > 0) {
+      const commandErrors = validateCommands(ir.commands);
+      errors.push(
+        ...commandErrors.map((e) => ({
+          file: blueprintFile,
+          type: "GOVERNANCE_COMMANDS_INVALID",
+          severity: "error" as const,
+          message: `Commands layer: ${e.message}`,
+          resolution: `Fix commands configuration at ${e.field || "root"}`,
+        }))
+      );
+    }
+
+    if (ir.mcp_servers && ir.mcp_servers.length > 0) {
+      const mcpErrors = validateMCPServers(ir.mcp_servers);
+      errors.push(
+        ...mcpErrors.map((e) => ({
+          file: blueprintFile,
+          type: "GOVERNANCE_MCP_INVALID",
+          severity: "error" as const,
+          message: `MCP servers layer: ${e.message}`,
+          resolution: `Fix MCP server configuration at ${e.field || "root"}`,
+        }))
+      );
+    }
+
+    if (ir.identity !== undefined) {
+      const identityErrors = validateIdentity(ir.identity);
+      errors.push(
+        ...identityErrors.map((e) => ({
+          file: blueprintFile,
+          type: "GOVERNANCE_IDENTITY_INVALID",
+          severity: "error" as const,
+          message: `Identity layer: ${e.message}`,
+          resolution: `Fix identity configuration at ${e.field || "root"}`,
+        }))
+      );
+
+      const rbacErrors = validateRBAC({ identity: ir.identity }, blueprintFile);
+      errors.push(...rbacErrors);
+    }
+
+    if (ir.audit) {
+      const auditErrors = validateAudit(ir.audit);
+      errors.push(
+        ...auditErrors.map((e) => ({
+          file: blueprintFile,
+          type: "GOVERNANCE_AUDIT_INVALID",
+          severity: "error" as const,
+          message: `Audit layer: ${e.message}`,
+          resolution: `Fix audit configuration at ${e.field || "root"}`,
+        }))
+      );
+    }
+
+    if (ir.compliance) {
+      const complianceErrors = validateCompliance(ir.compliance);
+      errors.push(
+        ...complianceErrors.map((e) => ({
+          file: blueprintFile,
+          type: "GOVERNANCE_COMPLIANCE_INVALID",
+          severity: "error" as const,
+          message: `Compliance layer: ${e.message}`,
+          resolution: `Fix compliance configuration at ${e.field || "root"}`,
+        }))
+      );
+    }
+
+    if (ir.risk) {
+      const riskErrors = validateRisk(ir.risk);
+      errors.push(
+        ...riskErrors.map((e) => ({
+          file: blueprintFile,
+          type: "GOVERNANCE_RISK_INVALID",
+          severity: "error" as const,
+          message: `Risk layer: ${e.message}`,
+          resolution: `Fix risk configuration at ${e.field || "root"}`,
+        }))
+      );
+    }
+
+    if (ir.registry) {
+      const registryErrors = validateRegistry(ir.registry);
+      errors.push(
+        ...registryErrors.map((e) => ({
+          file: blueprintFile,
+          type: "GOVERNANCE_REGISTRY_INVALID",
+          severity: "error" as const,
+          message: `Registry layer: ${e.message}`,
+          resolution: `Fix registry configuration at ${e.field || "root"}`,
+        }))
+      );
+    }
+
+    if (ir.orchestration) {
+      const orchestrationErrors = validateOrchestration(ir.orchestration);
+      errors.push(
+        ...orchestrationErrors.map((e) => ({
+          file: blueprintFile,
+          type: "GOVERNANCE_ORCHESTRATION_INVALID",
+          severity: "error" as const,
+          message: `Orchestration layer: ${e.message}`,
+          resolution: `Fix orchestration configuration at ${e.field || "root"}`,
+        }))
+      );
+    }
+
+    return errors;
+  } catch (err) {
+    return [
+      {
+        file: path.join(projectRoot, ".claude", "blueprint.json"),
+        type: "GOVERNANCE_PARSE_ERROR",
+        severity: "error",
+        message: `Failed to parse blueprint for governance validation: ${String(err)}`,
+        resolution: "Ensure blueprint is valid JSON/YAML and conforms to IR schema",
+      },
+    ];
+  }
+}
+
+function getAdapterByName(backend: string) {
+  switch (backend) {
+    case "claude":
+      return new ClaudeAdapter();
+    case "cursor":
+      return new CursorAdapter();
+    case "codex":
+      return new CodexAdapter();
+    case "pi":
+      return new PIAdapter();
+    case "copilot":
+      return new CopilotAdapter();
+    case "gemini":
+      return new GeminiAdapter();
+    case "kiro":
+      return new KiroAdapter();
+    case "antigravity":
+      return new AntigravityAdapter();
+    default:
+      return new GenericAdapter();
+  }
 }
 
 export async function runValidator(options: ValidatorOptions): Promise<ValidationResult> {
@@ -142,6 +334,12 @@ export async function runValidator(options: ValidatorOptions): Promise<Validatio
       });
       allErrors.push(...driftErrors);
     }
+  }
+
+  // Layer 5: Governance (enterprise validation)
+  if (level === "governance" || level === "all") {
+    const governanceErrors = await validateGovernance(projectRoot, manifest);
+    allErrors.push(...governanceErrors);
   }
 
   const errors = allErrors.filter((e) => e.severity === "error");

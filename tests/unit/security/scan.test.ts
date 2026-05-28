@@ -13,7 +13,7 @@ MIIEowIBAAKCAQEA01v6jJqN...
     const errors = scanForSecrets("spatial_anchor.md", content);
     expect(errors).toHaveLength(1);
     expect(errors[0]?.type).toBe("SECRET_LEAK_DETECTED");
-    expect(errors[0]?.message).toContain("Private Key Header");
+    expect(errors[0]?.message).toContain("SSH Private Key");
   });
 
   it("detects JWT tokens", () => {
