@@ -17,7 +17,54 @@
     "workspaceContains:.bp.json"
   ],
   "main": "./out/extension.js",
-  "contributes": {},
+  "contributes": {
+    "commands": [
+      {
+        "command": "blueprint.init",
+        "title": "Blueprint: Initialize",
+        "category": "Blueprint"
+      },
+      {
+        "command": "blueprint.verify",
+        "title": "Blueprint: Verify Current File",
+        "category": "Blueprint"
+      },
+      {
+        "command": "blueprint.syncDrift",
+        "title": "Blueprint: Sync Drift",
+        "category": "Blueprint"
+      },
+      {
+        "command": "blueprint.openDocs",
+        "title": "Blueprint: Open Documentation",
+        "category": "Blueprint"
+      }
+    ],
+    "languages": [
+      {
+        "id": "blueprint-rule",
+        "filenames": [],
+        "filenamePatterns": [
+          ".claude/rules/*.md"
+        ],
+        "configuration": "./language-config.json"
+      },
+      {
+        "id": "blueprint-skill",
+        "filenames": [],
+        "filenamePatterns": [
+          ".claude/skills/*.md"
+        ],
+        "configuration": "./language-config.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "markdown",
+        "path": "./snippets/blueprint.json"
+      }
+    ]
+  },
   "dependencies": {
     "vscode-languageclient": "^9.0.1"
   }

@@ -300,6 +300,159 @@ function checkDependencyDrift(
 }
 
 // ---------------------------------------------------------------------------
+// Check 6: Semantic/behavioral drift detection (Phase 4)
+// ---------------------------------------------------------------------------
+
+export interface OutputSnapshot {
+  rule_id: string;
+  output_hash: string;
+  timestamp: number;
+  metadata: Record<string, unknown>;
+}
+
+export function computeOutputHash(output: string): string {
+  // Simple hash for output similarity detection
+  const normalized = output.toLowerCase().replace(/\s+/g, " ").trim();
+  let hash = 0;
+  for (let i = 0; i < normalized.length; i++) {
+    const char = normalized.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return Math.abs(hash).toString(16);
+}
+
+export function computeSimilarity(hash1: string, hash2: string): number {
+  // Simple similarity based on hash distance (0-1, where 1 = identical)
+  if (hash1 === hash2) return 1.0;
+  return 0.5 + (Math.min(hash1.length, hash2.length) / Math.max(hash1.length, hash2.length)) * 0.5;
+}
+
+function checkRuleEffectivenessDrift(
+  _files: string[],
+  projectRoot: string,
+  currentFingerprint: Fingerprint
+): ValidationError[] {
+  const errors: ValidationError[] = [];
+  const metricsFile = path.join(projectRoot, ".bp-rule-metrics.json");
+
+  // Load rule metrics if available
+  if (!fs.existsSync(metricsFile)) return errors;
+
+  try {
+    const metrics = JSON.parse(fs.readFileSync(metricsFile, "utf-8")) as Record<
+      string,
+      { success_count: number; fail_count: number; last_executed: number }
+    >;
+
+    // Check rules with zero success rate in last 30 days
+    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    for (const [ruleId, stats] of Object.entries(metrics)) {
+      const isRecent = stats.last_executed > thirtyDaysAgo;
+      if (isRecent && stats.fail_count > 0 && stats.success_count === 0) {
+        errors.push({
+          file: metricsFile,
+          type: "RULE_INEFFECTIVE",
+          severity: "warning",
+          message: `Rule "${ruleId}" has 0% success rate in last 30 days`,
+          resolution: `Review rule "${ruleId}" for correctness or update its scope if no longer applicable`,
+        });
+      }
+    }
+  } catch {
+    // Metrics file corrupted or missing, skip check
+  }
+
+  return errors;
+}
+
+function checkCostDrift(projectRoot: string): ValidationError[] {
+  const errors: ValidationError[] = [];
+  const costHistoryFile = path.join(projectRoot, ".bp-cost-history.json");
+
+  if (!fs.existsSync(costHistoryFile)) return errors;
+
+  try {
+    const history = JSON.parse(fs.readFileSync(costHistoryFile, "utf-8")) as Array<{
+      timestamp: number;
+      tokens_used: number;
+    }>;
+
+    if (history.length < 2) return errors;
+
+    // Compute baseline (first half) and current (second half)
+    const midpoint = Math.floor(history.length / 2);
+    const baselineTokens = history
+      .slice(0, midpoint)
+      .reduce((sum, e) => sum + e.tokens_used, 0) / midpoint;
+    const currentTokens = history
+      .slice(midpoint)
+      .reduce((sum, e) => sum + e.tokens_used, 0) / (history.length - midpoint);
+
+    // Flag if current usage > 2σ above baseline
+    const stdDev = Math.sqrt(
+      history
+        .slice(0, midpoint)
+        .reduce((sum, e) => sum + Math.pow(e.tokens_used - baselineTokens, 2), 0) / midpoint
+    );
+    if (currentTokens > baselineTokens + 2 * stdDev) {
+      errors.push({
+        file: costHistoryFile,
+        type: "COST_ANOMALY",
+        severity: "warning",
+        message: `Token usage anomaly detected: current avg ${Math.round(currentTokens)} tokens/run vs baseline ${Math.round(baselineTokens)} (+${Math.round(((currentTokens - baselineTokens) / baselineTokens) * 100)}%)`,
+        resolution: `Review rules for token wastage; check for new expensive operations or rule proliferation`,
+      });
+    }
+  } catch {
+    // Cost history file corrupted or missing, skip check
+  }
+
+  return errors;
+}
+
+function checkOutputDrift(
+  files: string[],
+  projectRoot: string
+): ValidationError[] {
+  const errors: ValidationError[] = [];
+  const snapshotFile = path.join(projectRoot, ".bp-output-snapshots.json");
+
+  if (!fs.existsSync(snapshotFile)) return errors;
+
+  try {
+    const snapshots = JSON.parse(fs.readFileSync(snapshotFile, "utf-8")) as Record<
+      string,
+      OutputSnapshot[]
+    >;
+
+    // For each rule with snapshots, check output similarity
+    for (const [ruleId, history] of Object.entries(snapshots)) {
+      if (history.length < 2) continue;
+
+      const latest = history[history.length - 1]!;
+      const previous = history[history.length - 2]!;
+      const similarity = computeSimilarity(latest.output_hash, previous.output_hash);
+
+      // Flag significant output changes (similarity < 0.7)
+      if (similarity < 0.7) {
+        errors.push({
+          file: snapshotFile,
+          type: "OUTPUT_DRIFT",
+          severity: "info",
+          message: `Output from rule "${ruleId}" has diverged significantly (similarity: ${(similarity * 100).toFixed(0)}%)`,
+          resolution: `Review recent changes to rule "${ruleId}"; output may indicate behavior change or config drift`,
+        });
+      }
+    }
+  } catch {
+    // Snapshot file corrupted or missing, skip check
+  }
+
+  return errors;
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -334,6 +487,11 @@ export async function validateDrift(
   // Checks 2–5 run regardless of stored fingerprint
   allErrors.push(...checkEntryPointDrift(files, projectRoot));
   allErrors.push(...checkTestCommandDrift(files, projectRoot, currentFingerprint));
+
+  // Phase 4: Semantic drift detection (Checks 6–9)
+  allErrors.push(...checkRuleEffectivenessDrift(files, projectRoot, currentFingerprint));
+  allErrors.push(...checkCostDrift(projectRoot));
+  allErrors.push(...checkOutputDrift(files, projectRoot));
 
   const [topologyErrors, dependencyErrors] = await Promise.all([
     checkTopologyDrift(files, projectRoot, currentFingerprint),

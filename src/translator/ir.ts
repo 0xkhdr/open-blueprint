@@ -246,6 +246,130 @@ export const OrchestrationSchema = z.object({
   cross_agent_communication: CrossAgentCommunicationSchema.optional(),
 });
 
+// Phase 4: Observability & Cost
+
+// Telemetry Layer
+export const TelemetrySchema = z.object({
+  enabled: z.boolean().default(true),
+  provider: z.enum(["opentelemetry", "datadog", "newrelic", "prometheus", "cloudwatch"]).optional(),
+  sampling_rate: z.number().min(0).max(1).optional(),
+  trace_enabled: z.boolean().optional(),
+  metrics_enabled: z.boolean().optional(),
+  logs_enabled: z.boolean().optional(),
+  custom_attributes: z.record(z.string(), z.string()).optional(),
+  datadog_config: z
+    .object({
+      api_key_env: z.string().optional(),
+      app_name: z.string().optional(),
+      service_name: z.string().optional(),
+    })
+    .optional(),
+  newrelic_config: z
+    .object({
+      license_key_env: z.string().optional(),
+      app_name: z.string().optional(),
+    })
+    .optional(),
+  otel_config: z
+    .object({
+      exporter_type: z.enum(["grpc", "http", "jaeger"]).optional(),
+      endpoint: z.string().optional(),
+      headers: z.record(z.string(), z.string()).optional(),
+    })
+    .optional(),
+});
+
+// Cost Tracking Layer
+export const CostSchema = z.object({
+  cost_tracking_enabled: z.boolean().default(true),
+  cost_per_token_usd: z.number().optional(),
+  monthly_budget_usd: z.number().optional(),
+  per_session_limit_usd: z.number().optional(),
+  per_agent_budgets: z
+    .array(
+      z.object({
+        agent_name: z.string(),
+        monthly_budget_usd: z.number(),
+      })
+    )
+    .optional(),
+  cost_attribution_level: z.enum(["agent", "skill", "rule"]).default("agent"),
+  token_tracking_enabled: z.boolean().default(true),
+  estimated_monthly_tokens: z.number().optional(),
+});
+
+// Metrics Layer
+export const MetricsSchema = z.object({
+  metrics_enabled: z.boolean().default(true),
+  latency_baseline_ms: z.number().optional(),
+  error_rate_threshold: z.number().min(0).max(1).optional(),
+  success_rate_baseline: z.number().min(0).max(1).optional(),
+  per_skill_metrics: z
+    .array(
+      z.object({
+        skill_name: z.string(),
+        avg_latency_ms: z.number().optional(),
+        error_rate: z.number().optional(),
+        execution_count: z.number().optional(),
+      })
+    )
+    .optional(),
+  custom_metrics: z
+    .array(
+      z.object({
+        metric_name: z.string(),
+        description: z.string().optional(),
+        type: z.enum(["gauge", "counter", "histogram"]),
+      })
+    )
+    .optional(),
+  grafana_dashboard_uid: z.string().optional(),
+  datadog_dashboard_id: z.string().optional(),
+});
+
+// Alerting Layer
+export const AlertingSchema = z.object({
+  alerting_enabled: z.boolean().default(true),
+  policy_violations: z
+    .array(
+      z.object({
+        policy_name: z.string(),
+        condition: z.string(),
+        action: z.string(),
+        severity: z.enum(["info", "warning", "critical"]),
+      })
+    )
+    .optional(),
+  budget_overrun_alerts: z.boolean().optional(),
+  anomaly_detection: z
+    .object({
+      enabled: z.boolean(),
+      std_dev_threshold: z.number().optional(),
+      min_baseline_samples: z.number().optional(),
+    })
+    .optional(),
+  notification_channels: z
+    .array(
+      z.object({
+        channel_type: z.enum(["slack", "pagerduty", "webhook", "email"]),
+        endpoint: z.string(),
+        webhook_auth: z.string().optional(),
+        severity_filter: z.array(z.enum(["info", "warning", "critical"])).optional(),
+      })
+    )
+    .optional(),
+});
+
+// Drift Detection Enhancement
+export const SemanticDriftSchema = z.object({
+  semantic_drift_enabled: z.boolean().default(true),
+  behavioral_analysis_enabled: z.boolean().optional(),
+  rule_effectiveness_tracking: z.boolean().optional(),
+  cost_drift_detection: z.boolean().optional(),
+  output_comparison_enabled: z.boolean().optional(),
+  similarity_threshold: z.number().min(0).max(1).optional(),
+});
+
 export const BlueprintIRSchema = z.object({
   version: z.literal("2.0"),
   spatial_anchor: SpatialAnchorSchema,
@@ -263,6 +387,11 @@ export const BlueprintIRSchema = z.object({
   registry: RegistrySchema.optional(),
   orchestration: OrchestrationSchema.optional(),
   agent_registry: AgentRegistrySchema.optional(),
+  telemetry: TelemetrySchema.optional(),
+  cost: CostSchema.optional(),
+  metrics: MetricsSchema.optional(),
+  alerting: AlertingSchema.optional(),
+  semantic_drift: SemanticDriftSchema.optional(),
   meta: MetaSchema,
 });
 
@@ -285,4 +414,9 @@ export type AgentRegistryEntry = z.infer<typeof AgentRegistryEntrySchema>;
 export type AgentRegistry = z.infer<typeof AgentRegistrySchema>;
 export type Registry = z.infer<typeof RegistrySchema>;
 export type Orchestration = z.infer<typeof OrchestrationSchema>;
+export type Telemetry = z.infer<typeof TelemetrySchema>;
+export type Cost = z.infer<typeof CostSchema>;
+export type Metrics = z.infer<typeof MetricsSchema>;
+export type Alerting = z.infer<typeof AlertingSchema>;
+export type SemanticDrift = z.infer<typeof SemanticDriftSchema>;
 export type BlueprintIR = z.infer<typeof BlueprintIRSchema>;

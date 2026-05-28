@@ -1,4 +1,5 @@
 import * as path from "node:path";
+import * as readline from "node:readline";
 import chalk from "chalk";
 import { Command } from "commander";
 import ora from "ora";
@@ -10,8 +11,24 @@ import { runTemplater } from "../../templater/index.js";
 import { resolveTemplatePack } from "../../templater/selector.js";
 import { EXIT_CODES, runValidator } from "../../validator/index.js";
 
-const SUPPORTED_BACKENDS = ["claude", "cursor", "opendev", "generic"] as const;
+const SUPPORTED_BACKENDS = [
+  "claude",
+  "cursor",
+  "opendev",
+  "generic",
+  "codex",
+  "pi",
+  "kiro",
+  "antigravity",
+  "copilot",
+  "gemini",
+] as const;
 type Backend = (typeof SUPPORTED_BACKENDS)[number];
+
+const RISK_TIERS = ["low", "medium", "high", "critical"] as const;
+type RiskTier = (typeof RISK_TIERS)[number];
+
+const COMPLIANCE_FRAMEWORKS = ["gdpr", "hipaa", "soc2", "iso42001", "nist"] as const;
 
 function validateBackend(value: string): Backend {
   if (!SUPPORTED_BACKENDS.includes(value as Backend)) {
@@ -23,17 +40,91 @@ function validateBackend(value: string): Backend {
   return value as Backend;
 }
 
+async function promptUser(question: string, defaultValue: string = ""): Promise<string> {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+  return new Promise((resolve) => {
+    const questionText = defaultValue ? `${question} [${defaultValue}] ` : `${question} `;
+    rl.question(questionText, (answer) => {
+      rl.close();
+      const trimmed = answer.trim().toLowerCase();
+      resolve(trimmed || defaultValue);
+    });
+  });
+}
+
+async function promptChoose(question: string, choices: readonly string[]): Promise<string> {
+  console.log(chalk.cyan(`\n${question}`));
+  for (let i = 0; i < choices.length; i++) {
+    console.log(chalk.cyan(`  ${i + 1}. ${choices[i]}`));
+  }
+
+  let choice: string | undefined;
+  while (!choice) {
+    const answer = await promptUser("Select option");
+    const idx = parseInt(answer, 10);
+    if (idx >= 1 && idx <= choices.length) {
+      choice = choices[idx - 1];
+    } else {
+      console.log(chalk.yellow("Invalid choice. Try again."));
+    }
+  }
+  return choice;
+}
+
+async function interactiveWizard(): Promise<{
+  backend: Backend;
+  riskTier: RiskTier;
+  frameworks: string[];
+  teamName: string;
+}> {
+  console.log(
+    chalk.cyan.bold("\n🚀 Blueprint Interactive Setup\n") +
+      chalk.dim("(Press Ctrl+C to cancel)\n")
+  );
+
+  const backend = (await promptChoose(
+    "Which backend tool will you use?",
+    SUPPORTED_BACKENDS.slice()
+  )) as Backend;
+
+  const riskTier = (await promptChoose(
+    "What's your project's risk tier?",
+    RISK_TIERS.slice()
+  )) as RiskTier;
+
+  const teamName = await promptUser("Team name (optional)", "default");
+
+  const useCompliance = await promptUser("Do you need compliance frameworks? (y/n)", "n");
+  let frameworks: string[] = [];
+  if (useCompliance === "y" || useCompliance === "yes") {
+    const frameworkList = await promptUser(
+      `Which frameworks? (comma-separated: ${COMPLIANCE_FRAMEWORKS.join(", ")})`,
+      ""
+    );
+    frameworks = frameworkList
+      .split(",")
+      .map((f) => f.trim().toLowerCase())
+      .filter((f) => COMPLIANCE_FRAMEWORKS.includes(f as any));
+  }
+
+  return { backend, riskTier, frameworks, teamName };
+}
+
 export function createInitCommand(): Command {
   const cmd = new Command("init");
 
   cmd
     .description("Scaffold blueprint for current repository")
-    .argument("[tool]", "Backend tool: claude | cursor | opendev | generic")
+    .argument("[tool]", "Backend tool: claude | cursor | opendev | generic | codex | pi | kiro | antigravity | copilot | gemini")
     .option("--tool <backend>", "Backend (alias for positional arg)")
     .option("--template <name>", "Use specific template pack")
     .option("--force", "Overwrite existing blueprint files", false)
     .option("--dry-run", "Show diff of what would be generated", false)
     .option("--no-verify", "Skip post-init validation", false)
+    .option("--interactive", "Interactive setup wizard", false)
     .action(
       async (
         toolArg: string | undefined,
@@ -43,13 +134,21 @@ export function createInitCommand(): Command {
           force: boolean;
           dryRun: boolean;
           verify: boolean;
+          interactive: boolean;
         }
       ) => {
         const cwd = process.cwd();
         const userConfig = loadUserConfig();
 
-        const backendRaw = toolArg ?? opts.tool ?? userConfig.default_backend;
-        const backend = validateBackend(backendRaw);
+        let backend: Backend;
+
+        if (opts.interactive) {
+          const answers = await interactiveWizard();
+          backend = answers.backend;
+        } else {
+          const backendRaw = toolArg ?? opts.tool ?? userConfig.default_backend;
+          backend = validateBackend(backendRaw);
+        }
 
         const spinner = ora({
           text: `Detecting repository fingerprint...`,

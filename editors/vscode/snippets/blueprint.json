@@ -1,0 +1,63 @@
+{
+  "Rule Frontmatter": {
+    "prefix": "rule",
+    "body": [
+      "---",
+      "scope: \"${1:**/*}\"",
+      "severity: ${2|hard,soft|}",
+      "action: \"${3:action description}\"",
+      "tags: [${4:tag1,tag2}]",
+      "---",
+      "",
+      "# Rule: ${5:Rule Name}",
+      "",
+      "${0:Rationale and guidance}"
+    ],
+    "description": "Template for a new rule with frontmatter"
+  },
+  "Skill Block": {
+    "prefix": "skill",
+    "body": [
+      "---",
+      "name: \"${1:Skill Name}\"",
+      "description: \"${2:Brief description}\"",
+      "when_to_use: \"${3:When this skill is appropriate}\"",
+      "tools_required: [${4:tool1,tool2}]",
+      "---",
+      "",
+      "## Procedure",
+      "",
+      "${0:Step-by-step instructions}"
+    ],
+    "description": "Template for a skill definition"
+  },
+  "Hook Block": {
+    "prefix": "hook",
+    "body": [
+      "<!-- Hook for ${1:pre_tool_use|post_tool_use} -->",
+      "```${2:language}",
+      "${0:hook code}",
+      "```"
+    ],
+    "description": "Template for a hook implementation"
+  },
+  "Preserve Block": {
+    "prefix": "preserve",
+    "body": "<!-- bp:preserve -->",
+    "description": "Mark a region to be preserved during blueprint merges"
+  },
+  "Agent Definition": {
+    "prefix": "agent",
+    "body": [
+      "---",
+      "name: \"${1:Agent Name}\"",
+      "role: \"${2:Developer|Reviewer|Ops}\"",
+      "constraints: [${3:constraint1,constraint2}]",
+      "allowed_tools: [${4:tool1,tool2}]",
+      "---",
+      "",
+      "${0:Agent description and behavior}"
+    ],
+    "description": "Template for an agent/persona definition"
+  }
+}
