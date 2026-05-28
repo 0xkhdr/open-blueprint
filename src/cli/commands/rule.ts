@@ -4,7 +4,14 @@ import chalk from "chalk";
 import { Command } from "commander";
 import fg from "fast-glob";
 import matter from "gray-matter";
+import { loadProjectConfig } from "../../config/project.js";
+import { loadUserConfig } from "../../config/user.js";
+import { detect } from "../../detector/index.js";
+import { resolveTemplatePack } from "../../templater/selector.js";
 import { EXIT_CODES } from "../../validator/index.js";
+import { validateSemantic } from "../../validator/semantic.js";
+import type { ValidationError } from "../../validator/structural.js";
+import { validateStructural } from "../../validator/structural.js";
 
 interface RuleMeta {
   filename: string;
@@ -13,21 +20,141 @@ interface RuleMeta {
   action: string;
 }
 
+function formatRuleError(err: ValidationError): void {
+  const loc = err.line ? `:${err.line}` : "";
+  if (err.severity === "error") {
+    console.error(chalk.red(`  ✗ [${err.type}] ${err.file}${loc}`));
+    console.error(chalk.red(`    ${err.message}`));
+    console.error(chalk.yellow(`    → ${err.resolution}`));
+  } else if (err.severity === "warning") {
+    console.warn(chalk.yellow(`  ⚠ [${err.type}] ${err.file}${loc}`));
+    console.warn(chalk.yellow(`    ${err.message}`));
+    console.warn(chalk.dim(`    → ${err.resolution}`));
+  } else {
+    console.log(chalk.blue(`  ℹ [${err.type}] ${err.file}${loc}: ${err.message}`));
+  }
+}
+
 export function createRuleCommand(): Command {
   const cmd = new Command("rule").description("Rule management utilities");
 
   cmd
     .command("test <file>")
-    .description("Dry-run rule against mock scenarios")
-    .action((file: string) => {
-      console.log(chalk.yellow(`rule test on ${file}: mock test completed.`));
+    .description("Dry-run rule against mock/real repository files")
+    .action(async (file: string) => {
+      const resolvedPath = path.resolve(file);
+      if (!fs.existsSync(resolvedPath)) {
+        console.error(chalk.red(`Error: File does not exist: ${file}`));
+        process.exit(1);
+      }
+
+      try {
+        const content = fs.readFileSync(resolvedPath, "utf-8");
+        const parsed = matter(content);
+        const scope = typeof parsed.data.scope === "string" ? parsed.data.scope : null;
+        const severity = typeof parsed.data.severity === "string" ? parsed.data.severity : "soft";
+        const action = typeof parsed.data.action === "string" ? parsed.data.action : "None";
+
+        if (!scope) {
+          console.error(chalk.red(`Error: Rule is missing required "scope" field in frontmatter.`));
+          process.exit(1);
+        }
+
+        console.log(
+          chalk.bold.cyan(`\n🧪 blueprint rule test — Dry-Running Rule: ${path.basename(file)}\n`)
+        );
+        console.log(
+          `${chalk.bold("Severity:")} ${severity === "hard" ? chalk.red("hard (Error)") : chalk.yellow(severity)}`
+        );
+        console.log(`${chalk.bold("Action  :")} "${action}"`);
+        console.log(`${chalk.bold("Scope   :")} "${scope}"\n`);
+
+        const cwd = process.cwd();
+        const matches = await fg(scope, {
+          cwd,
+          onlyFiles: true,
+          dot: true,
+          ignore: [
+            "**/node_modules/**",
+            "**/dist/**",
+            "**/build/**",
+            "**/.git/**",
+            "**/coverage/**",
+          ],
+        });
+
+        if (matches.length === 0) {
+          console.log(chalk.yellow(`⚠ Scope pattern matched 0 files in this repository.`));
+          console.log(chalk.dim("  Ensure the scope glob matches the intended files."));
+        } else {
+          console.log(
+            chalk.green(
+              `✔ Success: Scope pattern matched ${matches.length} file(s) in the repository:`
+            )
+          );
+          const maxDisplay = 10;
+          const displayFiles = matches.slice(0, maxDisplay);
+          for (const match of displayFiles) {
+            console.log(chalk.green(`    - ${match}`));
+          }
+          if (matches.length > maxDisplay) {
+            console.log(chalk.dim(`    ... and ${matches.length - maxDisplay} more files.`));
+          }
+        }
+        console.log();
+        process.exit(0);
+      } catch (e) {
+        console.error(chalk.red(`Rule test failed: ${e instanceof Error ? e.message : String(e)}`));
+        process.exit(1);
+      }
     });
 
   cmd
     .command("lint <file>")
     .description("Check rule syntax and scope pattern")
-    .action((file: string) => {
-      console.log(chalk.yellow(`rule lint on ${file}: lint verified.`));
+    .action(async (file: string) => {
+      const resolvedPath = path.resolve(file);
+      if (!fs.existsSync(resolvedPath)) {
+        console.error(chalk.red(`Error: File does not exist: ${file}`));
+        process.exit(1);
+      }
+
+      const cwd = process.cwd();
+      const projectConfig = loadProjectConfig(cwd);
+      const userConfig = loadUserConfig();
+      const backend = projectConfig?.backend ?? userConfig.default_backend;
+
+      try {
+        const fingerprint = await detect(cwd);
+        const pack = resolveTemplatePack(fingerprint, backend);
+        const manifest = pack.manifest;
+
+        const structuralErrors = validateStructural(resolvedPath, manifest);
+        const semanticErrors = await validateSemantic([resolvedPath], {
+          projectRoot: cwd,
+          manifest,
+        });
+
+        const allErrors = [...structuralErrors, ...semanticErrors];
+
+        if (allErrors.length === 0) {
+          console.log(
+            chalk.green(`✔ [ PASS ] Rule "${file}" is fully valid and conforms to backend spec.`)
+          );
+          process.exit(0);
+        }
+
+        console.log(chalk.bold.red(`\nRule "${file}" has validation issues:\n`));
+        for (const err of allErrors) {
+          formatRuleError(err);
+        }
+
+        const hasErrors = allErrors.some((e) => e.severity === "error");
+        process.exit(hasErrors ? EXIT_CODES.STRUCTURAL_FAILURE : EXIT_CODES.SUCCESS);
+      } catch (e) {
+        console.error(chalk.red(`Lint error: ${e instanceof Error ? e.message : String(e)}`));
+        process.exit(1);
+      }
     });
 
   cmd

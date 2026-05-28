@@ -131,5 +131,4 @@ connection.onCodeAction((params) => {
 });
 
 documents.listen(connection);
-documents.listen(connection);
 connection.listen();

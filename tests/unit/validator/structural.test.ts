@@ -90,6 +90,20 @@ action: Do the thing
     expect(errorOnly).toHaveLength(0);
   });
 
+  it("detects FRONTMATTER_PARSE_ERROR for malformed YAML", () => {
+    const filePath = writeFile(
+      tmpDir,
+      ".claude/rules/01-malformed.md",
+      `---
+scope: [unclosed bracket
+---
+# Body
+`
+    );
+    const errors = validateStructural(filePath, MOCK_MANIFEST);
+    expect(errors.some((e) => e.type === "FRONTMATTER_PARSE_ERROR")).toBe(true);
+  });
+
   it("detects MISSING_REQUIRED_FIELD for rules missing scope", () => {
     const filePath = writeFile(
       tmpDir,
@@ -183,6 +197,32 @@ const x = 1;
       expect(err.resolution).toBeTruthy();
       expect(err.resolution.length).toBeGreaterThan(0);
     }
+  });
+
+  it("detects HEADING_HIERARCHY when a heading level is skipped", () => {
+    const filePath = writeFile(
+      tmpDir,
+      ".claude/rules/01-headings.md",
+      `---
+scope: "**/*"
+severity: soft
+---
+# Heading level 1
+### Heading level 3 (skipped level 2)
+`
+    );
+    const errors = validateStructural(filePath, MOCK_MANIFEST);
+    expect(errors.some((e) => e.type === "HEADING_HIERARCHY")).toBe(true);
+  });
+
+  it("handles generic fallback paths correctly for rules, skills, and agents", () => {
+    const fileRule = writeFile(tmpDir, "generic/rules/my-rule.md", "---\nscope: '**'\nseverity: soft\n---\n# Rule");
+    const fileSkill = writeFile(tmpDir, "generic/skills/my-skill.md", "---\nname: skill\ndescription: desc\n---\n# Skill");
+    const fileAgent = writeFile(tmpDir, "generic/agents/my-agent.md", "---\nname: agent\n---\n# Agent");
+
+    expect(validateStructural(fileRule, MOCK_MANIFEST)).toHaveLength(0);
+    expect(validateStructural(fileSkill, MOCK_MANIFEST)).toHaveLength(0);
+    expect(validateStructural(fileAgent, MOCK_MANIFEST)).toHaveLength(0);
   });
 });
 

@@ -136,4 +136,15 @@ describe("detectLanguages", () => {
     expect(cs).toBeDefined();
     expect(cs?.confidence).toBeGreaterThanOrEqual(0.9);
   });
+
+  it("handles TS JS splicing and directory read failures safely", () => {
+    // 1. Trigger the catch block in countFilesWithExtensions by making 'src' a file instead of a directory
+    touchFile(tmpDir, "tsconfig.json", "{}");
+    touchFile(tmpDir, "src", "not a directory"); // countFilesWithExtensions will throw on fs.readdirSync
+    
+    const langs = detectLanguages(tmpDir);
+    // TS should be detected, JS should be completely absent
+    expect(langs.find((l) => l.name === "typescript")).toBeDefined();
+    expect(langs.find((l) => l.name === "javascript")).toBeUndefined();
+  });
 });

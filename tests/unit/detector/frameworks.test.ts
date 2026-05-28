@@ -88,11 +88,30 @@ describe("detectFrameworks", () => {
     expect(axum?.confidence).toBeGreaterThanOrEqual(0.8);
   });
 
-  it("detects Spring Boot from pom.xml", () => {
+  it("detects Spring Boot from pom.xml and gradle files", () => {
     touchFile(tmpDir, "pom.xml", "<dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-web</artifactId></dependency>");
+    const fwpom = detectFrameworks(tmpDir);
+    expect(fwpom.find((f) => f.name === "spring-boot")).toBeDefined();
+
+    fs.rmSync(path.join(tmpDir, "pom.xml"));
+    touchFile(tmpDir, "build.gradle", "dependencies { implementation 'org.springframework.boot:spring-boot-starter-web' }");
+    const fwgradle = detectFrameworks(tmpDir);
+    expect(fwgradle.find((f) => f.name === "spring-boot")).toBeDefined();
+  });
+
+  it("detects Vue, Nuxt, Svelte, Flutter, Rails, and Actix-web", () => {
+    writePackageJson(tmpDir, { vue: "3.0.0", nuxt: "3.0.0", "@sveltejs/kit": "1.0.0" });
+    touchFile(tmpDir, "pubspec.yaml", "dependencies:\n  flutter:\n    sdk: flutter");
+    touchFile(tmpDir, "Gemfile", "gem 'rails'");
+    touchFile(tmpDir, "Cargo.toml", '[dependencies]\nactix-web = "4"');
+
     const fw = detectFrameworks(tmpDir);
-    const spring = fw.find((f) => f.name === "spring-boot");
-    expect(spring).toBeDefined();
+    expect(fw.find((f) => f.name === "vue")).toBeDefined();
+    expect(fw.find((f) => f.name === "nuxt")).toBeDefined();
+    expect(fw.find((f) => f.name === "svelte")).toBeDefined();
+    expect(fw.find((f) => f.name === "flutter")).toBeDefined();
+    expect(fw.find((f) => f.name === "rails")).toBeDefined();
+    expect(fw.find((f) => f.name === "actix-web")).toBeDefined();
   });
 
   it("returns empty for blank project", () => {

@@ -159,7 +159,18 @@ export async function runValidator(options: ValidatorOptions): Promise<Validatio
 }
 
 export function exitCodeForResult(result: ValidationResult): number {
-  if (result.passed) return EXIT_CODES.SUCCESS;
+  if (result.passed) {
+    const hasDriftWarnings = result.warnings.some(
+      (e) =>
+        e.type === "FINGERPRINT_DELTA" ||
+        e.type === "ENTRY_POINT_DRIFT" ||
+        e.type === "TEST_COMMAND_DRIFT" ||
+        e.type === "UNCOVERED_DIRECTORY" ||
+        e.type === "DEPENDENCY_DRIFT"
+    );
+    if (hasDriftWarnings) return EXIT_CODES.DRIFT_DETECTED;
+    return EXIT_CODES.SUCCESS;
+  }
 
   // Logical conflicts → exit 4
   const hasLogical = result.errors.some(

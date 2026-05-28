@@ -60,6 +60,42 @@ describe("detectSecurity", () => {
     expect(detectSecurity(tmpDir).has_docker).toBe(true);
   });
 
+  it("detects secrets manager from aws-sdk, pyproject, and requirements.txt", () => {
+    touchFile(tmpDir, "package.json", JSON.stringify({ dependencies: { "@aws-sdk/client-secrets-manager": "3" } }));
+    expect(detectSecurity(tmpDir).has_secrets_manager).toBe(true);
+
+    fs.rmSync(path.join(tmpDir, "package.json"));
+    touchFile(tmpDir, "pyproject.toml", "[tool.poetry.dependencies]\npasslib = '*'\nrequests = '*'\ngoogle-cloud-secret-manager = '*'\n");
+    const pyprojectSignals = detectSecurity(tmpDir);
+    expect(pyprojectSignals.has_auth).toBe(true);
+    expect(pyprojectSignals.has_external_apis).toBe(true);
+    expect(pyprojectSignals.has_secrets_manager).toBe(true);
+
+    fs.rmSync(path.join(tmpDir, "pyproject.toml"));
+    touchFile(tmpDir, "requirements.txt", "hvac==1.0.0");
+    expect(detectSecurity(tmpDir).has_secrets_manager).toBe(true);
+  });
+
+  it("detects security signals from cargo, go, and maven files", () => {
+    touchFile(tmpDir, "Cargo.toml", '[dependencies]\njsonwebtoken = "8"\nvaultrs = "0.6"\nreqwest = "0.11"');
+    const cargoSignals = detectSecurity(tmpDir);
+    expect(cargoSignals.has_auth).toBe(true);
+    expect(cargoSignals.has_secrets_manager).toBe(true);
+    expect(cargoSignals.has_external_apis).toBe(true);
+
+    fs.rmSync(path.join(tmpDir, "Cargo.toml"));
+    touchFile(tmpDir, "go.mod", "module test\nrequire (\n\tgithub.com/golang-jwt/jwt v4\n\tgithub.com/hashicorp/vault/api v1\n\tgithub.com/go-resty/resty/v2 v2\n)");
+    const goSignals = detectSecurity(tmpDir);
+    expect(goSignals.has_auth).toBe(true);
+    expect(goSignals.has_secrets_manager).toBe(true);
+    expect(goSignals.has_external_apis).toBe(true);
+
+    fs.rmSync(path.join(tmpDir, "go.mod"));
+    touchFile(tmpDir, "pom.xml", "<dependency><groupId>org.springframework.security</groupId><artifactId>spring-security-core</artifactId></dependency>");
+    const mavenSignals = detectSecurity(tmpDir);
+    expect(mavenSignals.has_auth).toBe(true);
+  });
+
   it("returns false for all signals on empty dir", () => {
     const signals = detectSecurity(tmpDir);
     expect(signals.has_auth).toBe(false);
