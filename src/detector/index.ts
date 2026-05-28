@@ -7,6 +7,15 @@ import { detectLanguages } from "./languages.js";
 import { detectSecurity } from "./security.js";
 import { detectTooling } from "./tooling.js";
 
+export type RiskTier = "low" | "medium" | "high" | "critical";
+export type ApprovalMode = "auto" | "confirm" | "read-only";
+
+export interface EnhancedFingerprint extends Fingerprint {
+  risk_tier: RiskTier;
+  suggested_approval_mode: ApprovalMode;
+  estimated_monthly_tokens: number;
+}
+
 interface DirectoryTopology {
   src_dirs: string[];
   test_dirs: string[];
@@ -189,6 +198,40 @@ export class DetectorError extends Error {
   }
 }
 
+function detectRiskTier(fp: Fingerprint): RiskTier {
+  const signals = fp.security_signals;
+  let score = 0;
+
+  if (signals.has_external_apis) score += 2;
+  if (signals.has_secrets_manager) score += 2;
+  if (signals.has_auth) score += 2;
+  if (signals.has_docker) score += 1;
+
+  // Check for sensitive project types
+  if (fp.project.type === "service") score += 1;
+  if (fp.frameworks.some((f) => f.name.toLowerCase().includes("payment"))) score += 2;
+  if (fp.frameworks.some((f) => f.name.toLowerCase().includes("auth"))) score += 1;
+
+  return score >= 7 ? "critical" : score >= 5 ? "high" : score >= 3 ? "medium" : "low";
+}
+
+function detectApprovalMode(riskTier: RiskTier): ApprovalMode {
+  return riskTier === "critical"
+    ? "read-only"
+    : riskTier === "high"
+      ? "confirm"
+      : "auto";
+}
+
+function estimateMonthlyTokens(fp: Fingerprint): number {
+  const baseCost = 1000;
+  const codefileMultiplier = Math.min(fp.directory_topology.src_dirs.length * 50, 5000);
+  const frameworkMultiplier = fp.frameworks.length * 100;
+  const complexityFactor = fp.project.type === "monorepo" ? 1.5 : 1;
+
+  return Math.round((baseCost + codefileMultiplier + frameworkMultiplier) * complexityFactor);
+}
+
 export async function detect(projectRoot: string): Promise<Fingerprint> {
   const absoluteRoot = path.resolve(projectRoot);
 
@@ -229,4 +272,17 @@ export async function detect(projectRoot: string): Promise<Fingerprint> {
   }
 
   return result.data;
+}
+
+export function enrichFingerprint(fp: Fingerprint): EnhancedFingerprint {
+  const risk_tier = detectRiskTier(fp);
+  const suggested_approval_mode = detectApprovalMode(risk_tier);
+  const estimated_monthly_tokens = estimateMonthlyTokens(fp);
+
+  return {
+    ...fp,
+    risk_tier,
+    suggested_approval_mode,
+    estimated_monthly_tokens,
+  };
 }

@@ -42,6 +42,11 @@ export interface TemplateContext {
   detected_at: string;
   src_dirs: string[];
   test_dirs: string[];
+  // Layer 6-8 support: context for conditional generation
+  has_secrets_manager?: boolean;
+  risk_tier?: "low" | "medium" | "high" | "critical";
+  approval_mode?: "auto" | "confirm" | "read-only";
+  estimated_monthly_tokens?: number;
 }
 
 function buildContext(fingerprint: Fingerprint): TemplateContext {

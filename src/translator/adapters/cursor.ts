@@ -4,6 +4,7 @@ import fg from "fast-glob";
 import matter from "gray-matter";
 import type { BlueprintAdapter } from "../index.js";
 import type { BlueprintIR, Persona, Rule, Skill } from "../ir.js";
+import { generateAgentsMD } from "./agents-md.js";
 
 export class CursorAdapter implements BlueprintAdapter {
   async parse(projectRoot: string): Promise<BlueprintIR> {
@@ -124,7 +125,7 @@ export class CursorAdapter implements BlueprintAdapter {
     }
 
     return {
-      version: "1.0",
+      version: "2.0",
       spatial_anchor: {
         project_name: projectName,
         surface: anchorContent,
@@ -230,6 +231,12 @@ export class CursorAdapter implements BlueprintAdapter {
       fs.writeFileSync(skillPath, content, "utf-8");
       writtenFiles.push(skillPath);
     }
+
+    // AGENTS.md (Universal output)
+    const agentsMD = generateAgentsMD(ir);
+    const agentsMDPath = path.join(projectRoot, "AGENTS.md");
+    fs.writeFileSync(agentsMDPath, agentsMD, "utf-8");
+    writtenFiles.push(agentsMDPath);
 
     return writtenFiles;
   }
