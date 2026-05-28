@@ -212,7 +212,42 @@ function validateCrossAgentComm(ir: BlueprintIR): ValidationError[] {
   return errors;
 }
 
-export function validateOrchestration(ir: BlueprintIR): ValidationError[] {
+function validateCrossLayerRefs(ir: BlueprintIR): ValidationError[] {
+  const errors: ValidationError[] = [];
+
+  const knownSkillNames = new Set(ir.skills?.map((s) => s.name) ?? []);
+  const knownAgentNames = collectKnownAgents(ir);
+
+  // metrics.per_skill_metrics must reference existing skills
+  for (const sm of ir.metrics?.per_skill_metrics ?? []) {
+    if (!knownSkillNames.has(sm.skill_name)) {
+      errors.push({
+        file: "metrics",
+        type: "UNKNOWN_SKILL_METRIC",
+        severity: "warning",
+        message: `Metrics reference unknown skill "${sm.skill_name}"`,
+        resolution: "Define the skill in skills array or remove the metric entry",
+      });
+    }
+  }
+
+  // cost.per_agent_budgets must reference known agents (personas OR agent_registry)
+  for (const budget of ir.cost?.per_agent_budgets ?? []) {
+    if (!knownAgentNames.has(budget.agent_name)) {
+      errors.push({
+        file: "cost",
+        type: "BUDGET_AGENT_NOT_FOUND",
+        severity: "warning",
+        message: `Per-agent budget references unknown agent "${budget.agent_name}"`,
+        resolution: "Define agent in personas or agent_registry, or remove the budget entry",
+      });
+    }
+  }
+
+  return errors;
+}
+
+export function validateOrchestrationSemantic(ir: BlueprintIR): ValidationError[] {
   return [
     ...validateAgentRegistry(ir),
     ...validateToolRegistry(ir),
@@ -221,5 +256,6 @@ export function validateOrchestration(ir: BlueprintIR): ValidationError[] {
     ...validateChains(ir),
     ...validateMemory(ir),
     ...validateCrossAgentComm(ir),
+    ...validateCrossLayerRefs(ir),
   ];
 }

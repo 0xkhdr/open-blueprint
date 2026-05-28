@@ -11,15 +11,15 @@ export function generateMemoryConfig(ir: BlueprintIR): string {
   let yaml = "memory:\n";
   yaml += `  enabled: true\n`;
 
-  if (memory.directory) yaml += `  directory: "${memory.directory}"\n`;
-  if (memory.retention_policy) yaml += `  retention_policy: "${memory.retention_policy}"\n`;
+  if (memory.directory) yaml += `  directory: ${memory.directory}\n`;
+  if (memory.retention_policy) yaml += `  retention_policy: ${memory.retention_policy}\n`;
   if (memory.schema_validation) yaml += `  schema_validation: true\n`;
   if (memory.encryption) yaml += `  encryption: true\n`;
 
   if (memory.access_control?.length) {
     yaml += `  access_control:\n`;
     for (const ac of memory.access_control) {
-      yaml += `    - "${ac}"\n`;
+      yaml += `    - ${ac}\n`;
     }
   }
 

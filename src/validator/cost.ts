@@ -39,30 +39,16 @@ export function validateCostConfig(ir: BlueprintIR): ValidationError[] {
     });
   }
 
-  // Validate per-agent budgets
-  if (ir.cost.per_agent_budgets && ir.cost.per_agent_budgets.length > 0) {
-    const agentNames = new Set(ir.personas?.map((p) => p.name) ?? []);
-
-    for (const budget of ir.cost.per_agent_budgets) {
-      if (!agentNames.has(budget.agent_name)) {
-        errors.push({
-          file: "cost",
-          type: "BUDGET_AGENT_NOT_FOUND",
-          severity: "warning",
-          message: `Per-agent budget references unknown agent "${budget.agent_name}"`,
-          resolution: "Remove the budget entry or add the agent to personas",
-        });
-      }
-
-      if (budget.monthly_budget_usd <= 0) {
-        errors.push({
-          file: "cost",
-          type: "INVALID_AGENT_BUDGET",
-          severity: "error",
-          message: `Agent budget for "${budget.agent_name}" must be positive`,
-          resolution: "Set a positive budget or remove the entry",
-        });
-      }
+  // Validate per-agent budget values (cross-layer agent existence check is in orchestration.ts)
+  for (const budget of ir.cost.per_agent_budgets ?? []) {
+    if (budget.monthly_budget_usd <= 0) {
+      errors.push({
+        file: "cost",
+        type: "INVALID_AGENT_BUDGET",
+        severity: "error",
+        message: `Agent budget for "${budget.agent_name}" must be positive`,
+        resolution: "Set a positive budget or remove the entry",
+      });
     }
   }
 

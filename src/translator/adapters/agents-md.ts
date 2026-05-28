@@ -189,30 +189,76 @@ This document describes the agents and tools available in this blueprint. It is 
     content += `<!-- bp-generated:end compliance -->`;
   }
 
-  if (ir.orchestration) {
+  if (ir.orchestration || ir.agent_registry || ir.mcp_servers) {
     content += `\n## Orchestration & Multi-Agent Coordination\n\n<!-- bp-generated:begin orchestration -->\n\n`;
 
-    if (ir.orchestration.agent_teams && ir.orchestration.agent_teams.length > 0) {
+    if (ir.orchestration?.agent_teams && ir.orchestration.agent_teams.length > 0) {
       content += `**Agent Teams:**\n`;
       for (const team of ir.orchestration.agent_teams) {
-        content += `- ${team.team_name}: ${team.agents.join(", ")}\n`;
+        content += `- **${team.team_name}**: ${team.agents.join(", ")}`;
+        if (team.owner || team.purpose) content += ` (Owner: ${team.owner}, Purpose: ${team.purpose})`;
+        content += `\n`;
       }
       content += `\n`;
     }
 
-    if (ir.orchestration.agent_chains && ir.orchestration.agent_chains.length > 0) {
+    if (ir.orchestration?.agent_chains && ir.orchestration.agent_chains.length > 0) {
       content += `**Agent Chains:**\n`;
       for (const chain of ir.orchestration.agent_chains) {
         const mode = chain.parallel_mode ? "(Parallel)" : "(Sequential)";
-        content += `- ${chain.chain_name} ${mode}: ${chain.sequence.join(" → ")}\n`;
+        content += `- **${chain.chain_name}** ${mode}: ${chain.sequence.join(" → ")}`;
+        if (chain.timeout_ms) content += ` [Timeout: ${chain.timeout_ms}ms]`;
+        content += `\n`;
       }
       content += `\n`;
     }
 
-    if (ir.orchestration.persistent_memory?.enabled) {
+    if (ir.agent_registry?.agents && ir.agent_registry.agents.length > 0) {
+      content += `**Agent Registry:**\n\n`;
+      content += `| Name | Owner | Purpose | Risk Tier | Status |\n`;
+      content += `|------|-------|---------|-----------|--------|\n`;
+      for (const agent of ir.agent_registry.agents) {
+        const risk = agent.risk_tier || "unspecified";
+        const status = agent.eval_status || "untested";
+        content += `| ${agent.name} | ${agent.owner} | ${agent.purpose} | ${risk} | ${status} |\n`;
+      }
+      content += `\n`;
+    }
+
+    if (ir.mcp_servers && ir.mcp_servers.length > 0) {
+      content += `**MCP Servers & Tools:**\n\n`;
+      for (const server of ir.mcp_servers) {
+        content += `- **${server.name}** (${server.endpoint})`;
+        if (server.risk_level) content += ` [Risk: ${server.risk_level}]`;
+        content += `\n`;
+        if (server.tool_registry && server.tool_registry.length > 0) {
+          for (const tool of server.tool_registry) {
+            content += `  - ${tool.tool_name} (Access: ${tool.access_level})\n`;
+          }
+        }
+      }
+      content += `\n`;
+    }
+
+    if (ir.orchestration?.cross_agent_communication) {
+      const comm = ir.orchestration.cross_agent_communication;
+      content += `**Cross-Agent Communication:**\n`;
+      if (comm.communication_protocol) {
+        content += `- Protocol: ${comm.communication_protocol}\n`;
+      }
+      if (comm.inter_agent_validation) {
+        content += `- Inter-Agent Validation: Enabled\n`;
+      }
+      content += `\n`;
+    }
+
+    if (ir.orchestration?.persistent_memory?.enabled) {
       content += `**Persistent Memory:** Enabled\n`;
       if (ir.orchestration.persistent_memory.retention_policy) {
         content += `- Retention Policy: ${ir.orchestration.persistent_memory.retention_policy}\n`;
+      }
+      if (ir.orchestration.persistent_memory.encryption) {
+        content += `- Encryption: Enabled\n`;
       }
       content += `\n`;
     }

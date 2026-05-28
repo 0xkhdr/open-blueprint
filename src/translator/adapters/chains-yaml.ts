@@ -11,11 +11,14 @@ export function generateChainsYaml(ir: BlueprintIR): string {
 
   for (const chain of chains) {
     yaml += `  - name: ${chain.chain_name}\n`;
-    yaml += `    sequence: [${chain.sequence.map((a) => `"${a}"`).join(", ")}]\n`;
+    yaml += `    sequence:\n`;
+    for (const agent of chain.sequence) {
+      yaml += `      - ${agent}\n`;
+    }
 
-    if (chain.parallel_mode) yaml += `    parallel_mode: true\n`;
-    if (chain.state_schema) yaml += `    state_schema: "${chain.state_schema}"\n`;
-    if (chain.error_handler) yaml += `    error_handler: "${chain.error_handler}"\n`;
+    yaml += `    parallel: ${chain.parallel_mode || false}\n`;
+    if (chain.state_schema) yaml += `    state_schema: ${chain.state_schema}\n`;
+    if (chain.error_handler) yaml += `    error_handler: ${chain.error_handler}\n`;
     if (chain.timeout_ms) yaml += `    timeout_ms: ${chain.timeout_ms}\n`;
 
     if (chain.retry_policy) {

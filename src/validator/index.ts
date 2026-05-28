@@ -12,7 +12,9 @@ import { GeminiAdapter } from "../translator/adapters/gemini.js";
 import { GenericAdapter } from "../translator/adapters/generic.js";
 import { KiroAdapter } from "../translator/adapters/kiro.js";
 import { PIAdapter } from "../translator/adapters/pi.js";
+import { validateAlertingConfig } from "./alerting.js";
 import { loadCache, saveCache } from "./cache.js";
+import { validateCostConfig } from "./cost.js";
 import { validateDrift } from "./drift.js";
 import {
   validateAudit,
@@ -26,6 +28,7 @@ import {
   validateSettings,
 } from "./layers.js";
 import { validateLogical } from "./logical.js";
+import { validateOrchestrationSemantic } from "./orchestration.js";
 import { validateRBAC } from "./rbac.js";
 import { validateSemantic } from "./semantic.js";
 import type { ValidationError } from "./structural.js";
@@ -223,6 +226,23 @@ async function validateGovernance(
           resolution: `Fix orchestration configuration at ${e.field || "root"}`,
         }))
       );
+    }
+
+    // Semantic orchestration + cross-layer validation (always runs in governance mode)
+    {
+      const orchestrationSemanticErrors = validateOrchestrationSemantic(ir);
+      errors.push(...orchestrationSemanticErrors);
+    }
+
+    // Phase 4: Observability & Cost validation
+    if (ir.cost) {
+      const costErrors = validateCostConfig(ir);
+      errors.push(...costErrors);
+    }
+
+    if (ir.alerting) {
+      const alertingErrors = validateAlertingConfig(ir);
+      errors.push(...alertingErrors);
     }
 
     return errors;

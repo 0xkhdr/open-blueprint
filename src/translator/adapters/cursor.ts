@@ -135,9 +135,15 @@ export class CursorAdapter implements BlueprintAdapter {
         if (mcpJson.mcpServers && typeof mcpJson.mcpServers === "object") {
           for (const [name, cfg] of Object.entries(mcpJson.mcpServers)) {
             const server = cfg as Record<string, unknown>;
+            let endpoint = "";
+            if (typeof server.args === "string") {
+              endpoint = server.args;
+            } else if (Array.isArray(server.args) && server.args.length > 0) {
+              endpoint = String(server.args[server.args.length - 1]);
+            }
             mcpServers.push({
               name,
-              endpoint: typeof server.args === "string" ? server.args : "",
+              endpoint,
               auth_scope:
                 typeof server.env === "object" && server.env
                   ? Object.keys(server.env as Record<string, unknown>)
