@@ -4,7 +4,6 @@
 #   lychee --offline docs/**/*.md README.md agents.md CHANGELOG.md
 # Run external checks on schedule only (not on every PR).
 
-[general]
 # Timeout for HTTP requests (not used in --offline mode)
 timeout = 20
 
