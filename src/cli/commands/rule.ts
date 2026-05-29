@@ -8,6 +8,7 @@ import { loadProjectConfig } from "../../config/project.js";
 import { loadUserConfig } from "../../config/user.js";
 import { detect } from "../../detector/index.js";
 import { resolveTemplatePack } from "../../templater/selector.js";
+import type { BlueprintIR } from "../../translator/ir.js";
 import { EXIT_CODES } from "../../validator/index.js";
 import { validateSemantic } from "../../validator/semantic.js";
 import type { ValidationError } from "../../validator/structural.js";
@@ -420,7 +421,7 @@ export function createRuleCommand(): Command {
 
       // Load blueprint
       const content = fs.readFileSync(inputPath, "utf-8");
-      let blueprint;
+      let blueprint: BlueprintIR;
       try {
         blueprint = BlueprintIRSchema.parse(JSON.parse(content));
       } catch (err) {

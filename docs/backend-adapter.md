@@ -16,7 +16,7 @@ Decoupled translation flow:
 
 ---
 
-## 2. Structure of `BlueprintIRSchema` (v2.0)
+## 2. Structure of `BlueprintIRSchema` (v1.0)
 
 Every custom adapter maps configurations to/from the `BlueprintIRSchema` defined in `src/translator/ir.ts`. The schema covers core developer and advanced enterprise layers:
 

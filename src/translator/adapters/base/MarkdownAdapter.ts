@@ -111,8 +111,8 @@ export abstract class MarkdownAdapter implements BlueprintAdapter {
     return writtenFiles;
   }
 
-  renderCommand(skill: Skill, workflowId: string): string {
-    const ext = this.config.fileExtension ?? ".md";
+  renderCommand(skill: Skill, _workflowId: string): string {
+    const _ext = this.config.fileExtension ?? ".md";
     return `---\nname: ${skill.name}\ndescription: "${skill.description}"\n---\n\n${skill.procedure}\n`;
   }
 

@@ -29,7 +29,7 @@ export function diffBlueprints(left: BlueprintIR, right: BlueprintIR): Blueprint
     if (!rightRules.has(id)) {
       result.removed.push({ type: "rule", id, oldValue: rule });
     } else {
-      const rightRule = rightRules.get(id)!;
+      const rightRule = rightRules.get(id) as Rule;
       const changes = diffRule(rule, rightRule);
       if (changes.length > 0) {
         result.modified.push({ type: "rule", id, oldValue: rule, newValue: rightRule, changes });
@@ -52,7 +52,7 @@ export function diffBlueprints(left: BlueprintIR, right: BlueprintIR): Blueprint
     if (!rightSkills.has(name)) {
       result.removed.push({ type: "skill", id: name, oldValue: skill });
     } else {
-      const rightSkill = rightSkills.get(name)!;
+      const rightSkill = rightSkills.get(name) as Skill;
       const changes = diffSkill(skill, rightSkill);
       if (changes.length > 0) {
         result.modified.push({
@@ -81,7 +81,7 @@ export function diffBlueprints(left: BlueprintIR, right: BlueprintIR): Blueprint
     if (!rightPersonas.has(name)) {
       result.removed.push({ type: "persona", id: name, oldValue: persona });
     } else {
-      const rightPersona = rightPersonas.get(name)!;
+      const rightPersona = rightPersonas.get(name) as Persona;
       const changes = diffPersona(persona, rightPersona);
       if (changes.length > 0) {
         result.modified.push({

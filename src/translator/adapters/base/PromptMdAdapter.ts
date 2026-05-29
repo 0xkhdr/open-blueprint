@@ -7,7 +7,10 @@ export abstract class PromptMdAdapter extends MarkdownAdapter {
     return path.join(projectRoot, this.config.skillsPath, `${filename}.prompt.md`);
   }
 
-  override async render(ir: import("../../ir.js").BlueprintIR, projectRoot: string): Promise<string[]> {
+  override async render(
+    ir: import("../../ir.js").BlueprintIR,
+    projectRoot: string
+  ): Promise<string[]> {
     const writtenFiles: string[] = [];
     const skillsDir = path.join(projectRoot, this.config.skillsPath);
     fs.mkdirSync(skillsDir, { recursive: true });
@@ -19,7 +22,7 @@ export abstract class PromptMdAdapter extends MarkdownAdapter {
     for (const skill of ir.skills) {
       const filename = `${skill.name.toLowerCase().replace(/\s+/g, "-")}.prompt.md`;
       const skillPath = path.join(skillsDir, filename);
-      let content = `---\nname: ${skill.name}\ndescription: "${skill.description}"\n---\n\n${skill.procedure}\n`;
+      const content = `---\nname: ${skill.name}\ndescription: "${skill.description}"\n---\n\n${skill.procedure}\n`;
       fs.writeFileSync(skillPath, content, "utf-8");
       writtenFiles.push(skillPath);
     }

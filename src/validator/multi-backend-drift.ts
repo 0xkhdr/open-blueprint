@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { getBackend, listBackendIds } from "../backends/registry.js";
+import { type BackendConfig, getBackend, listBackendIds } from "../backends/registry.js";
 import type { ProjectConfig } from "../config/project.js";
 
 export type BackendDriftStatus = "in sync" | "drifted" | "missing" | "orphaned";
@@ -18,7 +18,9 @@ function resolveCommandsDir(backendId: string, projectRoot: string): string | nu
   if (!config.supportsCommands || !config.commandsPath) return null;
   if (config.globalHomeEnv) {
     const envVal = process.env[config.globalHomeEnv];
-    const base = envVal ?? (config.fallbackGlobalPath ?? `~/.${backendId}/prompts`).replace(/^~/, os.homedir());
+    const base =
+      envVal ??
+      (config.fallbackGlobalPath ?? `~/.${backendId}/prompts`).replace(/^~/, os.homedir());
     return base;
   }
   return path.join(projectRoot, config.commandsPath);
@@ -86,15 +88,22 @@ export function detectMultiBackendDrift(
   projectConfig: ProjectConfig
 ): BackendDriftResult[] {
   const results: BackendDriftResult[] = [];
-  const configuredBackends = projectConfig.backends ?? (projectConfig.backend ? [projectConfig.backend] : []);
+  const configuredBackends =
+    projectConfig.backends ?? (projectConfig.backend ? [projectConfig.backend] : []);
   const baseline = loadDriftBaseline(projectRoot);
   const allKnownIds = new Set(listBackendIds());
 
   // Check each configured backend
   for (const id of configuredBackends) {
-    let config;
-    try { config = getBackend(id); } catch {
-      results.push({ backend: id, status: "missing", message: `Unknown backend "${id}" configured in .bp.json` });
+    let config: BackendConfig;
+    try {
+      config = getBackend(id);
+    } catch {
+      results.push({
+        backend: id,
+        status: "missing",
+        message: `Unknown backend "${id}" configured in .bp.json`,
+      });
       continue;
     }
 
@@ -112,7 +121,11 @@ export function detectMultiBackendDrift(
     const baselineMtime = baseline[id];
 
     if (baselineMtime === undefined) {
-      results.push({ backend: id, status: "in sync", message: `Backend "${id}" is present (no baseline to compare)` });
+      results.push({
+        backend: id,
+        status: "in sync",
+        message: `Backend "${id}" is present (no baseline to compare)`,
+      });
     } else if (currentMtime > baselineMtime) {
       results.push({
         backend: id,
@@ -129,8 +142,12 @@ export function detectMultiBackendDrift(
   const configuredSet = new Set(configuredBackends);
   for (const id of allKnownIds) {
     if (configuredSet.has(id)) continue;
-    let config;
-    try { config = getBackend(id); } catch { continue; }
+    let config: BackendConfig;
+    try {
+      config = getBackend(id);
+    } catch {
+      continue;
+    }
     const skillsDir = path.join(projectRoot, config.skillsPath);
     if (fs.existsSync(skillsDir)) {
       results.push({

@@ -1,12 +1,12 @@
 import chalk from "chalk";
 import { Command } from "commander";
+import { loadProjectConfig } from "../../config/project.js";
 import {
   type BehaviorBaseline,
   detectSemanticDrift,
   establishBaseline,
   type RuntimeMetrics,
 } from "../../observability/semantic-drift.js";
-import { loadProjectConfig } from "../../config/project.js";
 import { detectMultiBackendDrift, saveDriftBaseline } from "../../validator/multi-backend-drift.js";
 
 function makeSyntheticBaseline(): BehaviorBaseline {
@@ -47,19 +47,28 @@ export function createDriftCommand(): Command {
 
       if (!projectConfig) {
         if (opts.json) {
-          console.log(JSON.stringify({ status: "error", error: "No .bp.json found in current directory" }));
+          console.log(
+            JSON.stringify({ status: "error", error: "No .bp.json found in current directory" })
+          );
         } else {
           console.error(chalk.red("No .bp.json found. Run bp init first."));
         }
         process.exit(1);
       }
 
-      const configuredBackends = projectConfig.backends ?? (projectConfig.backend ? [projectConfig.backend] : []);
+      const configuredBackends =
+        projectConfig.backends ?? (projectConfig.backend ? [projectConfig.backend] : []);
 
       if (opts.saveBaseline) {
         saveDriftBaseline(cwd, configuredBackends);
         if (opts.json) {
-          console.log(JSON.stringify({ status: "ok", message: "Baseline saved", backends: configuredBackends }));
+          console.log(
+            JSON.stringify({
+              status: "ok",
+              message: "Baseline saved",
+              backends: configuredBackends,
+            })
+          );
         } else {
           console.log(chalk.green(`✔ Baseline saved for: ${configuredBackends.join(", ")}`));
         }
@@ -75,10 +84,13 @@ export function createDriftCommand(): Command {
 
       for (const result of results) {
         const icon =
-          result.status === "in sync" ? chalk.green("✔") :
-          result.status === "drifted" ? chalk.yellow("~") :
-          result.status === "missing" ? chalk.red("!") :
-          chalk.dim("?");
+          result.status === "in sync"
+            ? chalk.green("✔")
+            : result.status === "drifted"
+              ? chalk.yellow("~")
+              : result.status === "missing"
+                ? chalk.red("!")
+                : chalk.dim("?");
         console.log(`${icon} ${chalk.bold(result.backend)}: ${result.message}`);
       }
 

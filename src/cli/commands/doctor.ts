@@ -33,7 +33,10 @@ interface BackendHealthResult {
   warnings: string[];
 }
 
-function checkBackendHealth(backendConfig: BackendConfig, projectRoot: string): BackendHealthResult {
+function checkBackendHealth(
+  backendConfig: BackendConfig,
+  projectRoot: string
+): BackendHealthResult {
   const warnings: string[] = [];
   let skills = 0;
   let commands = 0;
@@ -41,7 +44,9 @@ function checkBackendHealth(backendConfig: BackendConfig, projectRoot: string): 
   const skillsDir = path.join(projectRoot, backendConfig.skillsPath);
   if (fs.existsSync(skillsDir)) {
     try {
-      skills = fs.readdirSync(skillsDir).filter((f) => !fs.statSync(path.join(skillsDir, f)).isDirectory()).length;
+      skills = fs
+        .readdirSync(skillsDir)
+        .filter((f) => !fs.statSync(path.join(skillsDir, f)).isDirectory()).length;
     } catch {
       warnings.push(`Cannot read skills directory: ${backendConfig.skillsPath}`);
     }
@@ -54,19 +59,28 @@ function checkBackendHealth(backendConfig: BackendConfig, projectRoot: string): 
 
     if (backendConfig.globalHomeEnv) {
       const envVal = process.env[backendConfig.globalHomeEnv];
-      const base = envVal ?? (backendConfig.fallbackGlobalPath ?? `~/.${backendConfig.id}/prompts`).replace(/^~/, os.homedir());
+      const base =
+        envVal ??
+        (backendConfig.fallbackGlobalPath ?? `~/.${backendConfig.id}/prompts`).replace(
+          /^~/,
+          os.homedir()
+        );
       cmdDir = base;
     }
 
     if (fs.existsSync(cmdDir)) {
       try {
-        commands = fs.readdirSync(cmdDir).filter((f) => !fs.statSync(path.join(cmdDir, f)).isDirectory()).length;
+        commands = fs
+          .readdirSync(cmdDir)
+          .filter((f) => !fs.statSync(path.join(cmdDir, f)).isDirectory()).length;
       } catch {
         warnings.push(`Cannot read commands directory: ${cmdDir}`);
       }
     } else {
       if (backendConfig.globalHomeEnv) {
-        warnings.push(`Global commands path missing: ${cmdDir} (set $${backendConfig.globalHomeEnv} or create the directory)`);
+        warnings.push(
+          `Global commands path missing: ${cmdDir} (set $${backendConfig.globalHomeEnv} or create the directory)`
+        );
       } else {
         warnings.push(`Commands directory missing: ${backendConfig.commandsPath}`);
       }
@@ -74,7 +88,9 @@ function checkBackendHealth(backendConfig: BackendConfig, projectRoot: string): 
   }
 
   if (backendConfig.id === "github-copilot") {
-    warnings.push("GitHub Copilot commands require an IDE extension (VS Code, JetBrains, Visual Studio)");
+    warnings.push(
+      "GitHub Copilot commands require an IDE extension (VS Code, JetBrains, Visual Studio)"
+    );
   }
 
   const healthy = warnings.length === 0;
@@ -117,9 +133,11 @@ export function createDoctorCommand(): Command {
           let backendsToCheck: string[];
 
           if (opts.all) {
-            backendsToCheck = projectConfig?.backends ?? [projectConfig?.backend ?? "claude"].filter(Boolean) as string[];
+            backendsToCheck =
+              projectConfig?.backends ??
+              ([projectConfig?.backend ?? "claude"].filter(Boolean) as string[]);
           } else {
-            backendsToCheck = [opts.tool!];
+            backendsToCheck = [opts.tool as string];
           }
 
           const results: BackendHealthResult[] = backendsToCheck.map((id) => {
@@ -127,24 +145,36 @@ export function createDoctorCommand(): Command {
               const config = getBackend(id);
               return checkBackendHealth(config, cwd);
             } catch {
-              return { id, healthy: false, skills: 0, commands: 0, warnings: [`Unknown backend: ${id}`] };
+              return {
+                id,
+                healthy: false,
+                skills: 0,
+                commands: 0,
+                warnings: [`Unknown backend: ${id}`],
+              };
             }
           });
 
           if (opts.json) {
             console.log(JSON.stringify({ backends: results }, null, 2));
-            process.exit(results.every((r) => r.healthy) ? EXIT_CODES.SUCCESS : EXIT_CODES.GENERAL_ERROR);
+            process.exit(
+              results.every((r) => r.healthy) ? EXIT_CODES.SUCCESS : EXIT_CODES.GENERAL_ERROR
+            );
           }
 
           for (const result of results) {
             const icon = result.healthy ? chalk.green("✔") : chalk.yellow("⚠");
-            console.log(`${icon} ${chalk.bold(result.id)}: ${result.skills} skills, ${result.commands} commands`);
+            console.log(
+              `${icon} ${chalk.bold(result.id)}: ${result.skills} skills, ${result.commands} commands`
+            );
             for (const w of result.warnings) {
               console.log(chalk.yellow(`   ⚠ ${w}`));
             }
           }
 
-          process.exit(results.every((r) => r.healthy) ? EXIT_CODES.SUCCESS : EXIT_CODES.GENERAL_ERROR);
+          process.exit(
+            results.every((r) => r.healthy) ? EXIT_CODES.SUCCESS : EXIT_CODES.GENERAL_ERROR
+          );
         }
 
         // --- v1 config deprecation warning ---
@@ -152,9 +182,16 @@ export function createDoctorCommand(): Command {
           const bpJsonPath = path.join(cwd, ".bp.json");
           if (fs.existsSync(bpJsonPath)) {
             try {
-              const raw = JSON.parse(fs.readFileSync(bpJsonPath, "utf-8")) as Record<string, unknown>;
+              const raw = JSON.parse(fs.readFileSync(bpJsonPath, "utf-8")) as Record<
+                string,
+                unknown
+              >;
               if ("backend" in raw && !("backends" in raw) && !opts.json) {
-                console.warn(chalk.yellow("[WARN] .bp.json uses deprecated `backend` field. Run: bp migrate config"));
+                console.warn(
+                  chalk.yellow(
+                    "[WARN] .bp.json uses deprecated `backend` field. Run: bp migrate config"
+                  )
+                );
               }
             } catch {
               // ignore

@@ -1,6 +1,12 @@
 import { describe, it, expect } from "vitest";
 import type { BlueprintIR } from "../../../src/translator/ir.js";
-import { validateAlertingConfig } from "../../../src/validator/alerting.js";
+import {
+  detectAnomaly,
+  generatePagerDutyIncident,
+  generateSlackWebhook,
+  generateWebhookPayload,
+  validateAlertingConfig,
+} from "../../../src/validator/alerting.js";
 
 function createBaseIR(): BlueprintIR {
   return {
@@ -179,5 +185,97 @@ describe("validateAlertingConfig", () => {
     };
     const errors = validateAlertingConfig(ir);
     expect(errors.filter((e) => e.type === "INVALID_THRESHOLD" || e.type === "INVALID_BASELINE")).toHaveLength(0);
+  });
+
+  it("flags invalid policy severity", () => {
+    const ir = createBaseIR();
+    ir.alerting = {
+      alerting_enabled: true,
+      policy_violations: [
+        {
+          policy_name: "cost_overrun",
+          condition: "cost > 100",
+          action: "notify",
+          severity: "debug" as "info",
+        },
+      ],
+    };
+    const errors = validateAlertingConfig(ir);
+    expect(errors.some((e) => e.type === "INVALID_POLICY_SEVERITY")).toBe(true);
+  });
+});
+
+describe("generateSlackWebhook", () => {
+  it("returns JSON string with severity in header", () => {
+    const result = generateSlackWebhook("Alert title", "Alert body", "critical");
+    const parsed = JSON.parse(result) as { blocks: Array<{ text?: { text?: string } }> };
+    expect(parsed.blocks[0]?.text?.text).toContain("CRITICAL");
+    expect(parsed.blocks[0]?.text?.text).toContain("Alert title");
+  });
+
+  it("includes message body in section block", () => {
+    const result = generateSlackWebhook("Title", "Body text", "info");
+    const parsed = JSON.parse(result) as { blocks: Array<{ text?: { text?: string } }> };
+    expect(parsed.blocks[1]?.text?.text).toBe("Body text");
+  });
+});
+
+describe("generatePagerDutyIncident", () => {
+  it("returns JSON with routing_key placeholder and trigger action", () => {
+    const result = generatePagerDutyIncident("Incident", "Something broke", "warning");
+    const parsed = JSON.parse(result) as {
+      routing_key: string;
+      event_action: string;
+      payload: { severity: string; summary: string };
+    };
+    expect(parsed.routing_key).toContain("PAGERDUTY_ROUTING_KEY");
+    expect(parsed.event_action).toBe("trigger");
+    expect(parsed.payload.severity).toBe("warning");
+    expect(parsed.payload.summary).toBe("Incident");
+  });
+});
+
+describe("generateWebhookPayload", () => {
+  it("includes empty metadata when not provided", () => {
+    const result = generateWebhookPayload("Title", "Msg", "info");
+    const parsed = JSON.parse(result) as { metadata: Record<string, unknown> };
+    expect(parsed.metadata).toEqual({});
+  });
+
+  it("includes provided metadata", () => {
+    const result = generateWebhookPayload("Title", "Msg", "critical", { env: "prod" });
+    const parsed = JSON.parse(result) as { metadata: Record<string, unknown> };
+    expect(parsed.metadata).toEqual({ env: "prod" });
+  });
+});
+
+describe("detectAnomaly", () => {
+  it("returns no anomaly when fewer than 2 baseline values", () => {
+    const result = detectAnomaly(100, [50]);
+    expect(result.is_anomaly).toBe(false);
+    expect(result.zscore).toBe(0);
+  });
+
+  it("returns no anomaly when stdDev is zero (all equal values)", () => {
+    const result = detectAnomaly(5, [5, 5, 5, 5]);
+    expect(result.is_anomaly).toBe(false);
+    expect(result.zscore).toBe(0);
+  });
+
+  it("detects anomaly when value is far from mean", () => {
+    const result = detectAnomaly(100, [1, 2, 1, 2], 2.0);
+    expect(result.is_anomaly).toBe(true);
+    expect(result.zscore).toBeGreaterThan(2.0);
+  });
+
+  it("no anomaly when value is within threshold", () => {
+    const result = detectAnomaly(3, [1, 2, 3, 4, 5], 2.0);
+    expect(result.is_anomaly).toBe(false);
+  });
+
+  it("respects custom stdDevThreshold", () => {
+    const result = detectAnomaly(10, [1, 2, 3, 4, 5], 0.5);
+    expect(result.threshold).toBe(0.5);
+    expect(result.is_anomaly).toBe(true);
   });
 });

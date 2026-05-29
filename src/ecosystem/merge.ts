@@ -79,9 +79,10 @@ export function threeWayMerge(
         );
         if (leftHasSameField) {
           const baseItems = getItemsOfType(base, modified.type);
-          const baseItem = baseItems.find(
-            (x: any) => x.id === modified.id || x.name === modified.id
-          );
+          const baseItem = baseItems.find((x) => {
+            const item = x as Record<string, unknown>;
+            return item.id === modified.id || item.name === modified.id;
+          });
           conflicts.push({
             type: modified.type,
             id: modified.id,

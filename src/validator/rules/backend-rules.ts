@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { getBackend, listBackendIds } from "../../backends/registry.js";
+import { type BackendConfig, getBackend, listBackendIds } from "../../backends/registry.js";
 import type { ValidationError } from "../structural.js";
 
 export interface BackendValidationRule {
@@ -31,21 +31,27 @@ export const BACKEND_RULES: BackendValidationRule[] = [
     check(projectRoot, backends) {
       const errors: ValidationError[] = [];
       for (const id of backends) {
-        let config;
-        try { config = getBackend(id); } catch { continue; }
+        let config: BackendConfig;
+        try {
+          config = getBackend(id);
+        } catch {
+          continue;
+        }
         if (config.supportsCommands) continue;
         // Derive the backend root dir from skillsPath (parent of skills subdir)
         const skillsDir = path.join(projectRoot, config.skillsPath);
         const backendRoot = path.dirname(skillsDir);
         const possibleCmdDir = path.join(backendRoot, "commands");
         if (fs.existsSync(possibleCmdDir)) {
-          errors.push(makeError(
-            possibleCmdDir,
-            "SKILL_ONLY_BACKEND_HAS_COMMANDS",
-            "error",
-            `Skill-only backend "${id}" must not have command files at ${path.relative(projectRoot, possibleCmdDir)}`,
-            `Remove the commands directory or reconfigure the backend`
-          ));
+          errors.push(
+            makeError(
+              possibleCmdDir,
+              "SKILL_ONLY_BACKEND_HAS_COMMANDS",
+              "error",
+              `Skill-only backend "${id}" must not have command files at ${path.relative(projectRoot, possibleCmdDir)}`,
+              `Remove the commands directory or reconfigure the backend`
+            )
+          );
         }
       }
       return errors;
@@ -60,8 +66,12 @@ export const BACKEND_RULES: BackendValidationRule[] = [
     check(projectRoot, backends) {
       const errors: ValidationError[] = [];
       for (const id of backends) {
-        let config;
-        try { config = getBackend(id); } catch { continue; }
+        let config: BackendConfig;
+        try {
+          config = getBackend(id);
+        } catch {
+          continue;
+        }
         if (config.fileExtension !== ".toml" || !config.commandsPath) continue;
         const cmdDir = path.join(projectRoot, config.commandsPath);
         if (!fs.existsSync(cmdDir)) continue;
@@ -72,13 +82,15 @@ export const BACKEND_RULES: BackendValidationRule[] = [
           // Basic TOML syntax check: look for obviously malformed content
           const hasUnclosedBracket = /^\s*\[[^\]]*$(?!.*\])/m.test(content);
           if (hasUnclosedBracket) {
-            errors.push(makeError(
-              filePath,
-              "INVALID_TOML_SYNTAX",
-              "error",
-              `TOML file "${tomlFile}" for backend "${id}" has a syntax error (unclosed bracket)`,
-              `Fix the TOML syntax in ${filePath}`
-            ));
+            errors.push(
+              makeError(
+                filePath,
+                "INVALID_TOML_SYNTAX",
+                "error",
+                `TOML file "${tomlFile}" for backend "${id}" has a syntax error (unclosed bracket)`,
+                `Fix the TOML syntax in ${filePath}`
+              )
+            );
           }
         }
       }
@@ -91,36 +103,44 @@ export const BACKEND_RULES: BackendValidationRule[] = [
     description: "Codex global path must exist and be writable",
     severity: "warning",
     appliesTo: ["codex"],
-    check(projectRoot, backends) {
+    check(_projectRoot, backends) {
       if (!backends.includes("codex")) return [];
       const errors: ValidationError[] = [];
-      let config;
-      try { config = getBackend("codex"); } catch { return []; }
+      let config: BackendConfig;
+      try {
+        config = getBackend("codex");
+      } catch {
+        return [];
+      }
 
-      const envVal = process.env[config.globalHomeEnv!];
+      const envVal = config.globalHomeEnv ? process.env[config.globalHomeEnv] : undefined;
       const globalPath = envVal
         ? path.join(envVal, "prompts")
         : (config.fallbackGlobalPath ?? "~/.codex/prompts").replace(/^~/, os.homedir());
 
       if (!fs.existsSync(globalPath)) {
-        errors.push(makeError(
-          globalPath,
-          "CODEX_GLOBAL_PATH_MISSING",
-          "warning",
-          `Codex global commands path does not exist: ${globalPath}`,
-          `Create ${globalPath} or set $CODEX_HOME to a writable directory`
-        ));
+        errors.push(
+          makeError(
+            globalPath,
+            "CODEX_GLOBAL_PATH_MISSING",
+            "warning",
+            `Codex global commands path does not exist: ${globalPath}`,
+            `Create ${globalPath} or set $CODEX_HOME to a writable directory`
+          )
+        );
       } else {
         try {
           fs.accessSync(globalPath, fs.constants.W_OK);
         } catch {
-          errors.push(makeError(
-            globalPath,
-            "CODEX_GLOBAL_PATH_NOT_WRITABLE",
-            "warning",
-            `Codex global commands path is not writable: ${globalPath}`,
-            `Fix permissions on ${globalPath}`
-          ));
+          errors.push(
+            makeError(
+              globalPath,
+              "CODEX_GLOBAL_PATH_NOT_WRITABLE",
+              "warning",
+              `Codex global commands path is not writable: ${globalPath}`,
+              `Fix permissions on ${globalPath}`
+            )
+          );
         }
       }
       return errors;
@@ -156,8 +176,12 @@ export const BACKEND_RULES: BackendValidationRule[] = [
       const rulesBySeverity: Map<string, Map<string, string>> = new Map();
 
       for (const id of backends) {
-        let config;
-        try { config = getBackend(id); } catch { continue; }
+        let config: BackendConfig;
+        try {
+          config = getBackend(id);
+        } catch {
+          continue;
+        }
         const skillsDir = path.join(projectRoot, config.skillsPath);
         const rulesDir = path.join(path.dirname(skillsDir), "rules");
         if (!fs.existsSync(rulesDir)) continue;
@@ -171,19 +195,22 @@ export const BACKEND_RULES: BackendValidationRule[] = [
             const parsed = matter(content);
             const severity = parsed.data?.severity;
             if (typeof severity !== "string") continue;
-            if (!rulesBySeverity.has(ruleId)) {
-              rulesBySeverity.set(ruleId, new Map());
+            let entry = rulesBySeverity.get(ruleId);
+            if (!entry) {
+              entry = new Map();
+              rulesBySeverity.set(ruleId, entry);
             }
-            const entry = rulesBySeverity.get(ruleId)!;
             for (const [existingBackend, existingSeverity] of entry) {
               if (existingSeverity !== severity) {
-                errors.push(makeError(
-                  path.join(rulesDir, ruleFile),
-                  "MULTI_BACKEND_RULE_CONFLICT",
-                  "error",
-                  `Rule "${ruleId}" has conflicting severity: "${existingSeverity}" (${existingBackend}) vs "${severity}" (${id})`,
-                  `Align severity of rule "${ruleId}" across all backends`
-                ));
+                errors.push(
+                  makeError(
+                    path.join(rulesDir, ruleFile),
+                    "MULTI_BACKEND_RULE_CONFLICT",
+                    "error",
+                    `Rule "${ruleId}" has conflicting severity: "${existingSeverity}" (${existingBackend}) vs "${severity}" (${id})`,
+                    `Align severity of rule "${ruleId}" across all backends`
+                  )
+                );
               }
             }
             entry.set(id, severity);
@@ -207,34 +234,46 @@ export const BACKEND_RULES: BackendValidationRule[] = [
 
       // Backend in config but files missing
       for (const id of backends) {
-        let config;
-        try { config = getBackend(id); } catch { continue; }
+        let config: BackendConfig;
+        try {
+          config = getBackend(id);
+        } catch {
+          continue;
+        }
         const skillsDir = path.join(projectRoot, config.skillsPath);
         if (!fs.existsSync(skillsDir)) {
-          errors.push(makeError(
-            skillsDir,
-            "BACKEND_NOT_SCAFFOLDED",
-            "error",
-            `Backend "${id}" is configured in .bp.json but skills directory is missing: ${config.skillsPath}`,
-            `Run 'bp init --tools ${id}' to scaffold the backend`
-          ));
+          errors.push(
+            makeError(
+              skillsDir,
+              "BACKEND_NOT_SCAFFOLDED",
+              "error",
+              `Backend "${id}" is configured in .bp.json but skills directory is missing: ${config.skillsPath}`,
+              `Run 'bp init --tools ${id}' to scaffold the backend`
+            )
+          );
         }
       }
 
       // Backend files exist but not in config — check common backend dirs
       for (const id of listBackendIds()) {
         if (backendsSet.has(id)) continue;
-        let config;
-        try { config = getBackend(id); } catch { continue; }
+        let config: BackendConfig;
+        try {
+          config = getBackend(id);
+        } catch {
+          continue;
+        }
         const skillsDir = path.join(projectRoot, config.skillsPath);
         if (fs.existsSync(skillsDir)) {
-          errors.push(makeError(
-            skillsDir,
-            "ORPHANED_BACKEND_FILES",
-            "warning",
-            `Backend "${id}" files found at ${config.skillsPath} but "${id}" is not in .bp.json backends`,
-            `Add "${id}" to backends in .bp.json or remove the directory`
-          ));
+          errors.push(
+            makeError(
+              skillsDir,
+              "ORPHANED_BACKEND_FILES",
+              "warning",
+              `Backend "${id}" files found at ${config.skillsPath} but "${id}" is not in .bp.json backends`,
+              `Add "${id}" to backends in .bp.json or remove the directory`
+            )
+          );
         }
       }
 
@@ -246,9 +285,7 @@ export const BACKEND_RULES: BackendValidationRule[] = [
 export function runBackendRules(projectRoot: string, backends: string[]): ValidationError[] {
   const errors: ValidationError[] = [];
   for (const rule of BACKEND_RULES) {
-    const applies =
-      rule.appliesTo === "all" ||
-      rule.appliesTo.some((id) => backends.includes(id));
+    const applies = rule.appliesTo === "all" || rule.appliesTo.some((id) => backends.includes(id));
     if (!applies) continue;
     try {
       errors.push(...rule.check(projectRoot, backends));

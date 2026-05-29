@@ -1,6 +1,6 @@
 # Backend Feature Parity Matrix
 
-**Generated:** 2026-05-28 · **Version:** open-blueprint v2.0
+**Generated:** 2026-05-28 · **Version:** open-blueprint v1.0
 
 This matrix shows which IR layers each backend adapter reads and writes.
 

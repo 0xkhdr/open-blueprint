@@ -74,7 +74,7 @@ export function generateDatadogConfig(ir: BlueprintIR): TelemetryConfig | null {
   if (!ir.telemetry?.datadog_config) return null;
 
   let yaml = "# Datadog Configuration\n";
-  yaml += "api_key: ${DD_API_KEY}\n";
+  yaml += `api_key: \${DD_API_KEY}\n`;
 
   if (ir.telemetry.datadog_config.app_name) {
     yaml += `app_name: ${ir.telemetry.datadog_config.app_name}\n`;
@@ -112,7 +112,7 @@ export function generateNewRelicConfig(ir: BlueprintIR): TelemetryConfig | null 
 
   let ini = "# New Relic Configuration\n";
   ini += "[newrelic]\n";
-  ini += "license_key = ${NEW_RELIC_LICENSE_KEY}\n";
+  ini += `license_key = \${NEW_RELIC_LICENSE_KEY}\n`;
 
   if (ir.telemetry.newrelic_config.app_name) {
     ini += `app_name = ${ir.telemetry.newrelic_config.app_name}\n`;
