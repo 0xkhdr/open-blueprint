@@ -63,3 +63,38 @@ Permalink: Template Pack
 
 * **Definition**: A cryptographically signed collection of Handlebars templates mapping to specific repository setups (e.g., Python FastAPI, Go Fiber, TypeScript Express).
 * **Where Used**: Distributed via NPM registries and installed using `bp template install`.
+
+---
+
+### Model Context Protocol (MCP)
+
+* **Definition**: A standard protocol enabling AI models to safely and securely connect to external data sources and tools.
+* **Where Used**: Managed via the `bp mcp` CLI subcommands to audit, inspect, and register MCP servers.
+
+---
+
+### Agent Registry
+
+* **Definition**: A centralized database or local config tracking known agent signatures, configurations, and environment mappings.
+* **Where Used**: Accessed and managed via the `bp agent` command suite.
+
+---
+
+### Semantic Drift
+
+* **Definition**: High-level behavioral or statistical deviations in agent outputs, latencies, or token usage, occurring even when physical repository structures remain identical.
+* **Where Used**: Audited via `bp verify --level drift` and `bp doctor` drift parameters.
+
+---
+
+### Preserve Block
+
+* **Definition**: Custom comment sections (`<!-- bp:preserve -->` ... `<!-- bp:end-preserve -->`) that designate manual developer guidelines that the Templater Engine must not overwrite.
+* **Where Used**: Used to maintain custom team guidelines across automated scaffolding syncs.
+
+---
+
+### Blueprint Marketplace
+
+* **Definition**: A public or private organizational repository where signed blueprint templates are published and shared.
+* **Where Used**: Accessed via `bp marketplace` subcommands.

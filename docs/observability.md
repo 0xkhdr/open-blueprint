@@ -448,8 +448,8 @@ alerting: {
 
 ## See Also
 
-- [Cost Tracking Guide](./cost-tracking.md)
-- [Semantic Drift Detection](./semantic-drift.md)
-- [Alerting & Webhooks](./alerting-guide.md)
-- [Metrics Dashboard Setup](./metrics-dashboard.md)
+- [Cost Tracking Guide](#cost-tracking--budget-control)
+- [Semantic Drift Detection](#semantic-drift-detection)
+- [Alerting & Webhooks](#alerting--anomaly-detection)
+- [Metrics Dashboard Setup](#performance-metrics)
 - [REGRESSION_ANALYSIS.md Phase 4](../REGRESSION_ANALYSIS.md#phase-4-observability--cost-weeks-21-26)
