@@ -38,7 +38,7 @@ async function runValidation(
 ): Promise<ValidationError[]> {
   try {
     const fingerprint = await detect(projectRoot);
-    const pack = resolveTemplatePack(fingerprint, backend as any);
+    const pack = resolveTemplatePack(fingerprint, backend);
 
     const result = await runValidator({
       level,

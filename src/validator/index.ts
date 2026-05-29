@@ -37,8 +37,8 @@ import { validateLogical } from "./logical.js";
 import { validateOrchestrationSemantic } from "./orchestration.js";
 import { auditPerformance } from "./performance.js";
 import { validateRBAC } from "./rbac.js";
-import { validateSemantic } from "./semantic.js";
 import { runBackendRules } from "./rules/backend-rules.js";
+import { validateSemantic } from "./semantic.js";
 import type { ValidationError } from "./structural.js";
 import { validateStructuralBatch } from "./structural.js";
 
@@ -407,7 +407,8 @@ export async function runValidator(options: ValidatorOptions): Promise<Validatio
     const { loadProjectConfig } = await import("../config/project.js");
     const projectConfig = loadProjectConfig(projectRoot);
     if (projectConfig) {
-      const backends = projectConfig.backends ?? (projectConfig.backend ? [projectConfig.backend] : []);
+      const backends =
+        projectConfig.backends ?? (projectConfig.backend ? [projectConfig.backend] : []);
       if (backends.length > 0) {
         const backendErrors = runBackendRules(projectRoot, backends);
         allErrors.push(...backendErrors);

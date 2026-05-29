@@ -16,7 +16,9 @@ export function createMigrateCommand(): Command {
   // --- bp migrate config subcommand ---
   cmd
     .command("config")
-    .description("Upgrade .bp.json from v1 (backend string) to v2 (backends array + primary_backend)")
+    .description(
+      "Upgrade .bp.json from v1 (backend string) to v2 (backends array + primary_backend)"
+    )
     .option("--dry-run", "Print what would change without writing", false)
     .option("--json", "Output result as JSON", false)
     .action((opts: { dryRun: boolean; json: boolean }) => {
@@ -69,7 +71,11 @@ export function createMigrateCommand(): Command {
       if (opts.json) {
         console.log(JSON.stringify({ status: "ok", changed: true, result: v2 }));
       } else {
-        console.log(chalk.green(`✔ Migrated .bp.json: backend "${backend}" → backends: ["${backend}"], primary_backend: "${backend}"`));
+        console.log(
+          chalk.green(
+            `✔ Migrated .bp.json: backend "${backend}" → backends: ["${backend}"], primary_backend: "${backend}"`
+          )
+        );
       }
     });
 

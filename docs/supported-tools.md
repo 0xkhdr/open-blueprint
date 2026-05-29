@@ -69,7 +69,7 @@ bp init --tools claude,cursor,windsurf
 bp init --tools all
 ```
 
-The resulting `.bp.json` uses the v2 schema:
+The resulting `.bp.json` uses the v1 schema:
 
 ```json
 {

@@ -3,9 +3,7 @@ import * as path from "node:path";
 import { z } from "zod";
 
 const BackendConfigOverrideSchema = z.object({
-  delivery_mode: z
-    .enum(["skills_and_commands", "skills_only", "commands_only"])
-    .optional(),
+  delivery_mode: z.enum(["skills_and_commands", "skills_only", "commands_only"]).optional(),
   workflows: z.array(z.string()).optional(),
 });
 
@@ -80,11 +78,7 @@ export function initProjectConfig(
     exclude: ["legacy/", "vendor/", "dist/"],
     plugins: [],
   };
-  fs.writeFileSync(
-    path.join(projectRoot, ".bp.json"),
-    JSON.stringify(raw, null, 2),
-    "utf-8"
-  );
+  fs.writeFileSync(path.join(projectRoot, ".bp.json"), JSON.stringify(raw, null, 2), "utf-8");
   return ProjectConfigSchema.parse(raw);
 }
 

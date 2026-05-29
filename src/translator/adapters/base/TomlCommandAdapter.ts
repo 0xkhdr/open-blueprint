@@ -20,7 +20,10 @@ ${skill.procedure}
 `;
   }
 
-  override async render(ir: import("../../ir.js").BlueprintIR, projectRoot: string): Promise<string[]> {
+  override async render(
+    ir: import("../../ir.js").BlueprintIR,
+    projectRoot: string
+  ): Promise<string[]> {
     const writtenFiles = await super.render(ir, projectRoot);
 
     if (this.config.commandsPath) {

@@ -26,7 +26,7 @@ export async function revalidate(projectRoot: string): Promise<DevServerState> {
     const enhanced = enrichFingerprint(fingerprint);
     const backend = "claude";
     const risk_tier = enhanced.risk_tier ?? "low";
-    const pack = resolveTemplatePack(fingerprint, backend as any);
+    const pack = resolveTemplatePack(fingerprint, backend);
 
     const result = await runValidator({
       level: "all",

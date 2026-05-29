@@ -426,8 +426,8 @@ function checkOutputDrift(_files: string[], projectRoot: string): ValidationErro
     for (const [ruleId, history] of Object.entries(snapshots)) {
       if (history.length < 2) continue;
 
-      const latest = history[history.length - 1]!;
-      const previous = history[history.length - 2]!;
+      const latest = history.at(-1) as OutputSnapshot;
+      const previous = history.at(-2) as OutputSnapshot;
       const similarity = computeSimilarity(latest.output_hash, previous.output_hash);
 
       // Flag significant output changes (similarity < 0.7)

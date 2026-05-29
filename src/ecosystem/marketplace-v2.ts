@@ -41,6 +41,18 @@ export interface MarketplaceFilters {
   verified_only?: boolean;
 }
 
+interface NpmSearchObject {
+  package?: {
+    name?: string;
+    version?: string;
+    author?: { name?: string };
+    keywords?: string[];
+    dependencies?: Record<string, string>;
+    engines?: Record<string, string>;
+  };
+  downloads?: { monthly?: number };
+}
+
 export async function searchMarketplace(
   query: string,
   filters?: MarketplaceFilters
@@ -53,8 +65,8 @@ export async function searchMarketplace(
   try {
     const response = await fetch(searchUrl);
     if (response.ok) {
-      const data = (await response.json()) as { objects?: any[] };
-      templates = (data.objects || []).map((obj: any) => ({
+      const data = (await response.json()) as { objects?: NpmSearchObject[] };
+      templates = (data.objects || []).map((obj: NpmSearchObject) => ({
         name: obj.package?.name || "",
         version: obj.package?.version || "0.0.0",
         author: obj.package?.author?.name || "unknown",
@@ -83,16 +95,20 @@ export async function searchMarketplace(
   }
 
   if (filters?.backend) {
-    templates = templates.filter((t) => t.backends.includes(filters.backend!));
+    const backend = filters.backend;
+    templates = templates.filter((t) => t.backends.includes(backend));
   }
   if (filters?.framework) {
-    templates = templates.filter((t) => t.frameworks.includes(filters.framework!));
+    const framework = filters.framework;
+    templates = templates.filter((t) => t.frameworks.includes(framework));
   }
   if (filters?.risk_tier) {
-    templates = templates.filter((t) => t.risk_tiers.includes(filters.risk_tier!));
+    const risk_tier = filters.risk_tier;
+    templates = templates.filter((t) => t.risk_tiers.includes(risk_tier));
   }
   if (filters?.compliance) {
-    templates = templates.filter((t) => t.compliance.includes(filters.compliance!));
+    const compliance = filters.compliance;
+    templates = templates.filter((t) => t.compliance.includes(compliance));
   }
   if (filters?.verified_only) {
     templates = templates.filter((t) => t.verified);

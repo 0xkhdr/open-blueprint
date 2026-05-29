@@ -33,7 +33,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ---
 
-## [2.0.0] — 2026-05-28
+## [1.0.0] — 2026-05-28
 
 ### Added
 
@@ -50,14 +50,3 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 - Renamed docs with numeric prefixes for ordering
 - Updated imports, CLI formatting, and test framework
 
----
-
-## [1.0.0] — Initial release
-
-### Added
-
-- `bp init`, `bp verify`, `bp sync`, `bp convert` core commands
-- Claude Code, Cursor, OpenDev, Goose, and Generic backend adapters
-- 4-layer validation: structural, semantic, logical, drift
-- Handlebars template engine with `.bp-fingerprint.json` state tracking
-- Exit codes 0–10 (stable public API)

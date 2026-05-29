@@ -173,7 +173,7 @@ export function generatePagerDutyIncident(
   };
 
   const payload = {
-    routing_key: "${PAGERDUTY_ROUTING_KEY}",
+    routing_key: `\${PAGERDUTY_ROUTING_KEY}`,
     event_action: "trigger",
     dedup_key: `${Date.now()}-${alertTitle}`,
     payload: {
