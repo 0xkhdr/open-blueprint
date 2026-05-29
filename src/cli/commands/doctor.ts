@@ -1,8 +1,11 @@
 import * as fs from "node:fs";
+import * as os from "node:os";
 import * as path from "node:path";
 import chalk from "chalk";
 import { Command } from "commander";
 import matter from "gray-matter";
+import { type BackendConfig, getBackend, listBackendIds } from "../../backends/registry.js";
+import { loadProjectConfig } from "../../config/project.js";
 import { detect, enrichFingerprint } from "../../detector/index.js";
 import { formatGapReport, generateGapReport } from "../../enterprise/compliance-report.js";
 import { generateEnvTemplate } from "../../enterprise/env-template.js";
@@ -22,6 +25,62 @@ import { PIAdapter } from "../../translator/adapters/pi.js";
 import { generateComplianceReport } from "../../validator/compliance.js";
 import { EXIT_CODES } from "../../validator/index.js";
 
+interface BackendHealthResult {
+  id: string;
+  healthy: boolean;
+  skills: number;
+  commands: number;
+  warnings: string[];
+}
+
+function checkBackendHealth(backendConfig: BackendConfig, projectRoot: string): BackendHealthResult {
+  const warnings: string[] = [];
+  let skills = 0;
+  let commands = 0;
+
+  const skillsDir = path.join(projectRoot, backendConfig.skillsPath);
+  if (fs.existsSync(skillsDir)) {
+    try {
+      skills = fs.readdirSync(skillsDir).filter((f) => !fs.statSync(path.join(skillsDir, f)).isDirectory()).length;
+    } catch {
+      warnings.push(`Cannot read skills directory: ${backendConfig.skillsPath}`);
+    }
+  } else {
+    warnings.push(`Skills directory missing: ${backendConfig.skillsPath}`);
+  }
+
+  if (backendConfig.supportsCommands && backendConfig.commandsPath) {
+    let cmdDir = path.join(projectRoot, backendConfig.commandsPath);
+
+    if (backendConfig.globalHomeEnv) {
+      const envVal = process.env[backendConfig.globalHomeEnv];
+      const base = envVal ?? (backendConfig.fallbackGlobalPath ?? `~/.${backendConfig.id}/prompts`).replace(/^~/, os.homedir());
+      cmdDir = base;
+    }
+
+    if (fs.existsSync(cmdDir)) {
+      try {
+        commands = fs.readdirSync(cmdDir).filter((f) => !fs.statSync(path.join(cmdDir, f)).isDirectory()).length;
+      } catch {
+        warnings.push(`Cannot read commands directory: ${cmdDir}`);
+      }
+    } else {
+      if (backendConfig.globalHomeEnv) {
+        warnings.push(`Global commands path missing: ${cmdDir} (set $${backendConfig.globalHomeEnv} or create the directory)`);
+      } else {
+        warnings.push(`Commands directory missing: ${backendConfig.commandsPath}`);
+      }
+    }
+  }
+
+  if (backendConfig.id === "github-copilot") {
+    warnings.push("GitHub Copilot commands require an IDE extension (VS Code, JetBrains, Visual Studio)");
+  }
+
+  const healthy = warnings.length === 0;
+  return { id: backendConfig.id, healthy, skills, commands, warnings };
+}
+
 interface DiagnosticCheck {
   name: string;
   run: () => Promise<{ status: "pass" | "warn" | "fail"; message: string; resolution?: string }>;
@@ -31,6 +90,7 @@ export function createDoctorCommand(): Command {
   return new Command("doctor")
     .description("Diagnostic mode for troubleshooting")
     .option("--tool <backend>", "Diagnose specific backend config issues")
+    .option("--all", "Diagnose all backends configured in .bp.json")
     .option("--verbose", "Full diagnostic trace with timing")
     .option("--secret-scan", "Scan project files for leaked secrets")
     .option("--compliance-report [framework]", "Generate compliance gap report (gdpr, soc2, hipaa)")
@@ -40,6 +100,7 @@ export function createDoctorCommand(): Command {
     .action(
       async (opts: {
         tool?: string;
+        all?: boolean;
         verbose?: boolean;
         secretScan?: boolean;
         complianceReport?: string | boolean;
@@ -49,6 +110,57 @@ export function createDoctorCommand(): Command {
       }) => {
         const cwd = process.cwd();
         const startTime = performance.now();
+
+        // --- Per-backend diagnostics mode (--tool or --all) ---
+        if (opts.all || (opts.tool && listBackendIds().includes(opts.tool))) {
+          const projectConfig = loadProjectConfig(cwd);
+          let backendsToCheck: string[];
+
+          if (opts.all) {
+            backendsToCheck = projectConfig?.backends ?? [projectConfig?.backend ?? "claude"].filter(Boolean) as string[];
+          } else {
+            backendsToCheck = [opts.tool!];
+          }
+
+          const results: BackendHealthResult[] = backendsToCheck.map((id) => {
+            try {
+              const config = getBackend(id);
+              return checkBackendHealth(config, cwd);
+            } catch {
+              return { id, healthy: false, skills: 0, commands: 0, warnings: [`Unknown backend: ${id}`] };
+            }
+          });
+
+          if (opts.json) {
+            console.log(JSON.stringify({ backends: results }, null, 2));
+            process.exit(results.every((r) => r.healthy) ? EXIT_CODES.SUCCESS : EXIT_CODES.GENERAL_ERROR);
+          }
+
+          for (const result of results) {
+            const icon = result.healthy ? chalk.green("✔") : chalk.yellow("⚠");
+            console.log(`${icon} ${chalk.bold(result.id)}: ${result.skills} skills, ${result.commands} commands`);
+            for (const w of result.warnings) {
+              console.log(chalk.yellow(`   ⚠ ${w}`));
+            }
+          }
+
+          process.exit(results.every((r) => r.healthy) ? EXIT_CODES.SUCCESS : EXIT_CODES.GENERAL_ERROR);
+        }
+
+        // --- v1 config deprecation warning ---
+        {
+          const bpJsonPath = path.join(cwd, ".bp.json");
+          if (fs.existsSync(bpJsonPath)) {
+            try {
+              const raw = JSON.parse(fs.readFileSync(bpJsonPath, "utf-8")) as Record<string, unknown>;
+              if ("backend" in raw && !("backends" in raw) && !opts.json) {
+                console.warn(chalk.yellow("[WARN] .bp.json uses deprecated `backend` field. Run: bp migrate config"));
+              }
+            } catch {
+              // ignore
+            }
+          }
+        }
 
         // --- Secret scan mode ---
         if (opts.secretScan) {

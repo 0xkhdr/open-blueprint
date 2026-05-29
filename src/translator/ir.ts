@@ -44,6 +44,7 @@ export const MetaSchema = z.object({
   conflict_resolution: z.string(),
   source_backend: z.string(),
   target_backend: z.string(),
+  target_backends: z.array(z.string()).optional(),
   schema_version: z.enum(["1.0", "2.0"]).default("2.0").optional(),
 });
 

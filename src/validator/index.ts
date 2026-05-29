@@ -38,6 +38,7 @@ import { validateOrchestrationSemantic } from "./orchestration.js";
 import { auditPerformance } from "./performance.js";
 import { validateRBAC } from "./rbac.js";
 import { validateSemantic } from "./semantic.js";
+import { runBackendRules } from "./rules/backend-rules.js";
 import type { ValidationError } from "./structural.js";
 import { validateStructuralBatch } from "./structural.js";
 
@@ -399,6 +400,19 @@ export async function runValidator(options: ValidatorOptions): Promise<Validatio
   if (level === "governance" || level === "all") {
     const governanceErrors = await validateGovernance(projectRoot, manifest);
     allErrors.push(...governanceErrors);
+  }
+
+  // Backend-specific validation rules (only when .bp.json is present)
+  if (level === "logical" || level === "all") {
+    const { loadProjectConfig } = await import("../config/project.js");
+    const projectConfig = loadProjectConfig(projectRoot);
+    if (projectConfig) {
+      const backends = projectConfig.backends ?? (projectConfig.backend ? [projectConfig.backend] : []);
+      if (backends.length > 0) {
+        const backendErrors = runBackendRules(projectRoot, backends);
+        allErrors.push(...backendErrors);
+      }
+    }
   }
 
   const errors = allErrors.filter((e) => e.severity === "error");

@@ -11,6 +11,10 @@ exports[`bp doctor output format snapshots > doctor command options list matches
     "flags": "--tool <backend>",
   },
   {
+    "description": "Diagnose all backends configured in .bp.json",
+    "flags": "--all",
+  },
+  {
     "description": "Full diagnostic trace with timing",
     "flags": "--verbose",
   },

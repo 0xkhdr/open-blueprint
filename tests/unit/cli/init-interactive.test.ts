@@ -26,24 +26,10 @@ describe("Init Command - Interactive Mode", () => {
     expect(help).toContain("--interactive");
   });
 
-  it("should support all 10 backends in help text", () => {
+  it("should support --tools flag for multi-backend init", () => {
     const cmd = createInitCommand();
     const help = cmd.helpInformation();
-    const expectedBackends = [
-      "claude",
-      "cursor",
-      "codex",
-      "pi",
-      "kiro",
-      "antigravity",
-      "copilot",
-      "gemini",
-      "opendev",
-      "generic",
-    ];
-    for (const backend of expectedBackends) {
-      expect(help.toLowerCase()).toContain(backend);
-    }
+    expect(help).toContain("--tools");
   });
 
   it("should support --tool option", () => {

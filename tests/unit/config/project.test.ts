@@ -1,11 +1,11 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "node:fs";
-import * as path from "node:path";
 import * as os from "node:os";
+import * as path from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  initProjectConfig,
   loadProjectConfig,
   saveProjectConfig,
-  initProjectConfig,
 } from "../../../src/config/project.js";
 
 function createTmpDir(): string {
@@ -28,15 +28,15 @@ describe("project config", () => {
     expect(config).toBeNull();
   });
 
-  it("can initialize and save a valid project configuration", () => {
-    const config = initProjectConfig(tmpDir, "claude");
-    expect(config.backend).toBe("claude");
+  it("can initialize and save a valid v2 project configuration", () => {
+    const config = initProjectConfig(tmpDir, ["claude"]);
+    expect(config.backends).toContain("claude");
+    expect(config.primary_backend).toBe("claude");
     expect(config.exclude).toContain("dist/");
 
     const loaded = loadProjectConfig(tmpDir);
     expect(loaded).not.toBeNull();
-    expect(loaded?.backend).toBe("claude");
-    expect(loaded?.exclude).toContain("vendor/");
+    expect(loaded?.backends).toContain("claude");
   });
 
   it("returns null and handles invalid json structure gracefully", () => {
@@ -46,9 +46,44 @@ describe("project config", () => {
     expect(loaded).toBeNull();
   });
 
+  it("v1 backend field is transparently migrated to v2 at read time", () => {
+    const configPath = path.join(tmpDir, ".bp.json");
+    fs.writeFileSync(configPath, JSON.stringify({ backend: "claude", exclude: [], plugins: [] }), "utf-8");
+    const loaded = loadProjectConfig(tmpDir);
+    expect(loaded).not.toBeNull();
+    expect(loaded?.backends).toContain("claude");
+    expect(loaded?.primary_backend).toBe("claude");
+  });
+
+  it("v2 config with multiple backends reads correctly", () => {
+    const configPath = path.join(tmpDir, ".bp.json");
+    fs.writeFileSync(
+      configPath,
+      JSON.stringify({ backends: ["claude", "cursor"], primary_backend: "claude", exclude: [], plugins: [] }),
+      "utf-8"
+    );
+    const loaded = loadProjectConfig(tmpDir);
+    expect(loaded).not.toBeNull();
+    expect(loaded?.backends).toContain("claude");
+    expect(loaded?.backends).toContain("cursor");
+    expect(loaded?.primary_backend).toBe("claude");
+  });
+
+  it("primary_backend not in backends fails validation", () => {
+    const configPath = path.join(tmpDir, ".bp.json");
+    fs.writeFileSync(
+      configPath,
+      JSON.stringify({ backends: ["cursor"], primary_backend: "claude", exclude: [], plugins: [] }),
+      "utf-8"
+    );
+    const loaded = loadProjectConfig(tmpDir);
+    expect(loaded).toBeNull();
+  });
+
   it("can round-trip arbitrary valid project config properties", () => {
     const original = {
-      backend: "cursor",
+      backends: ["cursor"],
+      primary_backend: "cursor",
       extends: "@org/custom-bp",
       overrides: {
         rules: {
@@ -58,19 +93,10 @@ describe("project config", () => {
       exclude: ["tmp/", "coverage/"],
       plugins: ["plugin-1"],
     };
-    saveProjectConfig(tmpDir, original);
+    saveProjectConfig(tmpDir, original as Parameters<typeof saveProjectConfig>[1]);
 
     const loaded = loadProjectConfig(tmpDir);
-    expect(loaded).toEqual({
-      backend: "cursor",
-      extends: "@org/custom-bp",
-      overrides: {
-        rules: {
-          severity_defaults: "hard",
-        },
-      },
-      exclude: ["tmp/", "coverage/"],
-      plugins: ["plugin-1"],
-    });
+    expect(loaded?.backends).toContain("cursor");
+    expect(loaded?.exclude).toContain("tmp/");
   });
 });

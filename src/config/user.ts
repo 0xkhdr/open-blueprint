@@ -10,6 +10,7 @@ const UserConfigSchema = z.object({
   auto_verify_on_init: z.boolean().default(true),
   auto_fix_level: z.enum(["structural", "semantic", "logical"]).default("structural"),
   ci_mode: z.boolean().default(false),
+  codex_home: z.string().optional(),
 });
 
 export type UserConfig = z.infer<typeof UserConfigSchema>;

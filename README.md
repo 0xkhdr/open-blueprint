@@ -99,15 +99,37 @@ Documentation follows a progressive-disclosure structure. Read only what you nee
 
 ## Supported Backends
 
-Translate configurations across different editor and terminal environments seamlessly:
+`bp` supports 31 AI coding backends. See [docs/supported-tools.md](docs/supported-tools.md) for the full reference including paths, syntax, and limitations.
 
-| Backend | Core File Pattern | Translation Fidelity | Target Environments |
-|---|---|:---:|---|
-| **Claude Code** | `.claude/` / `CLAUDE.md` | **100% (Native)** | Terminal Agent |
-| **Cursor** | `.cursorrules` | **>98%** | IDE Integration |
-| **OpenDev** | `.opendev/` | **>98%** | Autonomous Agent |
-| **Goose** | `.goose/` | **>95%** | CLI Assistant |
-| **Generic** | `.blueprint/` | **100%** | Agnostic Fallback |
+| Backend ID | Tool | Type | Command Syntax |
+|---|---|---|---|
+| `claude` | Claude Code | Standard | `/opsx:<workflow>` |
+| `cursor` | Cursor | Standard | `/opsx-<workflow>` |
+| `codex` | OpenAI Codex CLI | Global path | `/opsx:<workflow>` |
+| `github-copilot` | GitHub Copilot | IDE-only | `/opsx-<workflow>` |
+| `kiro` | Kiro | Standard | `/opsx-<workflow>` |
+| `gemini` | Gemini CLI | TOML | `/openspec-<workflow>` |
+| `windsurf` | Windsurf | Standard | `/opsx-<workflow>` |
+| `cline` | Cline | Standard | `/opsx-<workflow>` |
+| `kilocode` | Kilo Code | Standard | `/opsx-<workflow>` |
+| `roocode` | Roo Code | Standard | `/opsx:<workflow>` |
+| `kimi` | Kimi | Skill-only | `/skill:openspec-<workflow>` |
+| `trae` | Trae | Skill-only | `/openspec-<workflow>` |
+| `forgecode` | Forge Code | Skill-only | `/skill:openspec-<workflow>` |
+| `qwen` | Qwen | TOML | `/openspec-<workflow>` |
+| `amazon-q` | Amazon Q | Standard | `/opsx:<workflow>` |
+| `continue` | Continue | Standard | `/opsx-<workflow>` |
+| `opencode` | OpenCode | Standard | `/opsx:<workflow>` |
+| ... | [+14 more](docs/supported-tools.md) | | |
+
+### Multi-Backend Setup
+
+```bash
+bp init --tools claude,cursor,windsurf     # multiple backends
+bp init --tools all                         # all 31 backends
+bp convert --from claude --to windsurf      # convert between any pair
+bp doctor --all                             # diagnose all configured backends
+```
 
 ---
 

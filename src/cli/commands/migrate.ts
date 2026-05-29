@@ -3,27 +3,75 @@ import * as path from "node:path";
 import chalk from "chalk";
 import { Command } from "commander";
 import ora from "ora";
+import { listBackendIds } from "../../backends/registry.js";
+import { isV1Config } from "../../config/project.js";
 import { generateMigrationPlan, generateMigrationReport } from "../../dx/migrate.js";
 import { ConfigError, TranslationError } from "../../errors.js";
 import { resolveAndValidatePath } from "../../utils/paths.js";
 import { loadStoredFingerprint, storeFingerprint } from "../../validator/drift.js";
 
-const VALID_BACKENDS = [
-  "claude",
-  "cursor",
-  "generic",
-  "codex",
-  "pi",
-  "copilot",
-  "gemini",
-  "kiro",
-  "antigravity",
-  "opendev",
-] as const;
-type Backend = (typeof VALID_BACKENDS)[number];
-
 export function createMigrateCommand(): Command {
   const cmd = new Command("migrate");
+
+  // --- bp migrate config subcommand ---
+  cmd
+    .command("config")
+    .description("Upgrade .bp.json from v1 (backend string) to v2 (backends array + primary_backend)")
+    .option("--dry-run", "Print what would change without writing", false)
+    .option("--json", "Output result as JSON", false)
+    .action((opts: { dryRun: boolean; json: boolean }) => {
+      const cwd = process.cwd();
+      const configPath = path.join(cwd, ".bp.json");
+
+      if (!fs.existsSync(configPath)) {
+        const msg = "No .bp.json found in current directory";
+        if (opts.json) console.log(JSON.stringify({ status: "error", error: msg }));
+        else console.error(chalk.red(msg));
+        process.exit(1);
+      }
+
+      let raw: Record<string, unknown>;
+      try {
+        raw = JSON.parse(fs.readFileSync(configPath, "utf-8")) as Record<string, unknown>;
+      } catch (e) {
+        const msg = `Cannot parse .bp.json: ${e instanceof Error ? e.message : String(e)}`;
+        if (opts.json) console.log(JSON.stringify({ status: "error", error: msg }));
+        else console.error(chalk.red(msg));
+        process.exit(1);
+      }
+
+      if (!isV1Config(raw)) {
+        const msg = ".bp.json is already in v2 format (has backends array)";
+        if (opts.json) console.log(JSON.stringify({ status: "ok", message: msg, changed: false }));
+        else console.log(chalk.green(`✔ ${msg}`));
+        return;
+      }
+
+      const backend = raw.backend as string;
+      const { backend: _dropped, ...rawWithout } = raw;
+      const v2 = {
+        ...rawWithout,
+        backends: [backend],
+        primary_backend: backend,
+      };
+
+      if (opts.dryRun) {
+        if (opts.json) console.log(JSON.stringify({ status: "ok", dryRun: true, result: v2 }));
+        else {
+          console.log(chalk.yellow("[DRY RUN] Would rewrite .bp.json to:"));
+          console.log(JSON.stringify(v2, null, 2));
+        }
+        return;
+      }
+
+      fs.writeFileSync(configPath, JSON.stringify(v2, null, 2), "utf-8");
+
+      if (opts.json) {
+        console.log(JSON.stringify({ status: "ok", changed: true, result: v2 }));
+      } else {
+        console.log(chalk.green(`✔ Migrated .bp.json: backend "${backend}" → backends: ["${backend}"], primary_backend: "${backend}"`));
+      }
+    });
 
   cmd
     .description(
@@ -81,15 +129,16 @@ export function createMigrateCommand(): Command {
         const inputDir = resolveAndValidatePath(opts.input, process.cwd());
         const outputDir = resolveAndValidatePath(opts.output, process.cwd());
 
-        if (!VALID_BACKENDS.includes(fromBackend as Backend)) {
+        const validIds = listBackendIds();
+        if (!validIds.includes(fromBackend)) {
           throw new ConfigError(
-            `Unsupported source backend: "${opts.from}". Valid: ${VALID_BACKENDS.join(", ")}. Fix: Use one of the listed backends.`
+            `Unsupported source backend: "${opts.from}". Valid: ${validIds.join(", ")}. Fix: Use one of the listed backends.`
           );
         }
 
-        if (!VALID_BACKENDS.includes(toBackend as Backend)) {
+        if (!validIds.includes(toBackend)) {
           throw new ConfigError(
-            `Unsupported target backend: "${opts.to}". Valid: ${VALID_BACKENDS.join(", ")}. Fix: Use one of the listed backends.`
+            `Unsupported target backend: "${opts.to}". Valid: ${validIds.join(", ")}. Fix: Use one of the listed backends.`
           );
         }
 
