@@ -25,9 +25,15 @@ export function createMigrateCommand(): Command {
   const cmd = new Command("migrate");
 
   cmd
-    .description("Migrate blueprint between backends or upgrade schema version")
-    .option("--from <backend>", "Source backend")
-    .option("--to <backend>", "Target backend")
+    .description("Migrate blueprint between backends or upgrade schema version (cross-backend and schema migration)")
+    .option(
+      "--from <backend>",
+      "Source backend (claude|cursor|codex|pi|kiro|antigravity|copilot|gemini|opendev|generic)"
+    )
+    .option(
+      "--to <backend>",
+      "Target backend (claude|cursor|codex|pi|kiro|antigravity|copilot|gemini|opendev|generic)"
+    )
     .option("--input <path>", "Source directory (default: .)", ".")
     .option("--output <path>", "Output directory (default: same as input)", ".")
     .option("--report", "Write migration report to markdown file")

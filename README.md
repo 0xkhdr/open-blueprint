@@ -58,6 +58,7 @@ Our documentation is designed with progressive disclosure in mind. Read only wha
 
 ### Conceptual & Reference
 * **[System Architecture](docs/concepts.md)** — Inside the 5 Blueprint Layers and the 4 internal execution engines.
+* **[Observability & Cost Governance](docs/observability.md)** — Telemetry configurations, budget thresholds, and semantic drift triggers.
 * **[CLI Reference](docs/commands.md)** — Detailed option syntax blocks and examples for every CLI subcommand.
 * **[Configuration System](docs/configuration.md)** — Schema definitions for global and repository settings files.
 * **[Practical Recipes](docs/recipes.md)** — Copy-paste scripts and GitHub Action yaml CI/CD patterns.
@@ -68,6 +69,7 @@ Our documentation is designed with progressive disclosure in mind. Read only wha
 * **[Contributor Guidelines](docs/contributing.md)** — Development setup instructions, testing steps, and Architecture Decision Records (ADRs).
 * **[Template Authoring Guide](docs/template-authoring.md)** — Build, merchandise, and cryptographically sign Handlebars template packages.
 * **[Custom Backend Adapters](docs/backend-adapter.md)** — Implement target platform translation adapters using BlueprintIR.
+* **[Backend Feature Parity Matrix](docs/backend-parity.md)** — Compatibility matrix outlining read/write support across all supported backend platforms.
 * **[CI/CD Integration Guide](docs/ci-integration.md)** — Best practices for deploying verification rules on PR build gates.
 
 ---

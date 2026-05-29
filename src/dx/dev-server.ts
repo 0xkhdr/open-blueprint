@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as http from "node:http";
 import * as path from "node:path";
-import { detect } from "../detector/index.js";
+import { detect, enrichFingerprint } from "../detector/index.js";
 import { resolveTemplatePack } from "../templater/selector.js";
 import { runValidator } from "../validator/index.js";
 
@@ -22,8 +22,9 @@ export async function revalidate(projectRoot: string): Promise<DevServerState> {
 
   try {
     const fingerprint = await detect(projectRoot);
+    const enhanced = enrichFingerprint(fingerprint);
     const backend = "claude";
-    const risk_tier = fingerprint.risk_tier ?? "low";
+    const risk_tier = enhanced.risk_tier ?? "low";
     const pack = resolveTemplatePack(fingerprint, backend as any);
 
     const result = await runValidator({

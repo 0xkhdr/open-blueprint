@@ -9,7 +9,9 @@ import { EXIT_CODES } from "../../validator/index.js";
 export function createDocsCommand(): Command {
   const cmd = new Command("docs");
 
-  cmd.description("Generate governance documentation from blueprint");
+  cmd
+    .description("Generate governance documentation from blueprint")
+    .option("--output <path>", "Output directory (default: ./blueprint-docs)", "./blueprint-docs");
 
   const generateCmd = new Command("generate")
     .description("Generate comprehensive governance documentation")

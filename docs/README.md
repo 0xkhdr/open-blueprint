@@ -22,6 +22,7 @@ Permalink: Getting Started & Day-to-Day Use
 ### 🏗️ Systems & Conceptual Architecture
 Permalink: Systems & Conceptual Architecture
 * **[Concepts & Architecture](concepts.md)**: Structural details covering the 5 Blueprint Layers, the 4 internal engines (Detector, Templater, Validator, Translator), Zod Fingerprints, and data pipelines.
+* **[Observability & Cost Governance](observability.md)**: Declarative telemetry configuration, budget thresholds, Slack/PagerDuty alerting rules, and behavioral semantic drift triggers.
 * **[Glossary of Terms](glossary.md)**: A dictionary and terminology index explaining Fingerprints, BlueprintIR, Block-Level Merges, and more.
 
 ### 💻 Reference Manuals
@@ -36,6 +37,7 @@ Permalink: Developer & Platform Customization
 * **[Codebase Contributor Guide](contributing.md)**: Onboarding instructions for codebase contributors (Vitest setups, linting guidelines, Biome formatting, and Architecture Decision Records).
 * **[Template Authoring Guide](template-authoring.md)**: Deep-dive into building Handlebars template packs, merges, and cryptographically signed packages.
 * **[Custom Backend Adapters](backend-adapter.md)**: Guide to implementing target platform adapters utilizing the core `BlueprintIR` schema.
+* **[Backend Feature Parity Matrix](backend-parity.md)**: Compatibility table outlining read/write support across all supported backend platforms.
 * **[CI/CD Integration Checklist](ci-integration.md)**: Configuration details and integration guidelines for GitHub Actions, GitLab CI, and Azure Pipelines.
 
 ---

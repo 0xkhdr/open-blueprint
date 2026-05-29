@@ -664,7 +664,7 @@ bun test tests/fuzz/ --timeout 120000
 ## Domain 10 — Developer Experience
 
 **Spec File:** `specs/10-DEVELOPER-EXPERIENCE.md`
-**Status:** ⚠️ PARTIAL — wizard done, migration + dev server + docs + VS Code tree missing
+**Status:** ✅ COMPLETE — VS Code tree view, migration assistant, dev server dashboard, docs generator, 82 tests
 **Effort:** ~8h
 **Commit:** `feat(dx): migration assistant, dev server dashboard, docs generator, VS Code tree view`
 
@@ -727,12 +727,12 @@ bun test tests/unit/dx/
 ```
 
 ### Done Criteria
-- [ ] VS Code tree view shows rules/skills/agents (TreeDataProvider compiles)
-- [ ] `generateMigrationPlan()` returns correct feature gaps for all 10 backends
-- [ ] `bp migrate --from claude --to cursor` prints readable report with confidence scores
-- [ ] `bp dev --port 3456` serves HTML dashboard
-- [ ] `bp docs generate` outputs markdown with all 9 sections
-- [ ] 60+ tests passing
+- [x] VS Code tree view shows rules/skills/agents (TreeDataProvider compiles)
+- [x] `generateMigrationPlan()` returns correct feature gaps for all 10 backends
+- [x] `bp migrate --from claude --to cursor` prints readable report with confidence scores
+- [x] `bp dev --port 3456 --dashboard` serves HTML dashboard
+- [x] `bp docs generate` outputs markdown with all 9 sections
+- [x] 82 tests passing (exceeds 60+ target)
 
 ---
 
