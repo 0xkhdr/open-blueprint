@@ -1,5 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { detectEnterpriseSignals, type EnterpriseSignals } from "./enterprise-signals.js";
 import type { Fingerprint } from "./fingerprint.js";
 import { FingerprintSchema } from "./fingerprint.js";
 import { detectFrameworks } from "./frameworks.js";
@@ -14,6 +15,7 @@ export interface EnhancedFingerprint extends Fingerprint {
   risk_tier: RiskTier;
   suggested_approval_mode: ApprovalMode;
   estimated_monthly_tokens: number;
+  enterprise_signals: EnterpriseSignals;
 }
 
 interface DirectoryTopology {
@@ -207,6 +209,12 @@ function detectRiskTier(fp: Fingerprint): RiskTier {
   if (signals.has_auth) score += 2;
   if (signals.has_docker) score += 1;
 
+  // Extended risk signals
+  if (signals.has_data_sensitive) score += 2;
+  if (signals.has_financial_data) score += 2;
+  if (signals.has_pii) score += 1;
+  if (signals.has_encryption) score += 1;
+
   // Check for sensitive project types
   if (fp.project.type === "service") score += 1;
   if (fp.frameworks.some((f) => f.name.toLowerCase().includes("payment"))) score += 2;
@@ -274,11 +282,13 @@ export function enrichFingerprint(fp: Fingerprint): EnhancedFingerprint {
   const risk_tier = detectRiskTier(fp);
   const suggested_approval_mode = detectApprovalMode(risk_tier);
   const estimated_monthly_tokens = estimateMonthlyTokens(fp);
+  const enterprise_signals = detectEnterpriseSignals(fp.project.root);
 
   return {
     ...fp,
     risk_tier,
     suggested_approval_mode,
     estimated_monthly_tokens,
+    enterprise_signals,
   };
 }

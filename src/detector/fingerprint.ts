@@ -63,6 +63,10 @@ export const FingerprintSchema = z.object({
     has_external_apis: z.boolean(),
     has_secrets_manager: z.boolean(),
     has_docker: z.boolean(),
+    has_data_sensitive: z.boolean().optional(),
+    has_financial_data: z.boolean().optional(),
+    has_pii: z.boolean().optional(),
+    has_encryption: z.boolean().optional(),
   }),
 });
 

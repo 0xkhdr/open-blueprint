@@ -184,7 +184,7 @@ bun test tests/integration/backends/
 ## Domain 03 — Detector Enhancement
 
 **Spec File:** `specs/03-DETECTOR-ENHANCEMENT.md`
-**Status:** ⚠️ PARTIAL — base risk scoring done, enterprise signals missing
+**Status:** ✅ COMPLETE — enterprise signals, 4 new risk signals, 33 new tests
 **Effort:** ~3h
 **Commit:** `feat(detector): add enterprise signal detection`
 
@@ -229,10 +229,10 @@ bun test tests/unit/detector/
 ```
 
 ### Done Criteria
-- [ ] `EnterpriseSignals` exported from `src/detector/enterprise-signals.ts`
-- [ ] `EnhancedFingerprint.enterprise_signals` populated in `enrichFingerprint()`
-- [ ] 4 additional risk signals in scoring
-- [ ] 20+ tests passing
+- [x] `EnterpriseSignals` exported from `src/detector/enterprise-signals.ts`
+- [x] `EnhancedFingerprint.enterprise_signals` populated in `enrichFingerprint()`
+- [x] 4 additional risk signals in scoring
+- [x] 33 new tests passing (129 total in detector suite)
 
 ---
 

@@ -6,6 +6,10 @@ export interface SecuritySignals {
   has_external_apis: boolean;
   has_secrets_manager: boolean;
   has_docker: boolean;
+  has_data_sensitive?: boolean;
+  has_financial_data?: boolean;
+  has_pii?: boolean;
+  has_encryption?: boolean;
 }
 
 /** Packages keyed by ecosystem that signal auth usage */
@@ -236,6 +240,81 @@ function detectSecretsManager(root: string): boolean {
   return false;
 }
 
+const SENSITIVE_CRYPTO_PACKAGES = [
+  "crypto",
+  "bcrypt",
+  "bcryptjs",
+  "argon2",
+  "hash.js",
+  "node:crypto",
+];
+const FINANCIAL_PACKAGES = [
+  "stripe",
+  "paypal",
+  "@paypal/checkout-server-sdk",
+  "braintree",
+  "square",
+];
+const ENCRYPTION_KEYWORDS = [
+  "tls",
+  "ssl",
+  "cipher",
+  "openssl",
+  "https.createServer",
+  "tls.createServer",
+];
+
+function detectDataSensitive(root: string): boolean {
+  const pkg = readFile(path.join(root, "package.json"));
+  if (pkg && contentMatchesAny(pkg, SENSITIVE_CRYPTO_PACKAGES)) return true;
+  const req = readFile(path.join(root, "requirements.txt"));
+  if (req && contentMatchesAny(req.toLowerCase(), ["cryptography", "bcrypt", "hashlib"]))
+    return true;
+  const cargo = readFile(path.join(root, "Cargo.toml"));
+  if (cargo && contentMatchesAny(cargo, ["sha2", "bcrypt", "argon2", "ring"])) return true;
+  return false;
+}
+
+function detectFinancialData(root: string): boolean {
+  const pkg = readFile(path.join(root, "package.json"));
+  if (pkg && contentMatchesAny(pkg, FINANCIAL_PACKAGES)) return true;
+  const req = readFile(path.join(root, "requirements.txt"));
+  if (req && contentMatchesAny(req.toLowerCase(), ["stripe", "paypalrestsdk", "braintree"]))
+    return true;
+  return false;
+}
+
+function detectPII(root: string): boolean {
+  const complianceFiles = [
+    "GDPR.md",
+    "HIPAA.md",
+    "privacy-policy.md",
+    "data-processing.md",
+    "PRIVACY.md",
+  ];
+  for (const f of complianceFiles) {
+    if (fileExists(path.join(root, f))) return true;
+  }
+  // Check for common PII-related package keywords
+  const pkg = readFile(path.join(root, "package.json"));
+  if (pkg && contentMatchesAny(pkg, ["gdpr", "hipaa", "pii", "personal-data"])) return true;
+  return false;
+}
+
+function detectEncryption(root: string): boolean {
+  const configFiles = [".ssl", "ssl.conf", "tls.conf", "nginx.conf", "openssl.cnf"];
+  for (const f of configFiles) {
+    if (fileExists(path.join(root, f))) return true;
+  }
+  // Check src for explicit TLS usage
+  const indexFiles = ["src/index.ts", "src/main.ts", "src/server.ts", "index.js", "server.js"];
+  for (const f of indexFiles) {
+    const content = readFile(path.join(root, f));
+    if (content && contentMatchesAny(content, ENCRYPTION_KEYWORDS)) return true;
+  }
+  return false;
+}
+
 export function detectSecurity(root: string): SecuritySignals {
   return {
     has_auth: detectAuth(root),
@@ -245,5 +324,9 @@ export function detectSecurity(root: string): SecuritySignals {
       fileExists(path.join(root, "Dockerfile")) ||
       fileExists(path.join(root, "docker-compose.yml")) ||
       fileExists(path.join(root, "docker-compose.yaml")),
+    has_data_sensitive: detectDataSensitive(root),
+    has_financial_data: detectFinancialData(root),
+    has_pii: detectPII(root),
+    has_encryption: detectEncryption(root),
   };
 }
