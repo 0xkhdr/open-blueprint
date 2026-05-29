@@ -448,7 +448,7 @@ bun test tests/unit/enterprise/
 ## Domain 07 — Multi-Agent Orchestration & MCP
 
 **Spec File:** `specs/07-MULTIAGENT-MCP.md`
-**Status:** ✅ MOSTLY COMPLETE — verify CLI commands exist and work; add missing ones
+**Status:** ✅ COMPLETE — CLI commands, MCP risk scoring, chain DAG validation, memory governance, 55 tests
 **Effort:** ~4h
 **Commit:** `feat(multiagent): wire CLI commands, add chain DAG validation, memory governance`
 
@@ -487,12 +487,12 @@ bun test tests/unit/multiagent/
 ```
 
 ### Done Criteria
-- [ ] `bp agent list`, `bp mcp validate`, `bp team validate`, `bp chain validate`,
+- [x] `bp agent list`, `bp mcp validate`, `bp team validate`, `bp chain validate`,
   `bp memory audit` all functional
-- [ ] `scoreMCPServer()` returns correct tier
-- [ ] `validateChainDAG()` catches circular dependencies
-- [ ] `enforceMemoryGovernance()` reports size + retention violations
-- [ ] 50+ tests passing
+- [x] `scoreMCPServer()` returns correct tier
+- [x] `validateChainDAG()` catches circular dependencies
+- [x] `enforceMemoryGovernance()` reports size + retention violations
+- [x] 55 tests passing
 
 ---
 

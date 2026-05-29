@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 import { Command } from "commander";
+import { createAgentCommand } from "./commands/agent.js";
+import { createChainCommand } from "./commands/chain.js";
 import { createConfigCommand } from "./commands/config.js";
 import { createConvertCommand } from "./commands/convert.js";
 import { createDevCommand } from "./commands/dev.js";
@@ -8,10 +10,13 @@ import { createDocsCommand } from "./commands/docs.js";
 import { createDoctorCommand } from "./commands/doctor.js";
 import { createHookCommand } from "./commands/hook.js";
 import { createInitCommand } from "./commands/init.js";
+import { createMCPCommand } from "./commands/mcp.js";
+import { createMemoryCommand } from "./commands/memory.js";
 import { createMergeCommand } from "./commands/merge.js";
 import { createMigrateCommand } from "./commands/migrate.js";
 import { createRuleCommand } from "./commands/rule.js";
 import { createSyncCommand } from "./commands/sync.js";
+import { createTeamCommand } from "./commands/team.js";
 import { createTemplateCommand } from "./commands/template.js";
 import { createUpdateCommand } from "./commands/update.js";
 import { createVerifyCommand } from "./commands/verify.js";
@@ -45,6 +50,11 @@ program.addCommand(createHookCommand());
 program.addCommand(createConfigCommand());
 program.addCommand(createUpdateCommand());
 program.addCommand(createMigrateCommand());
+program.addCommand(createAgentCommand());
+program.addCommand(createMCPCommand());
+program.addCommand(createTeamCommand());
+program.addCommand(createChainCommand());
+program.addCommand(createMemoryCommand());
 
 // Audit logging hook
 program.hook("preAction", (_thisCommand, actionCommand) => {
