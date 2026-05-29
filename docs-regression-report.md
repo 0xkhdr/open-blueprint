@@ -9,7 +9,7 @@ This report outlines the findings, conformance scores, overload details, and cod
 * **Total Files Reviewed**: 35 (including `docs/`, `specs/`, and root files)
 * **Critical Blockers Found**: 0
 * **High Severity Issues**: 1 (CLI command parity discrepancy)
-* **Medium Severity Issues**: 1 (Broken links in `docs/observability.md`)
+* **Medium Severity Issues**: 1 (Broken links in `docs/06-observability.md`)
 * **Low Severity Issues**: 1 (Missing `LICENSE` file referenced in `README.md` - **Resolved**)
 
 ---
@@ -18,8 +18,8 @@ This report outlines the findings, conformance scores, overload details, and cod
 
 | Document | Purpose Statement | Heading Scannability | Broken Links | Compliance Score | Status |
 |---|:---:|:---:|:---:|:---:|---|
-| `docs/commands.md` | Yes | GOOD | None | **37.5%** (Command Parity) | 🔴 High Risk |
-| `docs/observability.md` | Yes | GOOD | 4 | **85.0%** (Broken Links) | 🟡 Medium Risk |
+| `docs/08-commands.md` | Yes | GOOD | None | **37.5%** (Command Parity) | 🔴 High Risk |
+| `docs/06-observability.md` | Yes | GOOD | 4 | **85.0%** (Broken Links) | 🟡 Medium Risk |
 | `README.md` | Yes | GOOD | None | **100.0%** (LICENSE fixed) | 🟢 Compliant |
 | *All Other 32 Files* | Yes | GOOD | None | **100.0%** | 🟢 Compliant |
 
@@ -27,13 +27,13 @@ This report outlines the findings, conformance scores, overload details, and cod
 
 ## ⚖️ Codebase Consistency & Parity Delta
 
-### 1. [HIGH] CLI command mismatch in `docs/commands.md`
+### 1. [HIGH] CLI command mismatch in `docs/08-commands.md`
 * **Discrepancy**: Only 9 of 24 CLI subcommands are documented.
 * **Missing Commands**: `dev`, `docs`, `diff`, `merge`, `update`, `migrate`, `agent`, `mcp`, `team`, `chain`, `memory`, `telemetry`, `cost`, `drift`, `marketplace`.
 * **Impact**: Critical developer confusion, as new features and subcommands are completely invisible in the main CLI reference manual.
 * **Proposed Fix**: Deploy the fully comprehensive `docs-proposal/commands.md` rewrite to document all 24 subcommands.
 
-### 2. [MEDIUM] Broken relative links in `docs/observability.md`
+### 2. [MEDIUM] Broken relative links in `docs/06-observability.md`
 * **Discrepancy**: Link references to `./cost-tracking.md`, `./semantic-drift.md`, `./alerting-guide.md`, and `./metrics-dashboard.md` are broken because these files do not exist.
 * **Impact**: User navigation returns 404.
 * **Proposed Fix**: Deploy the `docs-proposal/observability.md` rewrite that updates the broken external file links to target internal anchors (`#cost-tracking--budget-control`, `#semantic-drift-detection`, `#alerting--anomaly-detection`, `#performance-metrics`).
@@ -57,10 +57,10 @@ This report outlines the findings, conformance scores, overload details, and cod
 * *None* — No blockers preventing immediate releases.
 
 ### 2. High (Impact: High)
-* **Complete CLI Command Reference Update**: Replace `docs/commands.md` with `docs-proposal/commands.md` to restore full command parity for all 24 subcommands.
+* **Complete CLI Command Reference Update**: Replace `docs/08-commands.md` with `docs-proposal/commands.md` to restore full command parity for all 24 subcommands.
 
 ### 3. Medium (Impact: Medium)
-* **Observability Anchor Link Fix**: Replace `docs/observability.md` with `docs-proposal/observability.md` to resolve broken internal navigation.
+* **Observability Anchor Link Fix**: Replace `docs/06-observability.md` with `docs-proposal/observability.md` to resolve broken internal navigation.
 
 ### 4. Low (Impact: Polish)
 * *None* — License file resolved.

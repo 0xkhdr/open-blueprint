@@ -259,16 +259,16 @@ npx @agentic/bp verify
 
 ## Documentation
 
-- [Getting Started](docs/getting-started.md) — Install and first blueprint
-- [Philosophy](docs/philosophy.md) — Why bp exists and how it thinks
-- [Concepts](docs/concepts.md) — 5 Layers, 4 Engines, Fingerprint, IR
-- [Workflows](docs/workflows.md) — Patterns for solo, team, CI, and enterprise
-- [Commands](docs/commands.md) — Full CLI reference
-- [Recipes](docs/recipes.md) — Practical examples and copy-paste snippets
-- [Configuration](docs/configuration.md) — .bp.json and global settings
-- [Plugin API](docs/plugin-api.md) — Build custom validators
-- [Troubleshooting](docs/troubleshooting.md) — Exit codes and diagnostics
-- [Contributing](docs/contributing.md) — Dev setup and build instructions
+- [Getting Started](docs/01-getting-started.md) — Install and first blueprint
+- [Philosophy](docs/02-philosophy.md) — Why bp exists and how it thinks
+- [Concepts](docs/05-concepts.md) — 5 Layers, 4 Engines, Fingerprint, IR
+- [Workflows](docs/03-workflows.md) — Patterns for solo, team, CI, and enterprise
+- [Commands](docs/08-commands.md) — Full CLI reference
+- [Recipes](docs/04-recipes.md) — Practical examples and copy-paste snippets
+- [Configuration](docs/09-configuration.md) — .bp.json and global settings
+- [Plugin API](docs/11-plugin-api.md) — Build custom validators
+- [Troubleshooting](docs/10-troubleshooting.md) — Exit codes and diagnostics
+- [Contributing](docs/12-contributing.md) — Dev setup and build instructions
 
 ## Supported Backends
 

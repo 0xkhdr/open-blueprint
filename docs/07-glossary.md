@@ -14,7 +14,7 @@ Permalink: Term Index
 Permalink: Fingerprint
 
 * **Definition**: A Zod-validated static analysis snapshot representing a repository's topology, language profiles, primary entry points, test commands, package managers, and safety signals.
-* **Where Used**: Created by the [Detector Engine](concepts.md#1-detector-engine), cached in `.bp-fingerprint.json`, and evaluated by validation layers during [Drift Detection](concepts.md#3-validator-engine).
+* **Where Used**: Created by the [Detector Engine](05-concepts.md#1-detector-engine), cached in `.bp-fingerprint.json`, and evaluated by validation layers during [Drift Detection](05-concepts.md#3-validator-engine).
 
 ---
 
@@ -22,7 +22,7 @@ Permalink: Fingerprint
 Permalink: BlueprintIR
 
 * **Definition**: The backend-agnostic Intermediate Representation used to represent the full AST (Abstract Syntax Tree) of a project's governance rules, files, personas, and skill blocks.
-* **Where Used**: Utilized by the [Translator Engine](concepts.md#4-translator-engine) to parse configurations and compile them between platforms (e.g. Claude Code to Cursor).
+* **Where Used**: Utilized by the [Translator Engine](05-concepts.md#4-translator-engine) to parse configurations and compile them between platforms (e.g. Claude Code to Cursor).
 
 ---
 
@@ -30,7 +30,7 @@ Permalink: BlueprintIR
 Permalink: Block-Level Merge
 
 * **Definition**: An update execution strategy designed to ensure idempotency. It isolates scaffolding updates inside designated generated blocks while keeping custom developer annotations intact inside preserve blocks (`<!-- bp:preserve -->`).
-* **Where Used**: Orchestrated by the [Templater Engine](concepts.md#2-templater-engine) during `bp init` or `bp sync`.
+* **Where Used**: Orchestrated by the [Templater Engine](05-concepts.md#2-templater-engine) during `bp init` or `bp sync`.
 
 ---
 
@@ -38,7 +38,7 @@ Permalink: Block-Level Merge
 Permalink: The 5 Layers
 
 * **Definition**: The structural division of agentic workspace governance: Spatial Anchor, Personas, Rules, Skills, and Hooks.
-* **Where Used**: Defines the filesystem structure of active config directories (e.g., inside `.claude/`). See the [Blueprint Layers](concepts.md#-the-5-blueprint-layers) section in concepts guide.
+* **Where Used**: Defines the filesystem structure of active config directories (e.g., inside `.claude/`). See the [Blueprint Layers](05-concepts.md#-the-5-blueprint-layers) section in concepts guide.
 
 ---
 
@@ -46,7 +46,7 @@ Permalink: The 5 Layers
 Permalink: The 4 Engines
 
 * **Definition**: The modular sub-systems that compose the core pipeline: Detector, Templater, Validator, and Translator.
-* **Where Used**: Runs behind the scenes for all CLI commands. See the [Internal Engines](concepts.md#-the-4-internal-engines) schema in concepts guide.
+* **Where Used**: Runs behind the scenes for all CLI commands. See the [Internal Engines](05-concepts.md#-the-4-internal-engines) schema in concepts guide.
 
 ---
 
@@ -54,7 +54,7 @@ Permalink: The 4 Engines
 Permalink: Drift
 
 * **Definition**: Any detected deviation between the cached topological state (`.bp-fingerprint.json`) and the actual, live filesystem state (e.g. newly introduced packages, altered build runners, or unmapped directories).
-* **Where Used**: Audited using `bp verify --level drift` or fixed with `bp sync`. See the [Workflows Guide](workflows.md#-workflow-pattern-table).
+* **Where Used**: Audited using `bp verify --level drift` or fixed with `bp sync`. See the [Workflows Guide](03-workflows.md#-workflow-pattern-table).
 
 ---
 

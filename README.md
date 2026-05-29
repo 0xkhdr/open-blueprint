@@ -51,26 +51,29 @@ npx @agentic/bp verify
 Our documentation is designed with progressive disclosure in mind. Read only what you need:
 
 ### Core Guides
-* **[Getting Started](docs/getting-started.md)** — Install, scaffold, and configure your first blueprint in 5 minutes.
-* **[Core Philosophy](docs/philosophy.md)** — The 5 core pillars of open-blueprint.
-* **[Workflows & Guides](docs/workflows.md)** — Integration workflows for solo devs, team patterns, and enterprise setups.
-* **[Diagnostics & Troubleshooting](docs/troubleshooting.md)** — Quick decoder for exit codes (0-10) and agent troubleshooting.
+* **[Getting Started](docs/01-getting-started.md)** — Install, scaffold, and configure your first blueprint in 5 minutes.
+* **[Core Philosophy](docs/02-philosophy.md)** — The 5 core pillars of open-blueprint.
+* **[Workflows & Guides](docs/03-workflows.md)** — Integration workflows for solo devs, team patterns, and enterprise setups.
+* **[Diagnostics & Troubleshooting](docs/10-troubleshooting.md)** — Quick decoder for exit codes (0-10) and agent troubleshooting.
 
 ### Conceptual & Reference
-* **[System Architecture](docs/concepts.md)** — Inside the 5 Blueprint Layers and the 4 internal execution engines.
-* **[Observability & Cost Governance](docs/observability.md)** — Telemetry configurations, budget thresholds, and semantic drift triggers.
-* **[CLI Reference](docs/commands.md)** — Detailed option syntax blocks and examples for every CLI subcommand.
-* **[Configuration System](docs/configuration.md)** — Schema definitions for global and repository settings files.
-* **[Practical Recipes](docs/recipes.md)** — Copy-paste scripts and GitHub Action yaml CI/CD patterns.
-* **[Terminology Index](docs/glossary.md)** — Term dictionary covering Fingerprints, IR, Block Merges, and Drift.
+* **[System Architecture](docs/05-concepts.md)** — Inside the 5 Blueprint Layers and the 4 internal execution engines.
+* **[Data Models Reference](docs/19-data-models.md)** — Zod structure definitions and JSON details for Fingerprint and BlueprintIR schemas.
+* **[Observability & Cost Governance](docs/06-observability.md)** — Telemetry configurations, budget thresholds, and semantic drift triggers.
+* **[CLI Reference](docs/08-commands.md)** — Detailed option syntax blocks and examples for every CLI subcommand.
+* **[Configuration System](docs/09-configuration.md)** — Schema definitions for global and repository settings files.
+* **[Practical Recipes](docs/04-recipes.md)** — Copy-paste scripts and GitHub Action yaml CI/CD patterns.
+* **[Terminology Index](docs/07-glossary.md)** — Term dictionary covering Fingerprints, IR, Block Merges, and Drift.
+* **[Non-Functional Requirements](docs/17-nfrs.md)** — Latency budgets, reliability targets, and OWASP safety statements.
+* **[Exit Code Registry](docs/18-errors.md)** — Full reference for all exit codes 0–10 with resolution steps.
 
 ### Advanced Customization
-* **[Plugin Developer API](docs/plugin-api.md)** — Write custom TypeScript validators for company governance policies.
-* **[Contributor Guidelines](docs/contributing.md)** — Development setup instructions, testing steps, and Architecture Decision Records (ADRs).
-* **[Template Authoring Guide](docs/template-authoring.md)** — Build, merchandise, and cryptographically sign Handlebars template packages.
-* **[Custom Backend Adapters](docs/backend-adapter.md)** — Implement target platform translation adapters using BlueprintIR.
-* **[Backend Feature Parity Matrix](docs/backend-parity.md)** — Compatibility matrix outlining read/write support across all supported backend platforms.
-* **[CI/CD Integration Guide](docs/ci-integration.md)** — Best practices for deploying verification rules on PR build gates.
+* **[Plugin Developer API](docs/11-plugin-api.md)** — Write custom TypeScript validators for company governance policies.
+* **[Contributor Guidelines](docs/12-contributing.md)** — Development setup instructions, testing steps, and Architecture Decision Records (ADRs).
+* **[Template Authoring Guide](docs/13-template-authoring.md)** — Build, merchandise, and cryptographically sign Handlebars template packages.
+* **[Custom Backend Adapters](docs/14-backend-adapter.md)** — Implement target platform translation adapters using BlueprintIR.
+* **[Backend Feature Parity Matrix](docs/15-backend-parity.md)** — Compatibility matrix outlining read/write support across all supported backend platforms.
+* **[CI/CD Integration Guide](docs/16-ci-integration.md)** — Best practices for deploying verification rules on PR build gates.
 
 ---
 

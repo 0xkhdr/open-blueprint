@@ -55,7 +55,7 @@ Check `templates/` directory for each backend:
 - [ ] Base partials in `templates/_base/partials/` referenced correctly
 
 ### Task 2.5: Feature Parity Matrix
-Create/update `docs/backend-parity.md`:
+Create/update `docs/15-backend-parity.md`:
 ```markdown
 | Feature | Claude | Cursor | Codex | PI | Kiro | Antigravity | Copilot | Gemini | OpenDev | Generic |
 |---------|--------|--------|-------|----|----|-------------|---------|--------|---------|---------|

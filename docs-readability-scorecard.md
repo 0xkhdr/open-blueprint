@@ -19,23 +19,23 @@ This scorecard evaluates all project documentation files for scannability, purpo
 
 | File Path | Word Count | Scannability | Purpose Present? | Issues Found |
 |---|---|---|---|---|
-| `docs/README.md` | 388 | GOOD | Yes | None |
-| `docs/backend-adapter.md` | 829 | GOOD | Yes | None |
-| `docs/backend-parity.md` | 702 | GOOD | Yes | None |
-| `docs/ci-integration.md` | 172 | GOOD | Yes | None |
-| `docs/commands.md` | 926 | GOOD | Yes | 15 out of 24 subcommands completely undocumented |
-| `docs/concepts.md` | 899 | GOOD | Yes | None |
-| `docs/configuration.md` | 492 | GOOD | Yes | None |
-| `docs/contributing.md` | 300 | GOOD | Yes | None |
-| `docs/getting-started.md` | 403 | GOOD | Yes | None |
-| `docs/glossary.md` | 363 | GOOD | Yes | None |
-| `docs/observability.md` | 1351 | GOOD | Yes | 4 broken internal links (pointing to non-existent files) |
-| `docs/philosophy.md` | 455 | GOOD | Yes | None |
-| `docs/plugin-api.md` | 263 | GOOD | Yes | None |
-| `docs/recipes.md` | 464 | GOOD | Yes | None |
-| `docs/template-authoring.md` | 897 | GOOD | Yes | None |
-| `docs/troubleshooting.md` | 381 | GOOD | Yes | None |
-| `docs/workflows.md` | 392 | GOOD | Yes | None |
+| `docs/00-README.md` | 388 | GOOD | Yes | None |
+| `docs/14-backend-adapter.md` | 829 | GOOD | Yes | None |
+| `docs/15-backend-parity.md` | 702 | GOOD | Yes | None |
+| `docs/16-ci-integration.md` | 172 | GOOD | Yes | None |
+| `docs/08-commands.md` | 926 | GOOD | Yes | 15 out of 24 subcommands completely undocumented |
+| `docs/05-concepts.md` | 899 | GOOD | Yes | None |
+| `docs/09-configuration.md` | 492 | GOOD | Yes | None |
+| `docs/12-contributing.md` | 300 | GOOD | Yes | None |
+| `docs/01-getting-started.md` | 403 | GOOD | Yes | None |
+| `docs/07-glossary.md` | 363 | GOOD | Yes | None |
+| `docs/06-observability.md` | 1351 | GOOD | Yes | 4 broken internal links (pointing to non-existent files) |
+| `docs/02-philosophy.md` | 455 | GOOD | Yes | None |
+| `docs/11-plugin-api.md` | 263 | GOOD | Yes | None |
+| `docs/04-recipes.md` | 464 | GOOD | Yes | None |
+| `docs/13-template-authoring.md` | 897 | GOOD | Yes | None |
+| `docs/10-troubleshooting.md` | 381 | GOOD | Yes | None |
+| `docs/03-workflows.md` | 392 | GOOD | Yes | None |
 | `specs/00-MASTER-ANALYSIS.md` | 1900 | GOOD | Yes | None |
 | `specs/01-IR-SCHEMA-FOUNDATION.md` | 740 | GOOD | Yes | None |
 | `specs/02-BACKEND-EXPANSION.md` | 849 | GOOD | Yes | None |
@@ -60,7 +60,7 @@ This scorecard evaluates all project documentation files for scannability, purpo
 ## 🔍 Structural Improvement Guidelines
 
 1. **Repair Broken References**:
-   - In `docs/observability.md`, rewrite relative file links (`./cost-tracking.md`, etc.) to point internally to their respective in-page header anchors.
+   - In `docs/06-observability.md`, rewrite relative file links (`./cost-tracking.md`, etc.) to point internally to their respective in-page header anchors.
 2. **Expand CLI References**:
    - Implement the proposed `docs-proposal/commands.md` rewrite to cover all 24 CLI subcommands and ensure 100% codebase command parity.
 3. **Clean up Root References**:

@@ -899,10 +899,10 @@ Configure:
 - Homebrew formula: `agentic-blueprint` (submit to homebrew-core or tap)
 
 #### 3.7 Documentation
-- `docs/README.md`: quickstart (< 5 commands to generate first blueprint), badges, architecture diagram
-- `docs/template-authoring.md`: how to write a custom template pack
-- `docs/backend-adapter.md`: how to implement a new backend adapter
-- `docs/ci-integration.md`: GitHub Actions, GitLab CI, pre-commit hook examples
+- `docs/00-README.md`: quickstart (< 5 commands to generate first blueprint), badges, architecture diagram
+- `docs/13-template-authoring.md`: how to write a custom template pack
+- `docs/14-backend-adapter.md`: how to implement a new backend adapter
+- `docs/16-ci-integration.md`: GitHub Actions, GitLab CI, pre-commit hook examples
 
 **Milestone:** `bp init --tool cursor` generates Cursor-native blueprint. `bp convert --from claude --to cursor` produces correct output. npm package installable via `npx @agentic/bp`.
 

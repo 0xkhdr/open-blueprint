@@ -164,7 +164,7 @@ Create `tests/integration/backends/round-trip.test.ts`:
 - Use fixture from `tests/fixtures/node-express/` (create minimal fixture if missing)
 
 **2.6 — Feature parity matrix**
-Create `docs/backend-parity.md` with the table from spec section 2.5. Fill all `?`
+Create `docs/15-backend-parity.md` with the table from spec section 2.5. Fill all `?`
 by reading each adapter's render() and checking what layers it outputs.
 
 ### Verification Commands
@@ -177,7 +177,7 @@ bun test tests/integration/backends/
 - [x] All 10 adapters pass typecheck with correct interface
 - [x] All 10 adapters call `generateAgentsMD()` in render()
 - [x] Round-trip tests pass for 3 backend pairs
-- [x] `docs/backend-parity.md` published with no `?` cells
+- [x] `docs/15-backend-parity.md` published with no `?` cells
 
 ---
 
@@ -872,7 +872,7 @@ bun build --compile src/cli/index.ts --outfile bp
 | Domain | New Files |
 |--------|-----------|
 | 01 | `tests/unit/ir/exports.test.ts` |
-| 02 | `docs/backend-parity.md`, `tests/integration/backends/round-trip.test.ts` |
+| 02 | `docs/15-backend-parity.md`, `tests/integration/backends/round-trip.test.ts` |
 | 03 | `src/detector/enterprise-signals.ts`, `tests/unit/detector/enterprise-signals.test.ts` |
 | 04 | `src/validator/cross-layer.ts`, `src/validator/layers-deep.ts`, `src/validator/performance.ts`, 3 test files |
 | 05 | `src/templater/metadata.ts`, `src/templater/conditional.ts`, `src/templater/risk-selector.ts`, risk template dirs, 4 test files |

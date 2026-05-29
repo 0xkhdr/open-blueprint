@@ -47,6 +47,7 @@ Scaffolds a blueprint for the current repository based on detected framework top
   * `--dry-run`: Preview changes without writing
   * `--no-verify`: Skip post-init validation
 * **Example**: `bp init claude`
+* **Error codes**: [3](18-errors.md#code-3) Config error · [9](18-errors.md#code-9) Path traversal · [1](18-errors.md#code-1) Unexpected error
 
 ### `bp verify`
 Validates blueprint structural and semantic integrity.
@@ -58,6 +59,7 @@ Validates blueprint structural and semantic integrity.
   * `--watch`: Watch files and re-validate on change
   * `--fail-on <level>`: Severity level to trigger non-zero exit code
 * **Example**: `bp verify --level all --watch`
+* **Error codes**: [4](18-errors.md#code-4) Structural · [5](18-errors.md#code-5) Semantic · [6](18-errors.md#code-6) Drift · [1](18-errors.md#code-1) Unexpected error
 
 ### `bp sync`
 Detects and resolves repository structural drift.
@@ -66,6 +68,7 @@ Detects and resolves repository structural drift.
   * `--report`: Print the drift report only and exit
   * `--json`: Emit the drift report as machine-readable JSON
 * **Example**: `bp sync --auto-apply`
+* **Error codes**: [6](18-errors.md#code-6) Drift detected · [1](18-errors.md#code-1) Unexpected error
 
 ### `bp convert`
 Translates blueprint governance configurations between backends.
@@ -75,6 +78,7 @@ Translates blueprint governance configurations between backends.
   * `--input <path>`: Source directory containing blueprints (default: `.`)
   * `--output <path>`: Target directory for translated outputs
 * **Example**: `bp convert --from claude --to cursor --output ./translated-rules`
+* **Error codes**: [7](18-errors.md#code-7) Translation error · [9](18-errors.md#code-9) Path traversal · [1](18-errors.md#code-1) Unexpected error
 
 ### `bp dev`
 Live reload dev server with real-time validation and browser dashboard.
@@ -115,6 +119,7 @@ Manage template packs.
   * `install <pkg>`: Download, verify cryptographic signatures, and install a package.
   * `publish <path>`: Packages, cryptographically signs, and uploads a template pack.
 * **Example**: `bp template install @bp-templates/fastapi`
+* **Error codes**: [8](18-errors.md#code-8) Network error · [9](18-errors.md#code-9) Path traversal
 
 ### `bp doctor`
 Diagnostic mode for troubleshooting agent ignores or configurations.
@@ -123,6 +128,7 @@ Diagnostic mode for troubleshooting agent ignores or configurations.
   * `--verbose`: Output timing, path checks, and detailed trace logs
   * `--cost`: Include cost estimation report
 * **Example**: `bp doctor --verbose --cost`
+* **Error codes**: [3](18-errors.md#code-3) Config error · [1](18-errors.md#code-1) Unexpected error
 
 ### `bp rule`
 Rule management utilities.
@@ -138,6 +144,7 @@ Hook management.
   * `generate`: Scaffolds hook script stubs for the current active backend.
   * `validate <file>`: Runs static analysis on hook scripts to ensure safety.
 * **Example**: `bp hook generate`
+* **Error codes**: [4](18-errors.md#code-4) Hook safety failure · [9](18-errors.md#code-9) Path traversal
 
 ### `bp config`
 Configuration management.
@@ -230,3 +237,4 @@ Browse and interact with blueprint marketplace.
   * `install <pack>`: Download and register a pack.
   * `publish <dir>`: Package and submit a template.
 * **Example**: `bp marketplace search fastapi`
+* **Error codes**: [8](18-errors.md#code-8) Network error · [9](18-errors.md#code-9) Path traversal
