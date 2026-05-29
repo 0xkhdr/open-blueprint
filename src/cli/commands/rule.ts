@@ -451,5 +451,67 @@ export function createRuleCommand(): Command {
       console.log(`  Output: ${outputPath}`);
     });
 
+  cmd
+    .command("install <framework>")
+    .description("Install a built-in compliance rule pack (gdpr, soc2, hipaa)")
+    .option("--dry-run", "Preview what would be installed without writing files")
+    .option("--json", "Output result as JSON")
+    .action(async (framework: string, options: { dryRun?: boolean; json?: boolean }) => {
+      const { BUILTIN_RULE_PACKS, installRulePack } = await import(
+        "../../ecosystem/rule-library.js"
+      );
+
+      const pack = BUILTIN_RULE_PACKS[framework.toLowerCase()];
+      if (!pack) {
+        const available = Object.keys(BUILTIN_RULE_PACKS).join(", ");
+        console.error(chalk.red(`Unknown framework: ${framework}. Available: ${available}`));
+        process.exit(1);
+      }
+
+      if (options.dryRun) {
+        const preview = {
+          framework,
+          rules: pack.rules.map((r) => r.id),
+          skills: pack.skills.map((s) => s.name),
+        };
+        if (options.json) {
+          console.log(JSON.stringify(preview, null, 2));
+        } else {
+          console.log(chalk.bold(`\n[dry-run] Would install ${pack.name}:\n`));
+          console.log(chalk.cyan(`Rules (${pack.rules.length}):`));
+          for (const r of pack.rules) console.log(`  - ${r.id}`);
+          console.log(chalk.cyan(`\nSkills (${pack.skills.length}):`));
+          for (const s of pack.skills) console.log(`  - ${s.name}`);
+        }
+        return;
+      }
+
+      try {
+        const cwd = process.cwd();
+        installRulePack(framework.toLowerCase(), cwd);
+
+        if (options.json) {
+          console.log(
+            JSON.stringify({
+              installed: framework,
+              rules: pack.rules.length,
+              skills: pack.skills.length,
+            })
+          );
+        } else {
+          console.log(
+            chalk.green(
+              `✅ Installed ${pack.name} (${pack.rules.length} rules, ${pack.skills.length} skills)`
+            )
+          );
+          console.log(chalk.dim(`  Rules → .claude/rules/`));
+          console.log(chalk.dim(`  Skills → .claude/skills/`));
+        }
+      } catch (e) {
+        console.error(chalk.red(`Install failed: ${e instanceof Error ? e.message : String(e)}`));
+        process.exit(1);
+      }
+    });
+
   return cmd;
 }

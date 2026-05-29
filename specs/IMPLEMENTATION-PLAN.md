@@ -739,7 +739,7 @@ bun test tests/unit/dx/
 ## Domain 11 — Ecosystem & Scale
 
 **Spec File:** `specs/11-ECOSYSTEM-SCALE.md`
-**Status:** ⚠️ PARTIAL — basic registry done, marketplace v2 + rule packs + diff/merge missing
+**Status:** ✅ COMPLETE — marketplace v2, GDPR/SOC2/HIPAA rule packs, semantic diff, three-way merge, deep inheritance, 123 tests
 **Effort:** ~8h
 **Commit:** `feat(ecosystem): marketplace v2, shared rule packs, semantic diff/merge, deep inheritance`
 
@@ -809,13 +809,13 @@ bun test tests/unit/ecosystem/
 ```
 
 ### Done Criteria
-- [ ] `searchMarketplace()` returns filtered results
-- [ ] `bp rules install gdpr` creates 5 rules + 1 skill in .claude/rules/ + skills/
-- [ ] `diffBlueprints()` correctly identifies added/removed/modified with field-level changes
-- [ ] `threeWayMerge()` auto-resolves non-conflicting changes
-- [ ] `mergeBlueprints()` with deep strategy merges rules by id, overrides settings
-- [ ] `.bp-override-audit.yaml` written with timestamp + path
-- [ ] 60+ tests passing
+- [x] `searchMarketplace()` returns filtered results
+- [x] `bp rules install gdpr` creates 5 rules + 1 skill in .claude/rules/ + skills/
+- [x] `diffBlueprints()` correctly identifies added/removed/modified with field-level changes
+- [x] `threeWayMerge()` auto-resolves non-conflicting changes
+- [x] `mergeBlueprints()` with deep strategy merges rules by id, overrides settings
+- [x] `.bp-override-audit.yaml` written with timestamp + path
+- [x] 123 tests passing (exceeds 60+ target)
 
 ---
 

@@ -23,6 +23,7 @@ import { createVerifyCommand } from "./commands/verify.js";
 import { createTelemetryCommand } from "./commands/telemetry.js";
 import { createCostCommand } from "./commands/cost.js";
 import { createDriftCommand } from "./commands/drift.js";
+import { createMarketplaceCommand } from "./commands/marketplace.js";
 
 const pkg = {
   name: "@agentic/bp",
@@ -61,6 +62,7 @@ program.addCommand(createMemoryCommand());
 program.addCommand(createTelemetryCommand());
 program.addCommand(createCostCommand());
 program.addCommand(createDriftCommand());
+program.addCommand(createMarketplaceCommand());
 
 // Audit logging hook
 program.hook("preAction", (_thisCommand, actionCommand) => {
