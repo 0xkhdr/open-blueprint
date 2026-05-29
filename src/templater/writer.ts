@@ -1,6 +1,17 @@
 import * as fs from "node:fs";
+import * as os from "node:os";
 import * as path from "node:path";
+import { logger } from "../logger.js";
 import { hasMarkers, mergeContent, parseExistingFile } from "./merger.js";
+
+function emitFileWriteAudit(filePath: string, operation: string): void {
+  logger.info({
+    event: "file.write",
+    path: filePath,
+    operation,
+    user: os.userInfo().username,
+  });
+}
 
 export interface WriteOptions {
   dryRun?: boolean;
@@ -102,6 +113,7 @@ export async function writeFile(
   if (!exists) {
     if (!dryRun) {
       fs.writeFileSync(outputPath, content, "utf-8");
+      emitFileWriteAudit(outputPath, "init");
     }
     return {
       path: outputPath,
@@ -124,6 +136,7 @@ export async function writeFile(
     const diff = generateUnifiedDiff(outputPath, existingContent, merged);
     if (!dryRun) {
       fs.writeFileSync(outputPath, merged, "utf-8");
+      emitFileWriteAudit(outputPath, "update");
     }
     return {
       path: outputPath,
@@ -137,6 +150,7 @@ export async function writeFile(
     const diff = generateUnifiedDiff(outputPath, existingContent, content);
     if (!dryRun) {
       fs.writeFileSync(outputPath, content, "utf-8");
+      emitFileWriteAudit(outputPath, "overwrite");
     }
     return {
       path: outputPath,

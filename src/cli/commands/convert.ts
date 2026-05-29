@@ -3,6 +3,7 @@ import * as path from "node:path";
 import chalk from "chalk";
 import { Command } from "commander";
 import ora from "ora";
+import { ConfigError, TranslationError } from "../../errors.js";
 import { AntigravityAdapter } from "../../translator/adapters/antigravity.js";
 import { ClaudeAdapter } from "../../translator/adapters/claude.js";
 import { CodexAdapter } from "../../translator/adapters/codex.js";
@@ -14,7 +15,7 @@ import { KiroAdapter } from "../../translator/adapters/kiro.js";
 import { OpenDevAdapter } from "../../translator/adapters/opendev.js";
 import { PIAdapter } from "../../translator/adapters/pi.js";
 import { BlueprintIRSchema } from "../../translator/ir.js";
-import { EXIT_CODES } from "../../validator/index.js";
+import { resolveAndValidatePath } from "../../utils/paths.js";
 
 const VALID_BACKENDS = [
   "claude",
@@ -73,28 +74,25 @@ export function createConvertCommand(): Command {
     .action(async (opts: { from: string; to: string; input: string; output: string }) => {
       const fromBackend = opts.from.toLowerCase();
       const toBackend = opts.to.toLowerCase();
-      const inputDir = path.resolve(opts.input);
-      const outputDir = path.resolve(opts.output);
+      const inputDir = resolveAndValidatePath(opts.input, process.cwd());
+      const outputDir = resolveAndValidatePath(opts.output, process.cwd());
 
       if (!VALID_BACKENDS.includes(fromBackend as Backend)) {
-        console.error(
-          chalk.red(
-            `Unsupported source backend: "${opts.from}". Valid: ${VALID_BACKENDS.join(", ")}`
-          )
+        throw new ConfigError(
+          `Unsupported source backend: "${opts.from}". Valid: ${VALID_BACKENDS.join(", ")}. Fix: Use one of the listed backends.`
         );
-        process.exit(EXIT_CODES.UNSUPPORTED_BACKEND);
       }
 
       if (!VALID_BACKENDS.includes(toBackend as Backend)) {
-        console.error(
-          chalk.red(`Unsupported target backend: "${opts.to}". Valid: ${VALID_BACKENDS.join(", ")}`)
+        throw new ConfigError(
+          `Unsupported target backend: "${opts.to}". Valid: ${VALID_BACKENDS.join(", ")}. Fix: Use one of the listed backends.`
         );
-        process.exit(EXIT_CODES.UNSUPPORTED_BACKEND);
       }
 
       if (!fs.existsSync(inputDir)) {
-        console.error(chalk.red(`Input directory does not exist: ${inputDir}`));
-        process.exit(EXIT_CODES.GENERAL_ERROR);
+        throw new ConfigError(
+          `Input directory does not exist: ${inputDir}. Fix: Check the --input path.`
+        );
       }
 
       const spinner = ora({
@@ -108,7 +106,9 @@ export function createConvertCommand(): Command {
 
         if (!sourceAdapter || !targetAdapter) {
           spinner.fail("Failed to resolve adapters.");
-          process.exit(EXIT_CODES.GENERAL_ERROR);
+          throw new TranslationError(
+            `Failed to resolve adapters for ${fromBackend}→${toBackend}. See: docs/errors.md#code-7`
+          );
         }
 
         // Parse to IR
@@ -119,7 +119,9 @@ export function createConvertCommand(): Command {
         if (!validationResult.success) {
           spinner.fail("Parsed blueprint does not conform to BlueprintIR schema.");
           console.error(chalk.red(JSON.stringify(validationResult.error.format(), null, 2)));
-          process.exit(EXIT_CODES.GENERAL_ERROR);
+          throw new TranslationError(
+            `Blueprint IR schema validation failed. See: docs/errors.md#code-7`
+          );
         }
 
         // Render target
@@ -133,11 +135,12 @@ export function createConvertCommand(): Command {
         for (const file of writtenFiles) {
           console.log(chalk.green(`    + ${path.relative(process.cwd(), file)}`));
         }
-
-        process.exit(EXIT_CODES.SUCCESS);
       } catch (e) {
+        if (e instanceof TranslationError || e instanceof ConfigError) throw e;
         spinner.fail(`Conversion failed: ${e instanceof Error ? e.message : String(e)}`);
-        process.exit(EXIT_CODES.GENERAL_ERROR);
+        throw new TranslationError(
+          `Conversion failed: ${e instanceof Error ? e.message : String(e)}. See: docs/errors.md#code-7`
+        );
       }
     });
 }

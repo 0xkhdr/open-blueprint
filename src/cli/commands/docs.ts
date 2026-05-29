@@ -4,7 +4,8 @@ import chalk from "chalk";
 import { Command } from "commander";
 import ora from "ora";
 import { generateDocs } from "../../dx/docs.js";
-import { EXIT_CODES } from "../../validator/index.js";
+import { BpError } from "../../errors.js";
+import { resolveAndValidatePath } from "../../utils/paths.js";
 
 export function createDocsCommand(): Command {
   const cmd = new Command("docs");
@@ -34,7 +35,7 @@ export function createDocsCommand(): Command {
           return;
         }
 
-        const outputPath = path.resolve(opts.output);
+        const outputPath = resolveAndValidatePath(opts.output, process.cwd());
         const isDir = !path.extname(outputPath) || fs.existsSync(outputPath);
 
         let filePath: string;
@@ -55,12 +56,18 @@ export function createDocsCommand(): Command {
         spinner.succeed(chalk.green("Documentation generated!"));
         console.log(chalk.cyan(`\n  ✔ ${path.relative(cwd, filePath)}`));
       } catch (e) {
+        if (e instanceof BpError) throw e;
         spinner.fail(
           chalk.red(
             `Documentation generation failed: ${e instanceof Error ? e.message : String(e)}`
           )
         );
-        process.exit(EXIT_CODES.GENERAL_ERROR);
+        throw new BpError(
+          `Documentation generation failed: ${e instanceof Error ? e.message : String(e)}. See: docs/errors.md#code-1`,
+          1,
+          "DOCS_ERROR",
+          "See: docs/errors.md#code-1"
+        );
       }
     });
 
@@ -68,7 +75,7 @@ export function createDocsCommand(): Command {
 
   cmd.action(async (opts: { output: string }) => {
     const cwd = process.cwd();
-    const outputDir = path.resolve(opts.output || "./blueprint-docs");
+    const outputDir = resolveAndValidatePath(opts.output || "./blueprint-docs", cwd);
     const spinner = ora({ text: "Generating documentation...", color: "cyan" }).start();
 
     try {
@@ -86,7 +93,12 @@ export function createDocsCommand(): Command {
       spinner.fail(
         chalk.red(`Documentation generation failed: ${e instanceof Error ? e.message : String(e)}`)
       );
-      process.exit(EXIT_CODES.GENERAL_ERROR);
+      throw new BpError(
+        `Documentation generation failed: ${e instanceof Error ? e.message : String(e)}. See: docs/errors.md#code-1`,
+        1,
+        "DOCS_ERROR",
+        "See: docs/errors.md#code-1"
+      );
     }
   });
 

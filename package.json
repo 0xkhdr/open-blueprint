@@ -10,13 +10,15 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsx src/cli/index.ts",
-    "test": "vitest run",
+    "test": "vitest run --exclude 'tests/e2e/**'",
+    "test:e2e": "vitest run tests/e2e/",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
+    "test:coverage": "vitest run --coverage --exclude 'tests/e2e/**'",
     "lint": "biome check src/",
     "lint:fix": "biome check --write src/",
     "typecheck": "tsc --noEmit",
-    "ci": "npm run typecheck && npm run lint && npm run test:coverage"
+    "ci": "npm run typecheck && npm run lint && npm run test:coverage",
+    "sbom": "cyclonedx-npm --output-format json --output-file sbom.json"
   },
   "repository": {
     "type": "git",
@@ -33,7 +35,8 @@
   "author": "Mohamed Khedr",
   "license": "MIT",
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=20.0.0",
+    "bun": ">=1.0.0"
   },
   "bugs": {
     "url": "https://github.com/0xkhdr/open-blueprint/issues"
@@ -41,6 +44,7 @@
   "homepage": "https://github.com/0xkhdr/open-blueprint#readme",
   "devDependencies": {
     "@biomejs/biome": "^2.4.16",
+    "@cyclonedx/cyclonedx-npm": "^4.2.1",
     "@types/handlebars": "^4.0.40",
     "@types/node": "^25.9.1",
     "@types/ora": "^3.1.0",

@@ -108,3 +108,31 @@ Designed for teams enforcing governance blocks across multiple repositories and 
 ```
 bp config set template_registry ➔ bp init ➔ bp verify --level all ➔ bp convert ➔ CI Validation
 ```
+
+---
+
+## 🐳 Docker Usage
+
+`bp` ships as a multi-stage Docker image with a non-root `node` user and minimal footprint.
+
+### Pull & Run
+
+```bash
+# Pull the latest image
+docker pull ghcr.io/0xkhdr/open-blueprint:latest
+
+# Check version
+docker run --rm ghcr.io/0xkhdr/open-blueprint:latest --version
+
+# Run bp verify against your project (mount current dir as /project)
+docker run --rm -v "$(pwd):/project" -w /project ghcr.io/0xkhdr/open-blueprint:latest verify --level all
+
+# Run bp init claude inside a container
+docker run --rm -v "$(pwd):/project" -w /project ghcr.io/0xkhdr/open-blueprint:latest init claude
+```
+
+### Mount Notes
+
+- Mount your project root at `/project` and set `-w /project` (or any consistent path).
+- The container runs as the non-root `node` user — ensure write permissions on the mounted directory if `bp` needs to write files.
+- Pass `--env BP_LOG_LEVEL=debug` for verbose structured JSON logging.

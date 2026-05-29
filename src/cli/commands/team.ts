@@ -2,13 +2,13 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import chalk from "chalk";
 import { Command } from "commander";
+import { ConfigError, ValidationError } from "../../errors.js";
 import { BlueprintIRSchema } from "../../translator/ir.js";
 
 function loadIR(cwd: string) {
   const blueprintPath = path.join(cwd, ".claude", "blueprint.json");
   if (!fs.existsSync(blueprintPath)) {
-    console.error(chalk.red(`No blueprint found at ${blueprintPath}. Run 'bp init' first.`));
-    process.exit(1);
+    throw new ConfigError(`No blueprint found at ${blueprintPath}. Fix: Run 'bp init' first.`);
   }
   return BlueprintIRSchema.parse(JSON.parse(fs.readFileSync(blueprintPath, "utf-8")));
 }
@@ -100,7 +100,12 @@ export function createTeamCommand(): Command {
         for (const e of errors) {
           console.error(chalk.red(`  [${e.team}] ${e.issue}`));
         }
-        if (!opts.dryRun) process.exit(1);
+        if (!opts.dryRun) {
+          throw new ValidationError(
+            `Team validation failed with ${errors.length} error(s). Fix: Resolve the listed issues.`,
+            4
+          );
+        }
       }
     });
 

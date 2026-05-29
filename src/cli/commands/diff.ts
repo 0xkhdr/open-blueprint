@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { Command } from "commander";
 import { diffBlueprints } from "../../blueprint-sync/diff.js";
+import { BpError } from "../../errors.js";
 import { BlueprintIRSchema } from "../../translator/ir.js";
 
 export function createDiffCommand(): Command {
@@ -32,11 +33,24 @@ export function createDiffCommand(): Command {
         const output = formatDiffReport(report, options.format);
         console.log(output);
 
-        // Exit code: 0 if identical, 1 if differences
-        process.exit(report.changes.length === 0 ? 0 : 1);
+        // Exit code 1 when differences found (POSIX diff convention)
+        if (report.changes.length > 0) {
+          throw new BpError(
+            `${report.changes.length} difference(s) found between blueprints. Fix: Review the diff output above.`,
+            1,
+            "DIFF_FOUND",
+            "Fix: Review the diff output above."
+          );
+        }
       } catch (error) {
+        if (error instanceof BpError) throw error;
         console.error("Error:", error instanceof Error ? error.message : String(error));
-        process.exit(1);
+        throw new BpError(
+          `Diff failed: ${error instanceof Error ? error.message : String(error)}. See: docs/errors.md#code-1`,
+          1,
+          "DIFF_ERROR",
+          "See: docs/errors.md#code-1"
+        );
       }
     });
 }

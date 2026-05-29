@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 import { Command } from "commander";
+import { BpError } from "../errors.js";
+import { initCorrelationId, logger, runWithCorrelationId } from "../logger.js";
 import { createAgentCommand } from "./commands/agent.js";
 import { createChainCommand } from "./commands/chain.js";
 import { createConfigCommand } from "./commands/config.js";
@@ -10,6 +12,7 @@ import { createDiffCommand } from "./commands/diff.js";
 import { createDocsCommand } from "./commands/docs.js";
 import { createDoctorCommand } from "./commands/doctor.js";
 import { createDriftCommand } from "./commands/drift.js";
+import { createHealthCommand } from "./commands/health.js";
 import { createHookCommand } from "./commands/hook.js";
 import { createInitCommand } from "./commands/init.js";
 import { createMarketplaceCommand } from "./commands/marketplace.js";
@@ -63,6 +66,7 @@ program.addCommand(createTelemetryCommand());
 program.addCommand(createCostCommand());
 program.addCommand(createDriftCommand());
 program.addCommand(createMarketplaceCommand());
+program.addCommand(createHealthCommand());
 
 // Audit logging hook
 program.hook("preAction", (_thisCommand, actionCommand) => {
@@ -89,7 +93,52 @@ program.hook("preAction", (_thisCommand, actionCommand) => {
   }
 });
 
-program.parseAsync(process.argv).catch((e: unknown) => {
-  console.error(e instanceof Error ? e.message : String(e));
-  process.exit(1);
+// Graceful shutdown handlers
+process.on("SIGTERM", () => {
+  logger.flush();
+  process.exit(0);
+});
+process.on("SIGINT", () => {
+  logger.flush();
+  process.exit(0);
+});
+
+const correlationId = initCorrelationId();
+const startMs = Date.now();
+
+runWithCorrelationId(correlationId, () => {
+  program
+    .parseAsync(process.argv)
+    .then(() => {
+      const command = process.argv[2] ?? "unknown";
+      logger.info({
+        event: "command.complete",
+        command,
+        durationMs: Date.now() - startMs,
+        exitCode: 0,
+      });
+    })
+    .catch((e: unknown) => {
+      const command = process.argv[2] ?? "unknown";
+      const durationMs = Date.now() - startMs;
+      if (e instanceof BpError) {
+        logger.error(
+          { event: "command.complete", command, durationMs, exitCode: e.exitCode, code: e.code },
+          e.message
+        );
+        process.exit(e.exitCode);
+      } else {
+        logger.error(
+          {
+            event: "command.complete",
+            command,
+            durationMs,
+            exitCode: 1,
+            err: e instanceof Error ? e.stack : String(e),
+          },
+          "Unexpected error"
+        );
+        process.exit(1);
+      }
+    });
 });

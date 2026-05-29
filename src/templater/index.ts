@@ -4,6 +4,7 @@ import * as path from "node:path";
 import { loadProjectConfig } from "../config/project.js";
 import type { Fingerprint } from "../detector/fingerprint.js";
 import { enrichFingerprint } from "../detector/index.js";
+import { logger } from "../logger.js";
 import { RegistryClient } from "../registry/client.js";
 import { type RenderContext, shouldRenderTemplate } from "./conditional.js";
 import { registerPartials, renderString, renderTemplate } from "./engine.js";
@@ -19,6 +20,18 @@ export interface TemplaterOptions {
   dryRun?: boolean | undefined;
   force?: boolean | undefined;
   verbose?: boolean | undefined;
+  vars?: Record<string, string> | undefined;
+}
+
+// Shell metacharacters that could enable injection if not sanitized
+const SHELL_META_RE = /[;&|`$(){}[\]<>\\!#~]/g;
+
+export function sanitizeTemplateVars(vars: Record<string, string>): Record<string, string> {
+  const sanitized: Record<string, string> = {};
+  for (const [key, value] of Object.entries(vars)) {
+    sanitized[key] = value.replace(SHELL_META_RE, "");
+  }
+  return sanitized;
 }
 
 export interface TemplaterResult {
@@ -129,6 +142,7 @@ export async function runTemplater(
     force = false,
     verbose = false,
     isExtendedRun = false,
+    vars,
   } = options;
 
   // Register base partials
@@ -156,8 +170,9 @@ export async function runTemplater(
         results.push(...baseResult.files);
         basePackName = baseResult.templatePack;
       } catch (e) {
-        console.warn(
-          `[extends] Could not resolve extended template "${projectConfig.extends}": ${e instanceof Error ? e.message : String(e)}`
+        logger.warn(
+          { extends: projectConfig.extends, err: e instanceof Error ? e.message : String(e) },
+          "Could not resolve extended template"
         );
       }
     }
@@ -165,7 +180,8 @@ export async function runTemplater(
 
   const pack = resolveTemplatePack(fingerprint, backend, templateOverride);
   const ctx = buildContext(fingerprint);
-  const context = ctx as unknown as Record<string, unknown>;
+  const sanitizedVars = vars ? sanitizeTemplateVars(vars) : {};
+  const context = { ...(ctx as unknown as Record<string, unknown>), ...sanitizedVars };
 
   const baseFiles = findTemplateFiles(pack.directory);
   const riskTier = ctx.risk_tier ?? "low";
@@ -189,8 +205,9 @@ export async function runTemplater(
     const check = shouldRenderTemplate(meta, renderCtx);
     if (!check.render) {
       if (verbose) {
-        console.log(
-          `[templater] skip ${path.relative(pack.directory, templateFile)}: ${check.reason}`
+        logger.debug(
+          { file: path.relative(pack.directory, templateFile), reason: check.reason },
+          "Skipping template"
         );
       }
       continue;

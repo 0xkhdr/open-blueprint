@@ -53,3 +53,75 @@ export function validateHookSafety(filePath: string): ValidationError[] {
 
   return errors;
 }
+
+// Hook dependency graph cycle detection using DFS with gray/black marking
+type NodeColor = "white" | "gray" | "black";
+
+export interface HookDependencyGraph {
+  [hookName: string]: string[];
+}
+
+export interface CycleDetectionResult {
+  hasCycle: boolean;
+  cyclePath?: string[] | undefined;
+}
+
+export function detectHookCycles(graph: HookDependencyGraph): CycleDetectionResult {
+  const color = new Map<string, NodeColor>();
+  const parent = new Map<string, string | null>();
+
+  // Initialize all nodes as white (unvisited)
+  for (const node of Object.keys(graph)) {
+    color.set(node, "white");
+    parent.set(node, null);
+  }
+  // Also include nodes that appear as dependencies but may not have their own entry
+  for (const deps of Object.values(graph)) {
+    for (const dep of deps) {
+      if (!color.has(dep)) {
+        color.set(dep, "white");
+        parent.set(dep, null);
+      }
+    }
+  }
+
+  let cyclePath: string[] | undefined;
+
+  function dfs(node: string): boolean {
+    color.set(node, "gray");
+
+    const deps = graph[node] ?? [];
+    for (const dep of deps) {
+      if (color.get(dep) === "gray") {
+        // Back edge found — cycle detected. Reconstruct path.
+        const path: string[] = [dep, node];
+        let cur: string | null = node;
+        while (cur !== null && cur !== dep) {
+          const p = parent.get(cur);
+          if (p === undefined || p === null) break;
+          path.unshift(p);
+          cur = p;
+        }
+        cyclePath = path;
+        return true;
+      }
+      if (color.get(dep) === "white") {
+        parent.set(dep, node);
+        if (dfs(dep)) return true;
+      }
+    }
+
+    color.set(node, "black");
+    return false;
+  }
+
+  for (const node of [...color.keys()]) {
+    if (color.get(node) === "white") {
+      if (dfs(node)) {
+        return { hasCycle: true, cyclePath };
+      }
+    }
+  }
+
+  return { hasCycle: false };
+}

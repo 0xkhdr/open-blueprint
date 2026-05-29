@@ -1,6 +1,15 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { PermissionError } from "../errors.js";
 import { DEFAULT_PUBLIC_KEY, signData, verifySignature } from "./signer.js";
+
+function assertHttpsUrl(url: string): void {
+  if (!url.startsWith("https://")) {
+    throw new PermissionError(
+      `Non-HTTPS URL rejected: '${url}'. Fix: Only https:// URLs are allowed for registry and marketplace fetches.`
+    );
+  }
+}
 
 export interface RegistryPackage {
   name: string;
@@ -19,6 +28,7 @@ export class RegistryClient {
   public token: string | undefined;
 
   constructor(registryUrl = "https://registry.npmjs.org", token?: string) {
+    assertHttpsUrl(registryUrl);
     this.registryUrl = registryUrl;
     this.token = token;
   }

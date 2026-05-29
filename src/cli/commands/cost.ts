@@ -1,20 +1,22 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { Command } from "commander";
+import { ConfigError } from "../../errors.js";
 import { generateCostDashboard } from "../../observability/dashboard.js";
 import { BlueprintIRSchema } from "../../translator/ir.js";
+import { resolveAndValidatePath } from "../../utils/paths.js";
 
 function loadIR(projectRoot: string) {
   const bpPath = path.join(projectRoot, ".claude", "blueprint.json");
   if (!fs.existsSync(bpPath)) {
-    console.error(`No blueprint found at ${bpPath}. Run 'bp init' first.`);
-    process.exit(1);
+    throw new ConfigError(`No blueprint found at ${bpPath}. Fix: Run 'bp init' first.`);
   }
   const raw = JSON.parse(fs.readFileSync(bpPath, "utf-8")) as unknown;
   const result = BlueprintIRSchema.safeParse(raw);
   if (!result.success) {
-    console.error("Blueprint parse failed:", result.error.message);
-    process.exit(1);
+    throw new ConfigError(
+      `Blueprint parse failed: ${result.error.message}. Fix: Validate your blueprint.json.`
+    );
   }
   return result.data;
 }
@@ -51,8 +53,9 @@ export function createCostCommand(): Command {
       const dashboard = generateCostDashboard(ir);
 
       if (opts.output) {
-        fs.writeFileSync(opts.output, dashboard);
-        console.log(`Cost dashboard written to ${opts.output}`);
+        const outPath = resolveAndValidatePath(opts.output, process.cwd());
+        fs.writeFileSync(outPath, dashboard);
+        console.log(`Cost dashboard written to ${outPath}`);
       } else {
         console.log(dashboard);
       }

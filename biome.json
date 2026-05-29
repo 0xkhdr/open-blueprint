@@ -26,6 +26,18 @@
       "semicolons": "always"
     }
   },
+  "overrides": [
+    {
+      "includes": ["src/cli/**"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noConsole": "off"
+          }
+        }
+      }
+    }
+  ],
   "files": {
     "includes": ["src/**", "tests/**"]
   }

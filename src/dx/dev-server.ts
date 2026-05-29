@@ -2,6 +2,7 @@ import * as fs from "node:fs";
 import * as http from "node:http";
 import * as path from "node:path";
 import { detect, enrichFingerprint } from "../detector/index.js";
+import { logger } from "../logger.js";
 import { resolveTemplatePack } from "../templater/selector.js";
 import { runValidator } from "../validator/index.js";
 
@@ -215,7 +216,7 @@ export async function startDevServer(projectRoot: string, port = 3456): Promise<
   });
 
   server.listen(port, () => {
-    console.log(`🚀 Blueprint dev server running at http://localhost:${port}`);
+    logger.info({ port }, "Blueprint dev server running");
   });
 
   await new Promise<void>((resolve) => {

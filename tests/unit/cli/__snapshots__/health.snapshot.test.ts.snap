@@ -1,0 +1,25 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`bp health output format snapshots > checkConfigParseable result shape matches snapshot 1`] = `
+{
+  "hasMessage": true,
+  "name": "config-parse",
+  "status": "PASS",
+}
+`;
+
+exports[`bp health output format snapshots > checkEnginesImportable result shape matches snapshot 1`] = `
+{
+  "hasMessage": true,
+  "name": "engines-importable",
+  "status": "PASS",
+}
+`;
+
+exports[`bp health output format snapshots > checkNoConflictingConfigs result shape matches snapshot 1`] = `
+{
+  "hasMessage": true,
+  "name": "no-config-conflict",
+  "status": "PASS",
+}
+`;

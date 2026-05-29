@@ -1,0 +1,38 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`bp doctor output format snapshots > doctor command description matches snapshot 1`] = `"Diagnostic mode for troubleshooting"`;
+
+exports[`bp doctor output format snapshots > doctor command name matches snapshot 1`] = `"doctor"`;
+
+exports[`bp doctor output format snapshots > doctor command options list matches snapshot 1`] = `
+[
+  {
+    "description": "Diagnose specific backend config issues",
+    "flags": "--tool <backend>",
+  },
+  {
+    "description": "Full diagnostic trace with timing",
+    "flags": "--verbose",
+  },
+  {
+    "description": "Scan project files for leaked secrets",
+    "flags": "--secret-scan",
+  },
+  {
+    "description": "Generate compliance gap report (gdpr, soc2, hipaa)",
+    "flags": "--compliance-report [framework]",
+  },
+  {
+    "description": "Print risk tier classification and escalation runbook",
+    "flags": "--risk-audit",
+  },
+  {
+    "description": "Generate .env.template from process.env references",
+    "flags": "--env-template",
+  },
+  {
+    "description": "Output results as JSON",
+    "flags": "--json",
+  },
+]
+`;

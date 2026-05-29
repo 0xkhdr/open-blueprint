@@ -4,8 +4,9 @@ import chalk from "chalk";
 import { Command } from "commander";
 import ora from "ora";
 import { generateMigrationPlan, generateMigrationReport } from "../../dx/migrate.js";
+import { ConfigError, TranslationError } from "../../errors.js";
+import { resolveAndValidatePath } from "../../utils/paths.js";
 import { loadStoredFingerprint, storeFingerprint } from "../../validator/drift.js";
-import { EXIT_CODES } from "../../validator/index.js";
 
 const VALID_BACKENDS = [
   "claude",
@@ -60,7 +61,7 @@ export function createMigrateCommand(): Command {
                 "No stored blueprint fingerprint found. Use --from/--to for cross-backend migration."
               )
             );
-            process.exit(0);
+            return;
           }
 
           const spinner = ora({ text: "Checking schema version...", color: "cyan" }).start();
@@ -77,30 +78,25 @@ export function createMigrateCommand(): Command {
 
         const fromBackend = opts.from.toLowerCase();
         const toBackend = opts.to.toLowerCase();
-        const inputDir = path.resolve(opts.input);
-        const outputDir = path.resolve(opts.output);
+        const inputDir = resolveAndValidatePath(opts.input, process.cwd());
+        const outputDir = resolveAndValidatePath(opts.output, process.cwd());
 
         if (!VALID_BACKENDS.includes(fromBackend as Backend)) {
-          console.error(
-            chalk.red(
-              `Unsupported source backend: "${opts.from}". Valid: ${VALID_BACKENDS.join(", ")}`
-            )
+          throw new ConfigError(
+            `Unsupported source backend: "${opts.from}". Valid: ${VALID_BACKENDS.join(", ")}. Fix: Use one of the listed backends.`
           );
-          process.exit(EXIT_CODES.UNSUPPORTED_BACKEND);
         }
 
         if (!VALID_BACKENDS.includes(toBackend as Backend)) {
-          console.error(
-            chalk.red(
-              `Unsupported target backend: "${opts.to}". Valid: ${VALID_BACKENDS.join(", ")}`
-            )
+          throw new ConfigError(
+            `Unsupported target backend: "${opts.to}". Valid: ${VALID_BACKENDS.join(", ")}. Fix: Use one of the listed backends.`
           );
-          process.exit(EXIT_CODES.UNSUPPORTED_BACKEND);
         }
 
         if (!fs.existsSync(inputDir)) {
-          console.error(chalk.red(`Input directory does not exist: ${inputDir}`));
-          process.exit(EXIT_CODES.GENERAL_ERROR);
+          throw new ConfigError(
+            `Input directory does not exist: ${inputDir}. Fix: Check the --input path.`
+          );
         }
 
         if (!fs.existsSync(outputDir)) {
@@ -138,10 +134,13 @@ export function createMigrateCommand(): Command {
             console.log(chalk.dim(`\nReport written: ${path.relative(cwd, reportPath)}`));
           }
         } catch (e) {
+          if (e instanceof ConfigError || e instanceof TranslationError) throw e;
           spinner.fail(
             chalk.red(`Migration failed: ${e instanceof Error ? e.message : String(e)}`)
           );
-          process.exit(EXIT_CODES.GENERAL_ERROR);
+          throw new TranslationError(
+            `Migration failed: ${e instanceof Error ? e.message : String(e)}. See: docs/errors.md#code-7`
+          );
         }
       }
     );

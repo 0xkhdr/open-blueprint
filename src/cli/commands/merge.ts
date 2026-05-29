@@ -3,7 +3,9 @@ import path from "node:path";
 import { Command } from "commander";
 import { mergeBlueprints } from "../../blueprint-sync/merge.js";
 import type { MergeConflict, MergeOptions } from "../../blueprint-sync/types.js";
+import { BpError } from "../../errors.js";
 import { BlueprintIRSchema } from "../../translator/ir.js";
+import { resolveAndValidatePath } from "../../utils/paths.js";
 
 export function createMergeCommand(): Command {
   return new Command("merge")
@@ -53,7 +55,10 @@ export function createMergeCommand(): Command {
 
         // Output merged blueprint
         if (options.output) {
-          fs.writeFileSync(path.resolve(options.output), JSON.stringify(result.merged, null, 2));
+          fs.writeFileSync(
+            resolveAndValidatePath(options.output as string, process.cwd()),
+            JSON.stringify(result.merged, null, 2)
+          );
           console.log(`✅ Merged blueprint written to: ${options.output}`);
         } else {
           console.log(JSON.stringify(result.merged, null, 2));
@@ -68,18 +73,27 @@ export function createMergeCommand(): Command {
 
           if (!result.success) {
             console.error("\n❌ Merge failed with unresolved conflicts.");
-            process.exit(1);
+            throw new BpError(
+              `Merge failed with ${result.conflicts.length} unresolved conflict(s). Fix: Use --strategy ours or --strategy theirs to auto-resolve, or --allow-partial to proceed.`,
+              1,
+              "MERGE_CONFLICT",
+              "Fix: Use --strategy ours or --strategy theirs."
+            );
           } else {
             console.log(`\n✅ Conflicts auto-resolved using '${options.strategy}' strategy.`);
           }
         } else {
           console.log(`✅ Clean merge: ${result.applied_changes} changes applied.`);
         }
-
-        process.exit(result.success ? 0 : 1);
       } catch (error) {
+        if (error instanceof BpError) throw error;
         console.error("Error:", error instanceof Error ? error.message : String(error));
-        process.exit(1);
+        throw new BpError(
+          `Merge failed: ${error instanceof Error ? error.message : String(error)}. See: docs/errors.md#code-1`,
+          1,
+          "MERGE_ERROR",
+          "See: docs/errors.md#code-1"
+        );
       }
     });
 }
