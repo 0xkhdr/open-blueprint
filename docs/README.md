@@ -1,34 +1,42 @@
-# open-blueprint (`bp`) — Documentation Suite
+# 📂 open-blueprint (`bp`) — Documentation Suite
+Permalink: open-blueprint (bp) — Documentation Suite
 
-Welcome to the comprehensive developer and architect documentation suite for the **open-blueprint (`bp`)** repository governance tool.
+Welcome to the comprehensive developer and architect documentation suite for the **open-blueprint (`bp`)** repository governance tool. 
+
+Our documentation is structured using a progressive-disclosure architecture, making it easy to find what you need whether you're a first-time user or an enterprise systems engineer.
 
 ---
 
-## 📂 Core Guides & Architectural References
+## 🧭 Navigating the Docs
+Permalink: Navigating the Docs
 
-Explore the documentation suite organized by domain:
+Explore the documentation suite organized by domain and developer persona:
+
+### 🚀 Getting Started & Day-to-Day Use
+Permalink: Getting Started & Day-to-Day Use
+* **[Getting Started](getting-started.md)**: 5-minute onboarding guide showing you how to install, initialize, and verify your first blueprint repository.
+* **[Core Philosophy](philosophy.md)**: The underlying principles of `bp` (Scaffolding-only, Idempotent, Fail-loud, Backend-agnostic, Brownfield-first).
+* **[Workflow Patterns](workflows.md)**: Practical guides and decision trees for solo developer flows, team patterns, and enterprise setups.
+* **[Practical Recipes](recipes.md)**: High-density copy-paste scripts, CI integration templates, and developer snippets.
 
 ### 🏗️ Systems & Conceptual Architecture
-* **[System Architecture Guide](architecture.md)**:
-  Deep-dive into the core philosophy, the 5 Blueprint Layers, the 4 internal engines (Detector, Templater, Validator, Translator), data flows, Zod schemas, scoring heuristics, and block-level merge stability.
+Permalink: Systems & Conceptual Architecture
+* **[Concepts & Architecture](concepts.md)**: Structural details covering the 5 Blueprint Layers, the 4 internal engines (Detector, Templater, Validator, Translator), Zod Fingerprints, and data pipelines.
+* **[Glossary of Terms](glossary.md)**: A dictionary and terminology index explaining Fingerprints, BlueprintIR, Block-Level Merges, and more.
 
----
+### 💻 Reference Manuals
+Permalink: Reference Manuals
+* **[CLI Command Reference](commands.md)**: Detailed syntax blocks, options, arguments, and terminal outputs for every command in the `bp` CLI.
+* **[Configuration Schema](configuration.md)**: Reference guide mapping global config properties (`~/.bp/config.json`) and repository configs (`.bp.json`).
+* **[Diagnostics & Troubleshooting](troubleshooting.md)**: Diagnostic routines and a comprehensive mapping of exit codes (0-10) to symptoms and resolutions.
 
-### 💻 Developer & Contributor References
-* **[CLI Command & Exit Code Reference](cli-reference.md)**:
-  Exhaustive CLI reference covering all commands (`init`, `verify`, `doctor`, `migrate`, `registry`), option structures, and precise semantic exit codes (Exit 0-10) for CI automation.
-* **[Codebase Contributor Guide](developer-guide.md)**:
-  Onboarding guide for codebase contributors. Explains setting up the development environment, running linters, Vitest test suites, fuzz testing with `fast-check`, and steps to extend fingerprint/validator schemas.
-
----
-
-### 🎨 Custom Blueprints & Platform Integrations
-* **[Template Authoring Guide](template-authoring.md)**:
-  Learn how to build custom Handlebars-based blueprint template packs, utilize detection context variables, implement idempotent merge boundaries, and cryptographically archive and sign template packs using RSA keys.
-* **[Custom Backend Adapters](backend-adapter.md)**:
-  Step-by-step technical guide to implementing custom platform adapters (e.g. Cursor, Claude, Copilot) using the Intermediate Representation (`BlueprintIR` version 2.0 schema) and registering them with the translator pipeline.
-* **[CI/CD Integration Guide](ci-integration.md)**:
-  Step-by-step deployment checklists and workflows for GitHub Actions, GitLab CI/CD, and Azure Pipelines to enforce blueprint integrity in build gates.
+### 🔌 Developer & Platform Customization
+Permalink: Developer & Platform Customization
+* **[Plugin API Guide](plugin-api.md)**: A step-by-step developer manual for building custom Zod validators in TypeScript.
+* **[Codebase Contributor Guide](contributing.md)**: Onboarding instructions for codebase contributors (Vitest setups, linting guidelines, Biome formatting, and Architecture Decision Records).
+* **[Template Authoring Guide](template-authoring.md)**: Deep-dive into building Handlebars template packs, merges, and cryptographically signed packages.
+* **[Custom Backend Adapters](backend-adapter.md)**: Guide to implementing target platform adapters utilizing the core `BlueprintIR` schema.
+* **[CI/CD Integration Checklist](ci-integration.md)**: Configuration details and integration guidelines for GitHub Actions, GitLab CI, and Azure Pipelines.
 
 ---
 

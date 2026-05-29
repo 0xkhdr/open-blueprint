@@ -1,4 +1,5 @@
 import * as path from "path";
+import * as vscode from "vscode";
 import { ExtensionContext, workspace } from "vscode";
 import {
   LanguageClient,
@@ -6,11 +7,11 @@ import {
   ServerOptions,
   TransportKind,
 } from "vscode-languageclient/node";
+import { BlueprintTreeProvider } from "./tree-view.js";
 
 let client: LanguageClient;
 
 export function activate(context: ExtensionContext) {
-  // Point to our compiled LSP server
   const serverModule = context.asAbsolutePath(
     path.join("..", "..", "dist", "lsp", "index.js")
   );
@@ -43,6 +44,14 @@ export function activate(context: ExtensionContext) {
   );
 
   client.start();
+
+  const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || "";
+  const treeProvider = new BlueprintTreeProvider(workspaceRoot);
+  vscode.window.registerTreeDataProvider("blueprintExplorer", treeProvider);
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("blueprint.refreshExplorer", () => treeProvider.refresh())
+  );
 }
 
 export function deactivate(): Thenable<void> | undefined {
