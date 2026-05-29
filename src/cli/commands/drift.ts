@@ -1,3 +1,4 @@
+import chalk from "chalk";
 import { Command } from "commander";
 import {
   type BehaviorBaseline,
@@ -5,6 +6,8 @@ import {
   establishBaseline,
   type RuntimeMetrics,
 } from "../../observability/semantic-drift.js";
+import { loadProjectConfig } from "../../config/project.js";
+import { detectMultiBackendDrift, saveDriftBaseline } from "../../validator/multi-backend-drift.js";
 
 function makeSyntheticBaseline(): BehaviorBaseline {
   return {
@@ -31,7 +34,59 @@ function makeSyntheticCurrent(): RuntimeMetrics {
 }
 
 export function createDriftCommand(): Command {
-  const cmd = new Command("drift").description("Semantic drift detection commands");
+  const cmd = new Command("drift").description("Drift detection commands");
+
+  cmd
+    .command("backends")
+    .description("Detect drift across all configured backends in .bp.json")
+    .option("--json", "Output as JSON")
+    .option("--save-baseline", "Save current file state as the new drift baseline")
+    .action((opts: { json?: boolean; saveBaseline?: boolean }) => {
+      const cwd = process.cwd();
+      const projectConfig = loadProjectConfig(cwd);
+
+      if (!projectConfig) {
+        if (opts.json) {
+          console.log(JSON.stringify({ status: "error", error: "No .bp.json found in current directory" }));
+        } else {
+          console.error(chalk.red("No .bp.json found. Run bp init first."));
+        }
+        process.exit(1);
+      }
+
+      const configuredBackends = projectConfig.backends ?? (projectConfig.backend ? [projectConfig.backend] : []);
+
+      if (opts.saveBaseline) {
+        saveDriftBaseline(cwd, configuredBackends);
+        if (opts.json) {
+          console.log(JSON.stringify({ status: "ok", message: "Baseline saved", backends: configuredBackends }));
+        } else {
+          console.log(chalk.green(`✔ Baseline saved for: ${configuredBackends.join(", ")}`));
+        }
+        return;
+      }
+
+      const results = detectMultiBackendDrift(cwd, projectConfig);
+
+      if (opts.json) {
+        console.log(JSON.stringify({ status: "ok", backends: results }));
+        return;
+      }
+
+      for (const result of results) {
+        const icon =
+          result.status === "in sync" ? chalk.green("✔") :
+          result.status === "drifted" ? chalk.yellow("~") :
+          result.status === "missing" ? chalk.red("!") :
+          chalk.dim("?");
+        console.log(`${icon} ${chalk.bold(result.backend)}: ${result.message}`);
+      }
+
+      const drifted = results.filter((r) => r.status === "drifted" || r.status === "missing");
+      if (drifted.length > 0) {
+        process.exit(1);
+      }
+    });
 
   cmd
     .command("baseline")

@@ -1,12 +1,16 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { CommandSyntaxAdapter } from "../../../backends/syntax.js";
 import type { Skill } from "../../ir.js";
 import { MarkdownAdapter } from "./MarkdownAdapter.js";
 
+const syntaxAdapter = new CommandSyntaxAdapter();
+
 export abstract class TomlCommandAdapter extends MarkdownAdapter {
   override renderCommand(skill: Skill, workflowId: string): string {
+    const invocation = syntaxAdapter.getInvocation(this.config.id, workflowId);
     return `[command]
-name = "/openspec-${workflowId}"
+name = "${invocation}"
 description = "${skill.description.replace(/"/g, '\\"')}"
 
 [body]

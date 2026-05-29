@@ -156,7 +156,7 @@ ${rule.rationale ? `**Why:** ${rule.rationale}` : ""}
 
     // 3. Skills
     for (const skill of ir.skills) {
-      const skillPath = path.join(copilotDir, "skills", `${skill.name.toLowerCase()}.md`);
+      const skillPath = path.join(copilotDir, "skills", `${skill.name.toLowerCase()}.prompt.md`);
       const content = `---
 name: ${skill.name}
 description: ${skill.description}

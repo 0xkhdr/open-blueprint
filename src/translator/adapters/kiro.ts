@@ -240,7 +240,7 @@ ${rule.rationale ? `**Reason:** ${rule.rationale}` : ""}
 
     // 6. Skills in dedicated directory
     for (const skill of ir.skills) {
-      const skillPath = path.join(projectRoot, "skills", `${skill.name.toLowerCase()}.md`);
+      const skillPath = path.join(projectRoot, "skills", `${skill.name.toLowerCase()}.prompt.md`);
       const content = `---
 name: ${skill.name}
 description: ${skill.description}

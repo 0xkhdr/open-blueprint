@@ -4,6 +4,7 @@ import chalk from "chalk";
 import { Command } from "commander";
 import ora from "ora";
 import { getBackend, listBackendIds } from "../../backends/registry.js";
+import { loadProjectConfig } from "../../config/project.js";
 import { ConfigError, TranslationError } from "../../errors.js";
 import { parseBlueprint, renderBlueprint } from "../../translator/index.js";
 import { BlueprintIRSchema } from "../../translator/ir.js";
@@ -73,6 +74,21 @@ export function createConvertCommand(): Command {
             throw new TranslationError(`Blueprint IR schema validation failed. See: docs/errors.md#code-7`);
           }
 
+          // Apply backend_configs overrides from .bp.json
+          const projectConfig = loadProjectConfig(inputDir);
+          const backendOverride = projectConfig?.backend_configs?.[toBackend];
+          if (backendOverride) {
+            if (backendOverride.workflows && backendOverride.workflows.length > 0) {
+              const allowed = new Set(backendOverride.workflows.map((w) => w.toLowerCase()));
+              validationResult.data.skills = validationResult.data.skills.filter((s) =>
+                allowed.has(s.name.toLowerCase().replace(/\s+/g, "-"))
+              );
+            }
+            if (backendOverride.delivery_mode === "commands_only") {
+              validationResult.data.skills = [];
+            }
+          }
+
           // Handle skill-only target
           if (!targetConfig.supportsCommands) {
             if (!opts.json) {
@@ -87,7 +103,19 @@ export function createConvertCommand(): Command {
             }
           }
 
-          const writtenFiles = await renderBlueprint(validationResult.data, outputDir, toBackend);
+          let writtenFiles = await renderBlueprint(validationResult.data, outputDir, toBackend);
+
+          // Enforce skills_only delivery_mode: remove generated command files
+          if (backendOverride?.delivery_mode === "skills_only" && targetConfig.commandsPath) {
+            const commandsDir = path.resolve(outputDir, targetConfig.commandsPath);
+            writtenFiles = writtenFiles.filter((f) => {
+              if (path.resolve(f).startsWith(commandsDir)) {
+                try { fs.rmSync(f); } catch { /* ignore */ }
+                return false;
+              }
+              return true;
+            });
+          }
 
           if (opts.json) {
             console.log(JSON.stringify({ status: "ok", filesWritten: writtenFiles }));

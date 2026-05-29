@@ -2,9 +2,12 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import fg from "fast-glob";
 import matter from "gray-matter";
+import { CommandSyntaxAdapter } from "../../backends/syntax.js";
 import type { BlueprintAdapter } from "../index.js";
 import type { BlueprintIR, Rule, Skill } from "../ir.js";
 import { generateAgentsMD } from "./agents-md.js";
+
+const syntaxAdapter = new CommandSyntaxAdapter();
 
 export class GeminiAdapter implements BlueprintAdapter {
   async parse(projectRoot: string): Promise<BlueprintIR> {
@@ -170,7 +173,27 @@ ${skill.procedure}
       writtenFiles.push(skillPath);
     }
 
-    // 4. AGENTS.md (universal output)
+    // 4. TOML command files (.gemini/commands/)
+    const commandsDir = path.join(projectRoot, ".gemini", "commands");
+    fs.mkdirSync(commandsDir, { recursive: true });
+    for (const skill of ir.skills) {
+      const workflowId = skill.name.toLowerCase().replace(/\s+/g, "-");
+      const invocation = syntaxAdapter.getInvocation("gemini", workflowId);
+      const tomlContent = `[command]
+name = "${invocation}"
+description = "${skill.description.replace(/"/g, '\\"')}"
+
+[body]
+content = """
+${skill.procedure}
+"""
+`;
+      const cmdPath = path.join(commandsDir, `${workflowId}.toml`);
+      fs.writeFileSync(cmdPath, tomlContent, "utf-8");
+      writtenFiles.push(cmdPath);
+    }
+
+    // 5. AGENTS.md (universal output)
     const agentsMD = generateAgentsMD(ir);
     const agentsMDPath = path.join(projectRoot, "AGENTS.md");
     fs.writeFileSync(agentsMDPath, agentsMD, "utf-8");
