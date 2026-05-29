@@ -8,7 +8,9 @@ import {
 } from "../../ecosystem/marketplace-v2.js";
 
 export function createMarketplaceCommand(): Command {
-  const cmd = new Command("marketplace").description("Browse and interact with blueprint marketplace");
+  const cmd = new Command("marketplace").description(
+    "Browse and interact with blueprint marketplace"
+  );
 
   cmd
     .command("search [query]")
@@ -64,9 +66,7 @@ export function createMarketplaceCommand(): Command {
             console.log();
           }
         } catch (e) {
-          spinner.fail(
-            chalk.red(`Search failed: ${e instanceof Error ? e.message : String(e)}`)
-          );
+          spinner.fail(chalk.red(`Search failed: ${e instanceof Error ? e.message : String(e)}`));
           process.exit(1);
         }
       }
@@ -78,37 +78,28 @@ export function createMarketplaceCommand(): Command {
     .requiredOption("--rating <number>", "Rating from 1 to 5")
     .option("--comment <text>", "Review comment", "")
     .option("--token <token>", "Auth token (or set BP_TOKEN env var)")
-    .action(
-      async (
-        name: string,
-        opts: { rating: string; comment: string; token?: string }
-      ) => {
-        const authToken = opts.token || process.env.BP_TOKEN || "";
-        if (!authToken) {
-          console.error(
-            chalk.red("Auth token required. Use --token or set BP_TOKEN env var.")
-          );
-          process.exit(1);
-        }
-
-        const rating = parseInt(opts.rating, 10);
-        if (Number.isNaN(rating) || rating < 1 || rating > 5) {
-          console.error(chalk.red("Rating must be between 1 and 5"));
-          process.exit(1);
-        }
-
-        const spinner = ora({ text: `Rating ${name}...`, color: "cyan" }).start();
-        try {
-          await rateTemplate(name, rating, opts.comment, authToken);
-          spinner.succeed(chalk.green(`Rated ${name}: ${rating}/5`));
-        } catch (e) {
-          spinner.fail(
-            chalk.red(`Rating failed: ${e instanceof Error ? e.message : String(e)}`)
-          );
-          process.exit(1);
-        }
+    .action(async (name: string, opts: { rating: string; comment: string; token?: string }) => {
+      const authToken = opts.token || process.env.BP_TOKEN || "";
+      if (!authToken) {
+        console.error(chalk.red("Auth token required. Use --token or set BP_TOKEN env var."));
+        process.exit(1);
       }
-    );
+
+      const rating = parseInt(opts.rating, 10);
+      if (Number.isNaN(rating) || rating < 1 || rating > 5) {
+        console.error(chalk.red("Rating must be between 1 and 5"));
+        process.exit(1);
+      }
+
+      const spinner = ora({ text: `Rating ${name}...`, color: "cyan" }).start();
+      try {
+        await rateTemplate(name, rating, opts.comment, authToken);
+        spinner.succeed(chalk.green(`Rated ${name}: ${rating}/5`));
+      } catch (e) {
+        spinner.fail(chalk.red(`Rating failed: ${e instanceof Error ? e.message : String(e)}`));
+        process.exit(1);
+      }
+    });
 
   cmd
     .command("ratings <name>")
@@ -137,9 +128,7 @@ export function createMarketplaceCommand(): Command {
           if (r.comment) console.log(`  ${r.comment}`);
         }
       } catch (e) {
-        spinner.fail(
-          chalk.red(`Fetch failed: ${e instanceof Error ? e.message : String(e)}`)
-        );
+        spinner.fail(chalk.red(`Fetch failed: ${e instanceof Error ? e.message : String(e)}`));
         process.exit(1);
       }
     });

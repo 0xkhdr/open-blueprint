@@ -1,5 +1,8 @@
 import { Command } from "commander";
-import { detectTelemetryPlatform, getTelemetryInitConfig } from "../../observability/telemetry-detect.js";
+import {
+  detectTelemetryPlatform,
+  getTelemetryInitConfig,
+} from "../../observability/telemetry-detect.js";
 
 export function createTelemetryCommand(): Command {
   const cmd = new Command("telemetry").description("Telemetry configuration commands");
@@ -39,7 +42,9 @@ export function createTelemetryCommand(): Command {
         process.exit(1);
       }
 
-      const config = getTelemetryInitConfig(platform as Parameters<typeof getTelemetryInitConfig>[0]);
+      const config = getTelemetryInitConfig(
+        platform as Parameters<typeof getTelemetryInitConfig>[0]
+      );
 
       if (opts.json) {
         console.log(JSON.stringify({ platform, config }));

@@ -38,7 +38,7 @@ export function evaluateAlertRules(
   }
 
   if (alerting.budget_overrun_alerts) {
-    const budgetPercent = metrics["budget_percent"] ?? 0;
+    const budgetPercent = metrics.budget_percent ?? 0;
     if (budgetPercent > 100) {
       events.push({
         rule: "budget_overrun",
@@ -63,7 +63,7 @@ export function evaluateAlertRules(
 
 function parseCondition(condition: string): ParsedCondition {
   const match = condition.match(/(\w+)\s*(>=|<=|==|>|<)\s*(\d+(?:\.\d+)?)/);
-  if (!match || !match[1] || !match[2] || !match[3]) throw new Error(`Invalid condition: ${condition}`);
+  if (!match?.[1] || !match[2] || !match[3]) throw new Error(`Invalid condition: ${condition}`);
   return { metric: match[1], operator: match[2], value: parseFloat(match[3]) };
 }
 

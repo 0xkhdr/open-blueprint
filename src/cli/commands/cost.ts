@@ -34,7 +34,8 @@ export function createCostCommand(): Command {
       if (opts.json) {
         const cost = ir.cost ?? null;
         const totalBudget = cost?.monthly_budget_usd ?? 0;
-        const estimatedSpend = (cost?.cost_per_token_usd ?? 0) * (cost?.estimated_monthly_tokens ?? 0);
+        const estimatedSpend =
+          (cost?.cost_per_token_usd ?? 0) * (cost?.estimated_monthly_tokens ?? 0);
         console.log(
           JSON.stringify({
             project: ir.spatial_anchor.project_name,

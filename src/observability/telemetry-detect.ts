@@ -1,7 +1,12 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-export type TelemetryPlatform = "opentelemetry" | "datadog" | "newrelic" | "prometheus" | "cloudwatch";
+export type TelemetryPlatform =
+  | "opentelemetry"
+  | "datadog"
+  | "newrelic"
+  | "prometheus"
+  | "cloudwatch";
 
 export function detectTelemetryPlatform(projectRoot: string): TelemetryPlatform | undefined {
   const pkgPath = path.join(projectRoot, "package.json");
@@ -15,7 +20,7 @@ export function detectTelemetryPlatform(projectRoot: string): TelemetryPlatform 
 
       if (deps["@opentelemetry/api"] || deps["@opentelemetry/sdk-node"]) return "opentelemetry";
       if (deps["dd-trace"] || deps["datadog-lambda-js"]) return "datadog";
-      if (deps["newrelic"]) return "newrelic";
+      if (deps.newrelic) return "newrelic";
       if (deps["prom-client"]) return "prometheus";
     } catch {
       // malformed package.json — continue to file checks

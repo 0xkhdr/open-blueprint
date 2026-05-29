@@ -1,6 +1,6 @@
-import { createHash } from "crypto";
-import { type BlueprintIR, Command, Persona, Rule, Skill } from "../translator/ir.js";
-import { type DiffChange, type DiffOptions, type DiffReport, DiffStrategy } from "./types.js";
+import { createHash } from "node:crypto";
+import type { BlueprintIR } from "../translator/ir.js";
+import type { DiffChange, DiffOptions, DiffReport } from "./types.js";
 
 export class BlueprintDiffer {
   private defaultOptions: DiffOptions = {
@@ -294,7 +294,7 @@ export class BlueprintDiffer {
       if (!byLayer.has(change.layer)) {
         byLayer.set(change.layer, []);
       }
-      byLayer.get(change.layer)!.push(change);
+      byLayer.get(change.layer)?.push(change);
     }
 
     // No conflicts detected at diff level (merge will detect actual conflicts)

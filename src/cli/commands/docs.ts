@@ -15,7 +15,11 @@ export function createDocsCommand(): Command {
 
   const generateCmd = new Command("generate")
     .description("Generate comprehensive governance documentation")
-    .option("--output <path>", "Output file or directory (default: ./blueprint-docs)", "./blueprint-docs")
+    .option(
+      "--output <path>",
+      "Output file or directory (default: ./blueprint-docs)",
+      "./blueprint-docs"
+    )
     .option("--json", "Output as JSON")
     .action(async (opts: { output: string; json?: boolean }) => {
       const cwd = process.cwd();
@@ -80,9 +84,7 @@ export function createDocsCommand(): Command {
       console.log(chalk.dim(`\nOutput: ${path.relative(cwd, outputDir)}`));
     } catch (e) {
       spinner.fail(
-        chalk.red(
-          `Documentation generation failed: ${e instanceof Error ? e.message : String(e)}`
-        )
+        chalk.red(`Documentation generation failed: ${e instanceof Error ? e.message : String(e)}`)
       );
       process.exit(EXIT_CODES.GENERAL_ERROR);
     }

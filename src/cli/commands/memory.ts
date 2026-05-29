@@ -20,7 +20,9 @@ function loadIR(cwd: string) {
 }
 
 export function createMemoryCommand(): Command {
-  const memory = new Command("memory").description("Audit and govern persistent memory directories");
+  const memory = new Command("memory").description(
+    "Audit and govern persistent memory directories"
+  );
 
   memory
     .command("audit")
@@ -45,23 +47,18 @@ export function createMemoryCommand(): Command {
 
         const memDir = path.resolve(
           cwd,
-          opts.dir ??
-            ir?.orchestration?.persistent_memory?.directory ??
-            ".claude/memory"
+          opts.dir ?? ir?.orchestration?.persistent_memory?.directory ?? ".claude/memory"
         );
 
-        const retentionPolicy = (
-          opts.retention ??
+        const retentionPolicy = (opts.retention ??
           ir?.orchestration?.persistent_memory?.retention_policy ??
-          "week"
-        ) as MemoryGovernanceConfig["retention_policy"];
+          "week") as MemoryGovernanceConfig["retention_policy"];
 
         const config: MemoryGovernanceConfig = {
           retention_policy: retentionPolicy,
           max_size_mb: Number(opts.maxSize ?? 100),
           encryption_at_rest:
-            opts.requireEncryption ??
-            (ir?.orchestration?.persistent_memory?.encryption ?? false),
+            opts.requireEncryption ?? ir?.orchestration?.persistent_memory?.encryption ?? false,
           access_control: [],
         };
 
@@ -100,72 +97,63 @@ export function createMemoryCommand(): Command {
     .option("--retention <policy>", "Retention policy: session|day|week|persistent", "week")
     .option("--json", "Output as JSON")
     .option("--dry-run", "List files to remove without deleting")
-    .action(
-      (opts: {
-        dir?: string;
-        retention?: string;
-        json?: boolean;
-        dryRun?: boolean;
-      }) => {
-        const cwd = process.cwd();
-        const ir = loadIR(cwd);
+    .action((opts: { dir?: string; retention?: string; json?: boolean; dryRun?: boolean }) => {
+      const cwd = process.cwd();
+      const ir = loadIR(cwd);
 
-        const memDir = path.resolve(
-          cwd,
-          opts.dir ??
-            ir?.orchestration?.persistent_memory?.directory ??
-            ".claude/memory"
-        );
+      const memDir = path.resolve(
+        cwd,
+        opts.dir ?? ir?.orchestration?.persistent_memory?.directory ?? ".claude/memory"
+      );
 
-        const retentionPolicy = (
-          opts.retention ?? "week"
-        ) as MemoryGovernanceConfig["retention_policy"];
+      const retentionPolicy = (opts.retention ??
+        "week") as MemoryGovernanceConfig["retention_policy"];
 
-        if (!fs.existsSync(memDir)) {
-          if (opts.json) {
-            console.log(JSON.stringify({ removed: [], message: "Directory does not exist" }));
-          } else {
-            console.log(chalk.dim("Memory directory does not exist — nothing to clean."));
-          }
-          return;
+      if (!fs.existsSync(memDir)) {
+        if (opts.json) {
+          console.log(JSON.stringify({ removed: [], message: "Directory does not exist" }));
+        } else {
+          console.log(chalk.dim("Memory directory does not exist — nothing to clean."));
         }
+        return;
+      }
 
-        if (opts.dryRun) {
-          // Preview: list files that would be removed
-          const now = Date.now();
-          const maxAge = retentionToMs(retentionPolicy);
-          const allFiles = listFilesRecursive(memDir);
-          const toRemove = maxAge === Infinity
+      if (opts.dryRun) {
+        // Preview: list files that would be removed
+        const now = Date.now();
+        const maxAge = retentionToMs(retentionPolicy);
+        const allFiles = listFilesRecursive(memDir);
+        const toRemove =
+          maxAge === Infinity
             ? []
             : allFiles.filter((f) => {
                 const stat = fs.statSync(path.join(memDir, f));
                 return now - stat.mtimeMs > maxAge;
               });
 
-          if (opts.json) {
-            console.log(JSON.stringify({ would_remove: toRemove }));
-          } else {
-            console.log(chalk.yellow(`Would remove ${toRemove.length} file(s):`));
-            for (const f of toRemove) console.log(chalk.dim(`  - ${f}`));
-          }
-          return;
-        }
-
-        const removed = cleanupExpiredMemory(memDir, retentionPolicy);
-
         if (opts.json) {
-          console.log(JSON.stringify({ removed }));
-          return;
-        }
-
-        if (removed.length === 0) {
-          console.log(chalk.green("✓ No expired files found"));
+          console.log(JSON.stringify({ would_remove: toRemove }));
         } else {
-          console.log(chalk.green(`✓ Removed ${removed.length} expired file(s):`));
-          for (const f of removed) console.log(chalk.dim(`  - ${f}`));
+          console.log(chalk.yellow(`Would remove ${toRemove.length} file(s):`));
+          for (const f of toRemove) console.log(chalk.dim(`  - ${f}`));
         }
+        return;
       }
-    );
+
+      const removed = cleanupExpiredMemory(memDir, retentionPolicy);
+
+      if (opts.json) {
+        console.log(JSON.stringify({ removed }));
+        return;
+      }
+
+      if (removed.length === 0) {
+        console.log(chalk.green("✓ No expired files found"));
+      } else {
+        console.log(chalk.green(`✓ Removed ${removed.length} expired file(s):`));
+        for (const f of removed) console.log(chalk.dim(`  - ${f}`));
+      }
+    });
 
   return memory;
 }

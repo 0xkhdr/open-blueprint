@@ -4,12 +4,15 @@ import { createAgentCommand } from "./commands/agent.js";
 import { createChainCommand } from "./commands/chain.js";
 import { createConfigCommand } from "./commands/config.js";
 import { createConvertCommand } from "./commands/convert.js";
+import { createCostCommand } from "./commands/cost.js";
 import { createDevCommand } from "./commands/dev.js";
 import { createDiffCommand } from "./commands/diff.js";
 import { createDocsCommand } from "./commands/docs.js";
 import { createDoctorCommand } from "./commands/doctor.js";
+import { createDriftCommand } from "./commands/drift.js";
 import { createHookCommand } from "./commands/hook.js";
 import { createInitCommand } from "./commands/init.js";
+import { createMarketplaceCommand } from "./commands/marketplace.js";
 import { createMCPCommand } from "./commands/mcp.js";
 import { createMemoryCommand } from "./commands/memory.js";
 import { createMergeCommand } from "./commands/merge.js";
@@ -17,13 +20,10 @@ import { createMigrateCommand } from "./commands/migrate.js";
 import { createRuleCommand } from "./commands/rule.js";
 import { createSyncCommand } from "./commands/sync.js";
 import { createTeamCommand } from "./commands/team.js";
+import { createTelemetryCommand } from "./commands/telemetry.js";
 import { createTemplateCommand } from "./commands/template.js";
 import { createUpdateCommand } from "./commands/update.js";
 import { createVerifyCommand } from "./commands/verify.js";
-import { createTelemetryCommand } from "./commands/telemetry.js";
-import { createCostCommand } from "./commands/cost.js";
-import { createDriftCommand } from "./commands/drift.js";
-import { createMarketplaceCommand } from "./commands/marketplace.js";
 
 const pkg = {
   name: "@agentic/bp",

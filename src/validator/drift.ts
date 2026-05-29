@@ -331,7 +331,7 @@ export function computeSimilarity(hash1: string, hash2: string): number {
 function checkRuleEffectivenessDrift(
   _files: string[],
   projectRoot: string,
-  currentFingerprint: Fingerprint
+  _currentFingerprint: Fingerprint
 ): ValidationError[] {
   const errors: ValidationError[] = [];
   const metricsFile = path.join(projectRoot, ".bp-rule-metrics.json");
@@ -410,7 +410,7 @@ function checkCostDrift(projectRoot: string): ValidationError[] {
   return errors;
 }
 
-function checkOutputDrift(files: string[], projectRoot: string): ValidationError[] {
+function checkOutputDrift(_files: string[], projectRoot: string): ValidationError[] {
   const errors: ValidationError[] = [];
   const snapshotFile = path.join(projectRoot, ".bp-output-snapshots.json");
 

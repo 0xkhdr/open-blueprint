@@ -15,11 +15,8 @@ import {
   type HoverParams,
   type InitializeParams,
   type InitializeResult,
-  type LocationLink,
-  type Position,
   ProposedFeatures,
   type SymbolInformation,
-  SymbolKind,
   TextDocumentSyncKind,
   TextDocuments,
 } from "vscode-languageserver/node.js";
@@ -118,7 +115,7 @@ function getLineContent(document: TextDocument, line: number): string {
 function extractFrontmatterFieldAtPosition(
   document: TextDocument,
   line: number,
-  character: number
+  _character: number
 ): string | null {
   const lineContent = getLineContent(document, line);
   const match = lineContent.match(/^\s*(\w+)\s*:/);
@@ -311,7 +308,7 @@ connection.onDefinition(async (params: DefinitionParams): Promise<Definition | n
 // Workspace symbols
 connection.onWorkspaceSymbol(async (_params): Promise<SymbolInformation[]> => {
   const symbols: SymbolInformation[] = [];
-  const workspaceFolders = _params;
+  const _workspaceFolders = _params;
 
   // For now, return empty. Full implementation would require workspace folder info
   // from InitializeParams to scan project blueprints.

@@ -1,4 +1,3 @@
-import { Rule } from "../translator/ir.js";
 import type { RulePack } from "./types.js";
 
 export const GDPR_PACK: RulePack = {

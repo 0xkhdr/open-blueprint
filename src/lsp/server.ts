@@ -1,28 +1,30 @@
+import * as fs from "node:fs";
+import * as path from "node:path";
 import {
-  CodeAction,
+  type CodeAction,
   CodeActionKind,
-  CompletionItem,
+  type CompletionItem,
   CompletionItemKind,
-  Diagnostic,
+  type Diagnostic,
   DiagnosticSeverity,
-  Hover,
-  InitializeParams,
-  InitializeResult,
+  type Hover,
+  type InitializeParams,
+  type InitializeResult,
   TextDocumentSyncKind,
   TextDocuments,
 } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
-import * as path from "node:path";
-import * as fs from "node:fs";
 import { detect, enrichFingerprint } from "../detector/index.js";
-import { runValidator } from "../validator/index.js";
 import { resolveTemplatePack } from "../templater/selector.js";
+import { runValidator } from "../validator/index.js";
 
 // createConnection lives in node-specific entry; import via require to avoid
 // the low-level factory overload exported by the common typings entry.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { createConnection } = require("vscode-languageserver/lib/node/main") as {
-  createConnection: () => ReturnType<typeof import("vscode-languageserver/lib/node/main").createConnection>;
+  createConnection: () => ReturnType<
+    typeof import("vscode-languageserver/lib/node/main").createConnection
+  >;
 };
 
 const connection = createConnection();
@@ -58,8 +60,8 @@ async function validateDocument(doc: TextDocument): Promise<Diagnostic[]> {
     const basename = path.basename(filePath);
 
     return allErrors
-      .filter(e => e.file === filePath || path.basename(e.file) === basename)
-      .map(e => ({
+      .filter((e) => e.file === filePath || path.basename(e.file) === basename)
+      .map((e) => ({
         range: {
           start: { line: Math.max(0, (e.line ?? 1) - 1), character: 0 },
           end: { line: Math.max(0, (e.line ?? 1) - 1), character: 200 },
@@ -82,7 +84,10 @@ async function validateDocument(doc: TextDocument): Promise<Diagnostic[]> {
 function findProjectRoot(filePath: string): string {
   let dir = path.dirname(filePath);
   while (dir !== path.dirname(dir)) {
-    if (fs.existsSync(path.join(dir, "package.json")) || fs.existsSync(path.join(dir, ".bp.json"))) {
+    if (
+      fs.existsSync(path.join(dir, "package.json")) ||
+      fs.existsSync(path.join(dir, ".bp.json"))
+    ) {
       return dir;
     }
     dir = path.dirname(dir);
@@ -112,7 +117,11 @@ connection.onCompletion((): CompletionItem[] => {
       kind: CompletionItemKind.EnumMember,
       detail: "Soft constraint — agent may request exception",
     },
-    { label: "info", kind: CompletionItemKind.EnumMember, detail: "Informational — no enforcement" },
+    {
+      label: "info",
+      kind: CompletionItemKind.EnumMember,
+      detail: "Informational — no enforcement",
+    },
   ];
 });
 
@@ -168,9 +177,7 @@ connection.onCodeAction(
           diagnostics: [diag],
           edit: {
             changes: {
-              [params.textDocument.uri]: [
-                { range: diag.range, newText: `${diag.message}: \n` },
-              ],
+              [params.textDocument.uri]: [{ range: diag.range, newText: `${diag.message}: \n` }],
             },
           },
         });
@@ -183,9 +190,7 @@ connection.onCodeAction(
           diagnostics: [diag],
           edit: {
             changes: {
-              [params.textDocument.uri]: [
-                { range: diag.range, newText: "severity: soft" },
-              ],
+              [params.textDocument.uri]: [{ range: diag.range, newText: "severity: soft" }],
             },
           },
         });

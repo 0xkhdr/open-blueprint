@@ -1,9 +1,9 @@
 import { Command } from "commander";
 import {
-  establishBaseline,
-  detectSemanticDrift,
-  type RuntimeMetrics,
   type BehaviorBaseline,
+  detectSemanticDrift,
+  establishBaseline,
+  type RuntimeMetrics,
 } from "../../observability/semantic-drift.js";
 
 function makeSyntheticBaseline(): BehaviorBaseline {
@@ -13,7 +13,7 @@ function makeSyntheticBaseline(): BehaviorBaseline {
     total_tokens: 50000,
     session_duration_ms: 120000,
     agent_action_distribution: { read: 0.6, write: 0.3, execute: 0.1 },
-    skill_invocation_count: { "run-tests": 25, "deploy": 5 },
+    skill_invocation_count: { "run-tests": 25, deploy: 5 },
   };
 }
 
@@ -26,7 +26,7 @@ function makeSyntheticCurrent(): RuntimeMetrics {
     success_rate: 0.98,
     rule_success_rate: { "security-no-secrets": 0.92, "style-formatting": 0.85 },
     agent_action_distribution: { read: 0.55, write: 0.35, execute: 0.1 },
-    skill_invocation_count: { "run-tests": 24, "deploy": 5 },
+    skill_invocation_count: { "run-tests": 24, deploy: 5 },
   };
 }
 
@@ -35,7 +35,9 @@ export function createDriftCommand(): Command {
 
   cmd
     .command("baseline")
-    .description("Establish a behavior baseline from metrics (uses synthetic data if no metrics file)")
+    .description(
+      "Establish a behavior baseline from metrics (uses synthetic data if no metrics file)"
+    )
     .option("--metrics <file>", "Path to NDJSON metrics file")
     .option("--window <days>", "Window in days for baseline calculation", "7")
     .option("--json", "Output as JSON")

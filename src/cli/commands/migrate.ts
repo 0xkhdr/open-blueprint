@@ -25,7 +25,9 @@ export function createMigrateCommand(): Command {
   const cmd = new Command("migrate");
 
   cmd
-    .description("Migrate blueprint between backends or upgrade schema version (cross-backend and schema migration)")
+    .description(
+      "Migrate blueprint between backends or upgrade schema version (cross-backend and schema migration)"
+    )
     .option(
       "--from <backend>",
       "Source backend (claude|cursor|codex|pi|kiro|antigravity|copilot|gemini|opendev|generic)"
@@ -120,7 +122,7 @@ export function createMigrateCommand(): Command {
           }
 
           const report = generateMigrationReport(plan);
-          console.log("\n" + report);
+          console.log(`\n${report}`);
 
           if (plan.feature_gaps.length > 0) {
             console.log(
@@ -133,9 +135,7 @@ export function createMigrateCommand(): Command {
           if (opts.report) {
             const reportPath = path.join(outputDir, "MIGRATION_REPORT.md");
             fs.writeFileSync(reportPath, report, "utf-8");
-            console.log(
-              chalk.dim(`\nReport written: ${path.relative(cwd, reportPath)}`)
-            );
+            console.log(chalk.dim(`\nReport written: ${path.relative(cwd, reportPath)}`));
           }
         } catch (e) {
           spinner.fail(

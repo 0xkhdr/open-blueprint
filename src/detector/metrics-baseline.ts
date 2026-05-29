@@ -156,7 +156,7 @@ export function generateDatadogMonitors(ir: BlueprintIR): DatadogMonitor[] {
     query: `avg:agent.latency.ms{*}.rollup(avg, 300)`,
     name: `${ir.spatial_anchor.project_name}: High Latency`,
     message: "Agent latency exceeded threshold",
-    tags: ["project:" + ir.spatial_anchor.project_name],
+    tags: [`project:${ir.spatial_anchor.project_name}`],
     threshold: ir.metrics?.latency_baseline_ms ? ir.metrics.latency_baseline_ms * 1.5 : 1500,
   });
 
@@ -166,7 +166,7 @@ export function generateDatadogMonitors(ir: BlueprintIR): DatadogMonitor[] {
     query: `avg:agent.error_rate{*}`,
     name: `${ir.spatial_anchor.project_name}: High Error Rate`,
     message: "Agent error rate exceeded threshold",
-    tags: ["project:" + ir.spatial_anchor.project_name],
+    tags: [`project:${ir.spatial_anchor.project_name}`],
     threshold: ir.metrics?.error_rate_threshold || 0.1,
   });
 

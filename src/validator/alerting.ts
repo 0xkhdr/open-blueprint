@@ -124,7 +124,7 @@ export function generateSlackWebhook(
   alertMessage: string,
   severity: "info" | "warning" | "critical"
 ): string {
-  const colorMap: Record<string, string> = {
+  const _colorMap: Record<string, string> = {
     info: "#36a64f",
     warning: "#ff9900",
     critical: "#ff0000",

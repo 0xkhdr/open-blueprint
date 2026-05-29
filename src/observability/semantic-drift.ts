@@ -19,7 +19,12 @@ export interface BehaviorBaseline {
 }
 
 export interface DriftEntry {
-  type: "rule_effectiveness" | "skill_degradation" | "agent_behavior" | "scope_creep" | "token_inflation";
+  type:
+    | "rule_effectiveness"
+    | "skill_degradation"
+    | "agent_behavior"
+    | "scope_creep"
+    | "token_inflation";
   target: string;
   baseline: number;
   current: number;
@@ -118,16 +123,21 @@ function average(values: number[]): number {
 
 function averageByKey(
   metrics: RuntimeMetrics[],
-  key: keyof Pick<RuntimeMetrics, "rule_success_rate" | "agent_action_distribution" | "skill_invocation_count">
+  key: keyof Pick<
+    RuntimeMetrics,
+    "rule_success_rate" | "agent_action_distribution" | "skill_invocation_count"
+  >
 ): Record<string, number> {
   const result: Record<string, number> = {};
   const allKeys = new Set<string>();
-
   for (const m of metrics) {
     const val = m[key] as Record<string, number> | undefined;
-    if (val) Object.keys(val).forEach((k) => allKeys.add(k));
+    if (val) {
+      Object.keys(val).forEach((k) => {
+        allKeys.add(k);
+      });
+    }
   }
-
   for (const k of allKeys) {
     const values = metrics
       .map((m) => (m[key] as Record<string, number> | undefined)?.[k])

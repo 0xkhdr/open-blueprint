@@ -46,14 +46,14 @@ export async function searchMarketplace(
   filters?: MarketplaceFilters
 ): Promise<MarketplaceSearchResult> {
   const registry = "https://registry.npmjs.org";
-  const searchUrl = `${registry}/-/v1/search?text=${encodeURIComponent(query + " blueprint")}&size=20`;
+  const searchUrl = `${registry}/-/v1/search?text=${encodeURIComponent(`${query} blueprint`)}&size=20`;
 
   let templates: MarketplaceTemplate[] = [];
 
   try {
     const response = await fetch(searchUrl);
     if (response.ok) {
-      const data = await response.json() as { objects?: any[] };
+      const data = (await response.json()) as { objects?: any[] };
       templates = (data.objects || []).map((obj: any) => ({
         name: obj.package?.name || "",
         version: obj.package?.version || "0.0.0",

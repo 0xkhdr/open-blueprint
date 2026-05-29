@@ -112,9 +112,7 @@ function hasEncryption(dir: string): boolean {
   // Check for encryption markers: .encrypted ext, .enc ext, gpg files
   const files = listFilesRecursive(dir);
   const encMarkers = [".enc", ".encrypted", ".gpg", ".asc"];
-  const plainFiles = files.filter(
-    (f) => !encMarkers.some((m) => f.endsWith(m))
-  );
+  const plainFiles = files.filter((f) => !encMarkers.some((m) => f.endsWith(m)));
   // Encrypted if all files have encryption extensions, or a .keyring file exists
   return (
     plainFiles.length === 0 ||

@@ -125,5 +125,5 @@ export function writeOverrideAudit(audit: OverrideAuditEntry[], projectRoot: str
     if (entry.reason) lines.push(`    reason: "${entry.reason}"`);
     if (entry.author) lines.push(`    author: "${entry.author}"`);
   }
-  fs.writeFileSync(auditPath, lines.join("\n") + "\n", "utf-8");
+  fs.writeFileSync(auditPath, `${lines.join("\n")}\n`, "utf-8");
 }

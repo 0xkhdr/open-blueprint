@@ -60,9 +60,7 @@ export function createTeamCommand(): Command {
     .action((opts: { json?: boolean; dryRun?: boolean }) => {
       const ir = loadIR(process.cwd());
       const teams = ir.orchestration?.agent_teams ?? [];
-      const registeredAgents = new Set(
-        (ir.agent_registry?.agents ?? []).map((a) => a.name)
-      );
+      const registeredAgents = new Set((ir.agent_registry?.agents ?? []).map((a) => a.name));
       const errors: Array<{ team: string; issue: string }> = [];
 
       for (const t of teams) {

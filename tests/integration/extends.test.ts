@@ -11,10 +11,12 @@ describe("blueprint extends / inheritance", () => {
 
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "bp-extends-test-"));
+    fs.rmSync(path.join(os.homedir(), ".bp", "templates"), { recursive: true, force: true });
   });
 
   afterEach(() => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
+    fs.rmSync(path.join(os.homedir(), ".bp", "templates"), { recursive: true, force: true });
     RegistryClient.clearMockPackages();
   });
 
@@ -80,6 +82,7 @@ describe("blueprint extends / inheritance", () => {
     
     // Detect project fingerprint
     const fingerprint = await detect(projectDir);
+
 
     // Run templater on the project directory using our public key
     const result = await runTemplater(fingerprint, projectDir, {

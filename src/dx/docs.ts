@@ -1,5 +1,5 @@
-import type { BlueprintIR } from "../translator/ir.js";
 import { parseBlueprint } from "../translator/index.js";
+import type { BlueprintIR } from "../translator/ir.js";
 
 export async function generateDocs(projectRoot: string): Promise<string> {
   const ir = await parseBlueprint(projectRoot, "claude");

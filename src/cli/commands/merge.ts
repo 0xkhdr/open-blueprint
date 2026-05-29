@@ -1,6 +1,6 @@
+import fs from "node:fs";
+import path from "node:path";
 import { Command } from "commander";
-import fs from "fs";
-import path from "path";
 import { mergeBlueprints } from "../../blueprint-sync/merge.js";
 import type { MergeConflict, MergeOptions } from "../../blueprint-sync/types.js";
 import { BlueprintIRSchema } from "../../translator/ir.js";

@@ -138,8 +138,7 @@ export function diffSkill(left: Skill, right: Skill): string[] {
 export function diffPersona(left: Persona, right: Persona): string[] {
   const changes: string[] = [];
   if (left.role !== right.role) changes.push(`role: ${left.role} → ${right.role}`);
-  if (left.reasoning_style !== right.reasoning_style)
-    changes.push("reasoning_style modified");
+  if (left.reasoning_style !== right.reasoning_style) changes.push("reasoning_style modified");
   const leftTools = new Set(left.allowed_tools || []);
   const rightTools = new Set(right.allowed_tools || []);
   const addedTools = [...rightTools].filter((t) => !leftTools.has(t));

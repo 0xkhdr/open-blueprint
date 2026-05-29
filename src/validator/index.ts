@@ -17,8 +17,6 @@ import { loadCache, saveCache } from "./cache.js";
 import { validateCostConfig } from "./cost.js";
 import { validateCrossLayerReferences } from "./cross-layer.js";
 import { validateDrift } from "./drift.js";
-import { validateCommandsDeep, validateMCPServersDeep, validateSettingsDeep } from "./layers-deep.js";
-import { auditPerformance } from "./performance.js";
 import {
   validateAudit,
   validateCommands,
@@ -30,8 +28,14 @@ import {
   validateRisk,
   validateSettings,
 } from "./layers.js";
+import {
+  validateCommandsDeep,
+  validateMCPServersDeep,
+  validateSettingsDeep,
+} from "./layers-deep.js";
 import { validateLogical } from "./logical.js";
 import { validateOrchestrationSemantic } from "./orchestration.js";
+import { auditPerformance } from "./performance.js";
 import { validateRBAC } from "./rbac.js";
 import { validateSemantic } from "./semantic.js";
 import type { ValidationError } from "./structural.js";

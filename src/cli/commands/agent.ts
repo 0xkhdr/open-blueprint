@@ -46,13 +46,9 @@ export function createAgentCommand(): Command {
               : tier === "medium"
                 ? chalk.cyan
                 : chalk.green;
+        console.log(`  ${chalk.bold(a.name)} ${tierColor(`[${tier}]`)} — ${a.purpose}`);
         console.log(
-          `  ${chalk.bold(a.name)} ${tierColor(`[${tier}]`)} — ${a.purpose}`
-        );
-        console.log(
-          chalk.dim(
-            `    owner: ${a.owner}  eval: ${a.eval_status}  v${a.version ?? "?"}`
-          )
+          chalk.dim(`    owner: ${a.owner}  eval: ${a.eval_status}  v${a.version ?? "?"}`)
         );
       }
       console.log();
@@ -149,7 +145,7 @@ export function createAgentCommand(): Command {
               registry_version: "1.0",
             };
           }
-          ir.agent_registry!.agents.push(entry);
+          ir.agent_registry?.agents.push(entry);
           fs.writeFileSync(blueprintPath, JSON.stringify(ir, null, 2), "utf-8");
           if (!opts.json) console.log(chalk.dim(`  Written to ${blueprintPath}`));
         }

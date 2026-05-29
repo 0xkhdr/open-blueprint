@@ -134,7 +134,7 @@ export function attributeTokens(
 export function checkBudgetViolation(
   tokensUsed: number,
   costPerToken: number,
-  monthlyBudgetUsd?: number,
+  _monthlyBudgetUsd?: number,
   perSessionLimit?: number
 ): { violated: boolean; message?: string } {
   const costIncurred = tokensUsed * costPerToken;

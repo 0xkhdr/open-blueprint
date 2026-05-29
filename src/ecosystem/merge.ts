@@ -1,6 +1,6 @@
 import type { BlueprintIR, Persona, Rule, Skill } from "../translator/ir.js";
-import { diffBlueprints } from "./diff.js";
 import type { BlueprintDiff } from "./diff.js";
+import { diffBlueprints } from "./diff.js";
 
 export interface MergeConflict {
   type: string;
@@ -79,7 +79,9 @@ export function threeWayMerge(
         );
         if (leftHasSameField) {
           const baseItems = getItemsOfType(base, modified.type);
-          const baseItem = baseItems.find((x: any) => x.id === modified.id || x.name === modified.id);
+          const baseItem = baseItems.find(
+            (x: any) => x.id === modified.id || x.name === modified.id
+          );
           conflicts.push({
             type: modified.type,
             id: modified.id,

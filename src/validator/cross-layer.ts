@@ -1,7 +1,10 @@
 import type { BlueprintIR } from "../translator/ir.js";
 import type { ValidationError } from "./structural.js";
 
-export function validateCrossLayerReferences(ir: BlueprintIR, blueprintFile: string): ValidationError[] {
+export function validateCrossLayerReferences(
+  ir: BlueprintIR,
+  blueprintFile: string
+): ValidationError[] {
   const errors: ValidationError[] = [];
 
   // 1. Rule → Skill references
@@ -22,13 +25,7 @@ export function validateCrossLayerReferences(ir: BlueprintIR, blueprintFile: str
   }
 
   // 2. Agent → Tool/Skill references
-  const knownTools = new Set([
-    "file_read",
-    "file_edit",
-    "terminal",
-    "test_runner",
-    ...skillNames,
-  ]);
+  const knownTools = new Set(["file_read", "file_edit", "terminal", "test_runner", ...skillNames]);
   for (const agent of ir.personas) {
     for (const tool of agent.allowed_tools ?? []) {
       if (!knownTools.has(tool)) {

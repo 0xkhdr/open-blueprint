@@ -32,8 +32,7 @@ export function scoreMCPServer(server: MCPServer): MCPRiskScore {
   // data sensitivity via server risk_level
   if (server.risk_level === "high") score += 2;
 
-  const tier =
-    score >= 8 ? "critical" : score >= 5 ? "high" : score >= 3 ? "medium" : "low";
+  const tier = score >= 8 ? "critical" : score >= 5 ? "high" : score >= 3 ? "medium" : "low";
   return { score, max, tier };
 }
 
@@ -56,7 +55,9 @@ export function generateMCPRiskReport(servers: MCPServer[]): MCPRiskReport[] {
       issues.push("No auth_scope defined — unrestricted access");
     }
     if ((server.governance?.auto_approve?.length ?? 0) > 0) {
-      issues.push(`${server.governance!.auto_approve!.length} tools auto-approved without confirmation`);
+      issues.push(
+        `${server.governance?.auto_approve?.length} tools auto-approved without confirmation`
+      );
     }
     if (server.risk_level === "high") {
       issues.push("Server risk_level is high — review data access");

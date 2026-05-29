@@ -35,8 +35,7 @@ export const BUILTIN_RULE_PACKS: Record<string, RulePack> = {
         id: "gdpr-data-minimization",
         scope: "src/**/*",
         severity: "hard",
-        action:
-          "Only collect and process personal data that is necessary for the specific purpose",
+        action: "Only collect and process personal data that is necessary for the specific purpose",
         rationale: "Article 5(1)(c) of GDPR requires data minimization",
         tags: ["gdpr", "art-5-1-c", "privacy"],
       },
@@ -137,8 +136,7 @@ export const BUILTIN_RULE_PACKS: Record<string, RulePack> = {
         id: "soc2-monitoring",
         scope: "src/logging/**/*",
         severity: "hard",
-        action:
-          "Log all system operations with timestamps, user IDs, and action details",
+        action: "Log all system operations with timestamps, user IDs, and action details",
         rationale: "CC7.1 requires system operations monitoring",
         tags: ["soc2", "CC7.1", "monitoring"],
       },
@@ -177,8 +175,7 @@ export const BUILTIN_RULE_PACKS: Record<string, RulePack> = {
         id: "hipaa-access-control",
         scope: "src/**/*",
         severity: "hard",
-        action:
-          "Implement unique user identification and emergency access procedures for PHI",
+        action: "Implement unique user identification and emergency access procedures for PHI",
         rationale: "164.312(a) requires access control",
         tags: ["hipaa", "164.312(a)", "phi"],
       },

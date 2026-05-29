@@ -1,6 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { globSync } from "fast-glob";
+import fg from "fast-glob";
 
 export interface EnterpriseSignals {
   has_rbac_config: boolean;
@@ -25,7 +25,7 @@ function detectRBAC(root: string): boolean {
   const keywords = ["casbin", "IAM", "rbac", "roles", "permissions", "policy"];
   return keywords.some((s) => {
     try {
-      return globSync(`${root}/**/*${s}*`, { onlyFiles: true, deep: 4 }).length > 0;
+      return fg.sync(`${root}/**/*${s}*`, { onlyFiles: true, deep: 4 }).length > 0;
     } catch {
       return false;
     }
@@ -44,7 +44,7 @@ function detectComplianceDocs(root: string): boolean {
   ];
   return patterns.some((p) => {
     try {
-      return globSync(path.join(root, p)).length > 0;
+      return fg.sync(path.join(root, p)).length > 0;
     } catch {
       return false;
     }

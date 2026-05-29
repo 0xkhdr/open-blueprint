@@ -1,6 +1,6 @@
-import { type BlueprintIR, Persona, Rule, Skill } from "../translator/ir.js";
+import type { BlueprintIR } from "../translator/ir.js";
 import { diffBlueprints } from "./diff.js";
-import { DiffChange, type MergeConflict, type MergeOptions, type MergeResult } from "./types.js";
+import type { MergeConflict, MergeOptions, MergeResult } from "./types.js";
 
 export class BlueprintMerger {
   private defaultOptions: MergeOptions = {

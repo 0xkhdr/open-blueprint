@@ -3,6 +3,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { loadProjectConfig } from "../config/project.js";
 import type { Fingerprint } from "../detector/fingerprint.js";
+import { enrichFingerprint } from "../detector/index.js";
 import { RegistryClient } from "../registry/client.js";
 import { type RenderContext, shouldRenderTemplate } from "./conditional.js";
 import { registerPartials, renderString, renderTemplate } from "./engine.js";
@@ -62,6 +63,7 @@ function buildContext(fingerprint: Fingerprint): TemplateContext {
   const enhanced = fingerprint as Fingerprint & {
     risk_tier?: "low" | "medium" | "high" | "critical";
   };
+  const riskTier = enhanced.risk_tier ?? enrichFingerprint(fingerprint).risk_tier ?? "low";
 
   return {
     project_name: fingerprint.project.name,
@@ -84,7 +86,7 @@ function buildContext(fingerprint: Fingerprint): TemplateContext {
     detected_at: fingerprint.detected_at,
     src_dirs: fingerprint.directory_topology.src_dirs,
     test_dirs: fingerprint.directory_topology.test_dirs,
-    risk_tier: enhanced.risk_tier ?? "low",
+    risk_tier: riskTier,
   };
 }
 

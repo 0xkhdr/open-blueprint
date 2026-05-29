@@ -1,6 +1,6 @@
+import fs from "node:fs";
+import path from "node:path";
 import { Command } from "commander";
-import fs from "fs";
-import path from "path";
 import { diffBlueprints } from "../../blueprint-sync/diff.js";
 import { BlueprintIRSchema } from "../../translator/ir.js";
 
@@ -83,7 +83,7 @@ function formatText(report: ReturnType<typeof diffBlueprints>): string {
     if (!byLayer.has(change.layer)) {
       byLayer.set(change.layer, []);
     }
-    byLayer.get(change.layer)!.push(change);
+    byLayer.get(change.layer)?.push(change);
   }
 
   const icons: Record<string, string> = {
@@ -140,7 +140,7 @@ function formatMarkdown(report: ReturnType<typeof diffBlueprints>): string {
     if (!byLayer.has(change.layer)) {
       byLayer.set(change.layer, []);
     }
-    byLayer.get(change.layer)!.push(change);
+    byLayer.get(change.layer)?.push(change);
   }
 
   const emojiIcons: Record<string, string> = {

@@ -1,4 +1,4 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect } from "vitest";
 import { generateCostDashboard, generateAgentCostTable } from "../../../src/observability/dashboard.js";
 import type { BlueprintIR } from "../../../src/translator/ir.js";
 

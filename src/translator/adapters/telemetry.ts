@@ -1,4 +1,4 @@
-import type { BlueprintIR, Telemetry } from "../ir.js";
+import type { BlueprintIR } from "../ir.js";
 
 export interface TelemetryConfig {
   provider: string;
@@ -71,7 +71,7 @@ export function generateOpenTelemetryConfig(ir: BlueprintIR): TelemetryConfig | 
 }
 
 export function generateDatadogConfig(ir: BlueprintIR): TelemetryConfig | null {
-  if (!ir.telemetry || !ir.telemetry.datadog_config) return null;
+  if (!ir.telemetry?.datadog_config) return null;
 
   let yaml = "# Datadog Configuration\n";
   yaml += "api_key: ${DD_API_KEY}\n";
@@ -108,7 +108,7 @@ export function generateDatadogConfig(ir: BlueprintIR): TelemetryConfig | null {
 }
 
 export function generateNewRelicConfig(ir: BlueprintIR): TelemetryConfig | null {
-  if (!ir.telemetry || !ir.telemetry.newrelic_config) return null;
+  if (!ir.telemetry?.newrelic_config) return null;
 
   let ini = "# New Relic Configuration\n";
   ini += "[newrelic]\n";
