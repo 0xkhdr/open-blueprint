@@ -1,4 +1,5 @@
 # ⚙️ Configuration System
+
 Permalink: Configuration System
 
 This document outlines the configuration structure, options, and schemas used by **open-blueprint (`bp`)**.
@@ -6,6 +7,7 @@ This document outlines the configuration structure, options, and schemas used by
 ---
 
 ## 🗂️ Configuration Scopes
+
 Permalink: Configuration Scopes
 
 `bp` utilizes two distinct levels of configuration to balance global developer preferences with project-specific rules:
@@ -16,11 +18,13 @@ Permalink: Configuration Scopes
 ---
 
 ## 🌐 1. Global User Configuration
+
 Permalink: 1. Global User Configuration
 
 The global configuration defines system-wide defaults across all repository scaffolds. It is stored at `~/.bp/config.json`.
 
 ### Global Schema Properties
+
 Permalink: Global Schema Properties
 
 | Key | Type | Description | Default |
@@ -33,6 +37,7 @@ Permalink: Global Schema Properties
 | `ci_mode` | `boolean` | Optimizes logging output and sets terminal behaviors for CI environments. | `false` |
 
 **Example config.json:**
+
 ```json
 {
   "default_backend": "claude",
@@ -47,11 +52,13 @@ Permalink: Global Schema Properties
 ---
 
 ## 📁 2. Project Configuration
+
 Permalink: 2. Project Configuration
 
 The project configuration controls how `bp` scaffolds, validates, and translates configurations within a single repository. It must be checked into the source control system as `.bp.json` at the root of the project.
 
 ### Project Schema Properties
+
 Permalink: Project Schema Properties
 
 | Key | Type | Description | Required |
@@ -63,6 +70,7 @@ Permalink: Project Schema Properties
 | `plugins` | `array` | Package names or file paths of custom validators to inject into the pipeline. | No |
 
 **Example .bp.json:**
+
 ```json
 {
   "backend": "claude",
@@ -86,9 +94,11 @@ Permalink: Project Schema Properties
 ---
 
 ## 🏛️ Template Inheritance
+
 Permalink: Template Inheritance
 
 When utilizing the `extends` property in `.bp.json`:
+
 1. **Dependency Resolution**: `bp` will query the defined `template_registry` to download and cache the base package.
 2. **Structural Composition**: Files from the base package are loaded.
 3. **Local Overriding**:

@@ -1,4 +1,5 @@
 # 🚀 Getting Started
+
 Permalink: Getting Started
 
 Welcome to the 5-minute onboarding guide for **open-blueprint (`bp`)**. This document will take you from installation to active repository governance.
@@ -6,6 +7,7 @@ Welcome to the 5-minute onboarding guide for **open-blueprint (`bp`)**. This doc
 ---
 
 ## 🚦 Prerequisites & Installation
+
 Permalink: Prerequisites & Installation
 
 To run `bp`, ensure you have Node.js (v20+) or Bun (v1.1+) installed in your workspace.
@@ -21,9 +23,11 @@ npx @agentic/bp --help
 ---
 
 ## ⏱️ The 5-Minute Walkthrough
+
 Permalink: The 5-Minute Walkthrough
 
 ### Step 1: Initialize Your Project
+
 Permalink: Step 1: Initialize Your Project
 
 Navigate to your project directory and run `bp init` to analyze your repository and scaffold a customized blueprint structure:
@@ -33,7 +37,8 @@ bp init claude
 ```
 
 **See it in action:**
-```
+
+```text
 You: bp init claude
 bp:  Detecting repository...
      ✓ TypeScript (Express) detected (confidence: 1.0)
@@ -48,6 +53,7 @@ bp:  Detecting repository...
 ---
 
 ### Step 2: Verify Your Blueprint
+
 Permalink: Step 2: Verify Your Blueprint
 
 Enforce validation layers immediately to ensure that all rules, tools, and skill definitions are logically correct:
@@ -57,7 +63,8 @@ bp verify
 ```
 
 **See it in action:**
-```
+
+```text
 You: bp verify
 bp:  Validating blueprint...
      ✓ Structural: 12 files passed
@@ -70,6 +77,7 @@ bp:  Validating blueprint...
 ---
 
 ### Step 3: Customize Rules (Idempotent Merging)
+
 Permalink: Step 3: Customize Rules (Idempotent Merging)
 
 Open the newly generated `.claude/rules/01-position.md` file. You'll see structured blocks. Add your custom instructions inside a `bp:preserve` boundary:
@@ -87,25 +95,28 @@ Subsequent runs of `bp init` will update all structural metadata while preservin
 ---
 
 ## 🗺️ Developer Paths
+
 Permalink: Developer Paths
 
 `bp` scales to match different execution personas:
 
 ### ⚡ Quick Path (Individual Developers)
+
 Permalink: Quick Path (Individual Developers)
 
 Designed for solo developers seeking instant agent governance inside a single repository:
 
-```
+```text
 bp init claude ➔ bp verify ➔ [code with agent] ➔ bp sync
 ```
 
 ### 🏢 Expanded Path (Team & Enterprise)
+
 Permalink: Expanded Path (Team & Enterprise)
 
 Designed for teams enforcing governance blocks across multiple repositories and automated CI pipelines:
 
-```
+```text
 bp config set template_registry ➔ bp init ➔ bp verify --level all ➔ bp convert ➔ CI Validation
 ```
 

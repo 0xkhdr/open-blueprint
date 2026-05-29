@@ -1,4 +1,5 @@
 # 🏗️ System Architecture & Concepts
+
 Permalink: System Architecture & Concepts
 
 This document provides a deep dive into the underlying concepts, architectural layers, and system engines that power **open-blueprint (`bp`)**.
@@ -6,11 +7,12 @@ This document provides a deep dive into the underlying concepts, architectural l
 ---
 
 ## 🗺️ Artifact Flow Diagram
+
 Permalink: Artifact Flow Diagram
 
 The lifecycle of repository configuration under `bp` follows a clean, single-direction pipeline that preserves custom developer inputs:
 
-```
+```text
 Repository ──► Detector ──► Fingerprint ──► Templater ──► Blueprint Files ──► Validator ──► Translator
    │              │              │               │                  │                │
    └──────────────┴──────────────┴───────────────┴──────────────────┴────────────────┘
@@ -20,6 +22,7 @@ Repository ──► Detector ──► Fingerprint ──► Templater ──�
 ---
 
 ## 🗂️ The 5 Blueprint Layers
+
 Permalink: The 5 Blueprint Layers
 
 `bp` structures repository governance into five discrete, logical layers:
@@ -35,6 +38,7 @@ Permalink: The 5 Blueprint Layers
 ---
 
 ## ⚙️ The 4 Internal Engines
+
 Permalink: The 4 Internal Engines
 
 `bp` features a decoupled pipeline architecture consisting of four core engines:
@@ -57,6 +61,7 @@ graph TD
 ---
 
 ### 1. Detector Engine
+
 Permalink: Detector Engine
 
 The **Detector** performs rapid, non-invasive static analysis of the repository. It makes **zero network calls, zero build-tool invocations, and runs zero shell commands**, completing in milliseconds.
@@ -112,11 +117,12 @@ The **Detector** performs rapid, non-invasive static analysis of the repository.
 ---
 
 ### 2. Templater Engine
+
 Permalink: Templater Engine
 
 The **Templater** maps the detected `Fingerprint` to template packs utilizing highly secure, logic-less **Handlebars** templates.
 
-* **Template Fallback Chain**: 
+* **Template Fallback Chain**:
   `Fingerprint ➔ [Language + Framework] ➔ Language Base ➔ Generic Fallback`
 * **Block-Level Merging (Idempotency)**: To ensure developer modifications are preserved, `bp` parses files into generated blocks and preserve blocks:
 
@@ -139,11 +145,12 @@ On subsequent runs of `bp init`, the generated block is safely overwritten, whil
 ---
 
 ### 3. Validator Engine
+
 Permalink: Validator Engine
 
 The **Validator** passes blueprints through a 4-layer validation pipeline. A failure in an early layer halts execution for that specific file but allows others to proceed.
 
-```
+```text
 [Blueprint Files] ──► Structural ──► Semantic ──► Logical ──► Drift ──► [Green CI / Clean Local]
 ```
 
@@ -158,11 +165,12 @@ The **Validator** passes blueprints through a 4-layer validation pipeline. A fai
 ---
 
 ### 4. Translator Engine
+
 Permalink: Translator Engine
 
 The **Translator** converts blueprints between different agent targets by parsing raw documents into a unified, Zod-validated intermediate schema (`BlueprintIR`), and rendering the IR through target-specific adapters.
 
-```
+```text
 Source Files (.claude/) ──► IR Parser ──► BlueprintIR ──► IR Renderer ──► Target Files (.cursorrules)
 ```
 

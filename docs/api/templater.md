@@ -35,7 +35,7 @@ interface TemplateContext {
 
 ## Rendering Lifecycle
 
-```
+```text
 1. bp init <backend> invoked
          │
          ▼

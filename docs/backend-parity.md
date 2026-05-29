@@ -18,6 +18,7 @@ This matrix shows which IR layers each backend adapter reads and writes.
 ## Feature Details
 
 ### Rules
+
 - **Claude**: `.claude/rules/*.md` — full frontmatter (id, scope, severity, action, rationale, tags)
 - **Cursor**: `.cursor/rules/*.md` — full frontmatter
 - **Codex**: `codex-instructions.md` — embedded in single file, approval_mode mapped from severity
@@ -30,6 +31,7 @@ This matrix shows which IR layers each backend adapter reads and writes.
 - **Generic**: `rules/*.md` — full frontmatter
 
 ### Skills
+
 - All backends: write to their respective `skills/` subdirectory with frontmatter (name, description, when_to_use, tools_required)
 - **OpenDev**: `.opendev/skills/*.md` — frontmatter only (name, description, when_to_use, tools_required)
 - **Kiro**: `.kiro/skills/*.md`
@@ -37,6 +39,7 @@ This matrix shows which IR layers each backend adapter reads and writes.
 - **Gemini**: `.gemini/skills/*.md`
 
 ### Agents (Personas)
+
 - **Claude**: `.claude/agents/*.md` — full persona frontmatter
 - **Cursor**: `.cursor/agents/*.md` — full persona frontmatter
 - **Codex**: individual agent files in codex format
@@ -45,6 +48,7 @@ This matrix shows which IR layers each backend adapter reads and writes.
 - **Generic**: `agents/*.md` — full persona frontmatter
 
 ### Hooks
+
 - **Claude**: `.claude/hooks/pre_tool_use.*`, `post_tool_use.*`
 - **Cursor**: ❌ Not supported (hooks: [] always)
 - **Codex**: hook files rendered
@@ -53,16 +57,19 @@ This matrix shows which IR layers each backend adapter reads and writes.
 - **Generic**: `hooks/pre_tool_use.*`, `post_tool_use.*`
 
 ### Settings
+
 - **Codex**: `approval_mode` propagated to rule frontmatter + codex.md
 - **PI**: full settings rendered in `pi.config.ts`
 - **Copilot**: `.github/copilot/settings.yaml` — approval_mode, model, cost controls
 
 ### MCP Servers
+
 - **Claude**: `.claude/mcp.json` — full MCP server config
 - **Cursor**: `.cursor/mcp.json` — full MCP server config
 - All other backends: ❌ Not supported
 
 ### AGENTS.md
+
 All 10 backends generate `AGENTS.md` at the project root (universal output for Codex/other tools).
 
 ## Round-Trip Fidelity

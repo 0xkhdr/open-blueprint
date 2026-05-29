@@ -10,7 +10,7 @@ A blueprint template pack contains Handlebars (`.hbs`) files organized to match 
 
 A standard template pack structure:
 
-```
+```text
 my-custom-pack/
 ├── manifest.json.hbs
 ├── CLAUDE.md.hbs
@@ -33,6 +33,7 @@ my-custom-pack/
 `bp` utilizes logic-less **Handlebars** syntax. During rendering, the compiler receives the deterministic `Fingerprint` context compiled by the Detector engine.
 
 ### 2.1 The Render Context
+
 Your templates can bind to any field in the standard `TemplateContext` object:
 
 | Variable | Type | Description |
@@ -60,6 +61,7 @@ Your templates can bind to any field in the standard `TemplateContext` object:
 ### 2.2 Handlebars Context Syntax Examples
 
 #### 1. Conditional Blocks
+
 Use conditional bindings to generate custom rules for security or docker environments:
 
 ```markdown
@@ -72,6 +74,7 @@ Use conditional bindings to generate custom rules for security or docker environ
 ```
 
 #### 2. Array Iteration
+
 Iterate over topological directories or active languages to list boundaries:
 
 ```markdown
@@ -82,6 +85,7 @@ Iterate over topological directories or active languages to list boundaries:
 ```
 
 #### 3. Base Partials Registration
+
 `bp` registers core helper partials located in `templates/_base/partials`. You can include shared standard rules by embedding partial blocks:
 
 ```markdown
@@ -95,6 +99,7 @@ Iterate over topological directories or active languages to list boundaries:
 To prevent successive `bp init` or `bp verify` sweeps from wiping custom adjustments written by developers, you must write template packs using **merge boundaries**.
 
 ### 3.1 Overwritable Blocks (`bp-generated`)
+
 Wrap boilerplate and structural sections inside a `bp-generated` demarcator tagged with a unique identifier:
 
 ```markdown
@@ -106,6 +111,7 @@ Wrap boilerplate and structural sections inside a `bp-generated` demarcator tagg
 ```
 
 ### 3.2 Safe Developer Customizations
+
 Instruct developers to write their custom rules, local command shortcuts, and workflow modifications inside `bp:preserve` blocks:
 
 ```markdown
@@ -133,7 +139,7 @@ Organizations can enforce standardized compliance rules and coding conventions g
 }
 ```
 
-3. When `bp init` runs, it will first pull and render the parent template rules, then compile the local template rules, and merge the two structures together.
+1. When `bp init` runs, it will first pull and render the parent template rules, then compile the local template rules, and merge the two structures together.
 
 ---
 
@@ -141,7 +147,7 @@ Organizations can enforce standardized compliance rules and coding conventions g
 
 To secure templates and protect teams from malicious supply-chain prompt-injections, `bp` implements a cryptographic template signing system.
 
-```
+```text
        [Raw Template Folder]
                  │
                  ▼
@@ -157,6 +163,7 @@ To secure templates and protect teams from malicious supply-chain prompt-injecti
 ```
 
 ### 5.1 Keypair Generation
+
 Authors generate a standard 2048-bit RSA key pair:
 
 ```javascript
@@ -167,13 +174,17 @@ const { publicKey, privateKey } = generateKeyPair();
 ```
 
 ### 5.2 Signing and Publishing
+
 When publishing a pack via `RegistryClient.publish(packageName, version, packDir, privateKey)`, the engine:
+
 1. Compiles the folder's file structures into a single payload buffer.
 2. Generates a SHA256 signature of the payload using the author's private RSA key.
 3. Packages the archive into a Base64-encoded string and publishes it along with the signature.
 
 ### 5.3 Verification and Unpacking
+
 When installing a package using `RegistryClient.install(packageName, targetDir, publicKey)`:
+
 1. The client downloads the Base64 package data and signature.
 2. It hashes the payload and validates it using `verifySignature(payload, signature, publicKey)`.
 3. If verification fails (e.g. the signature was invalid or the archive was altered), `bp` throws a terminal diagnostic error and halts execution, blocking untrusted code generation.

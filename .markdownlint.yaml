@@ -1,0 +1,32 @@
+# markdownlint-cli2 config — enforced by docs-health CI job
+default: true
+
+# Heading levels must increment by one (no H1 → H3 skips)
+MD001: true
+
+# Code fences must declare a language tag
+MD040: true
+
+# Line length — disabled: prose lines in documentation are not limited to 80 chars
+MD013: false
+
+# Duplicate headings — only flag duplicates within the same parent section
+# This is necessary for CHANGELOG (### Added, ### Changed appear under multiple ## [Version] sections)
+MD024:
+  siblings_only: true
+
+# Ordered list items must be sequential
+MD029:
+  style: ordered
+
+# Link fragments — disabled: fragment validity depends on renderer (GitHub vs static site)
+MD051: false
+
+# Disable trailing punctuation rule in headings
+MD026: false
+
+# Table column style — disabled: pre-existing compact pipe style across all docs; not listed as required rule
+MD060: false
+
+# Allow inline HTML (used for shields.io badges in README)
+MD033: false

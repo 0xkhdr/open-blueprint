@@ -1,4 +1,5 @@
 # 🔄 Workflow Patterns & Guides
+
 Permalink: Workflow Patterns & Guides
 
 This guide describes how to integrate **open-blueprint (`bp`)** into your day-to-day coding processes, team guidelines, and deployment pipelines.
@@ -6,6 +7,7 @@ This guide describes how to integrate **open-blueprint (`bp`)** into your day-to
 ---
 
 ## 📊 Workflow Pattern Table
+
 Permalink: Workflow Pattern Table
 
 Select the workflow pattern that matches your current goal:
@@ -21,11 +23,13 @@ Select the workflow pattern that matches your current goal:
 ---
 
 ## 🗺️ Developer Pathways
+
 Permalink: Developer Pathways
 
 ---
 
 ### ⚡ Quick Path (Individual Developer)
+
 Permalink: Quick Path (Individual Developer)
 
 Designed for speed and local automation. Ideal for individual developers coding with AI agents.
@@ -38,11 +42,12 @@ Designed for speed and local automation. Ideal for individual developers coding 
 ---
 
 ### 🏢 Expanded Path (Team & Enterprise)
+
 Permalink: Expanded Path (Team & Enterprise)
 
 Designed for scalability, consistent security rules, and absolute pipeline integrity.
 
-```
+```text
 [Org Registry] ➔ [Private Base Template] ➔ [Developer Local Init] ➔ [CI Block on PR Gates]
 ```
 
@@ -54,11 +59,12 @@ Designed for scalability, consistent security rules, and absolute pipeline integ
 ---
 
 ## 🌳 Workflow Decision Tree
+
 Permalink: Workflow Decision Tree
 
 Use this simple logic flow to decide which command to execute:
 
-```
+```text
             Are you starting a new project?
                      /          \
                   (Yes)         (No)

@@ -1,4 +1,5 @@
 # 🔌 Plugin / Extension API
+
 Permalink: Plugin / Extension API
 
 This document provides documentation and guidelines for extending **open-blueprint (`bp`)** using custom validators and lifecycle plugins.
@@ -6,17 +7,19 @@ This document provides documentation and guidelines for extending **open-bluepri
 ---
 
 ## 🎨 Plugin Architecture & Lifecycle
+
 Permalink: Plugin Architecture & Lifecycle
 
 `bp` plugins are loaded dynamically during execution and integrate directly into the Validator Engine pipeline:
 
-```
+```text
 [CLI Command] ➔ [Load .bp.json] ➔ [Instantiate Plugins] ➔ [Run Structural Checks] ➔ [Plugin Hook: semantic] ➔ [Logical Validation]
 ```
 
 ---
 
 ## 💻 Writing a Custom Validator
+
 Permalink: Writing a Custom Validator
 
 `bp` features a stable TypeScript Plugin API. You can write custom validators to enforce internal governance checks, such as requiring rationale fields for `hard` rules:
@@ -49,6 +52,7 @@ export default definePlugin({
 ---
 
 ## ⚙️ Registration & Deployment
+
 Permalink: Registration & Deployment
 
 To enable a plugin in your repository:
@@ -65,4 +69,4 @@ To enable a plugin in your repository:
 }
 ```
 
-3. **Execution**: The next time `bp verify` is run, the engine will compile (using standard dynamic TS loaders) and execute your custom validation hooks.
+1. **Execution**: The next time `bp verify` is run, the engine will compile (using standard dynamic TS loaders) and execute your custom validation hooks.

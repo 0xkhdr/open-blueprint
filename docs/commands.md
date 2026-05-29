@@ -38,7 +38,9 @@ This document provides a comprehensive reference for all 24 commands, arguments,
 ## 🚀 Commands Detailed
 
 ### `bp init`
+
 Scaffolds a blueprint for the current repository based on detected framework topologies.
+
 * **Arguments**: `[tool]` (claude, cursor, opendev, generic)
 * **Options**:
   * `--tool <backend>`: Override positional backend tool
@@ -47,10 +49,12 @@ Scaffolds a blueprint for the current repository based on detected framework top
   * `--dry-run`: Preview changes without writing
   * `--no-verify`: Skip post-init validation
 * **Example**: `bp init claude`
-* **Error codes**: [3](18-errors.md#code-3) Config error · [9](18-errors.md#code-9) Path traversal · [1](18-errors.md#code-1) Unexpected error
+* **Error codes**: [3](troubleshooting.md#code-3) Config error · [9](troubleshooting.md#code-9) Path traversal · [1](troubleshooting.md#code-1) Unexpected error
 
 ### `bp verify`
+
 Validates blueprint structural and semantic integrity.
+
 * **Arguments**: `[paths...]`
 * **Options**:
   * `--level <level>`: Validation depth (`structural`, `semantic`, `logical`, `drift`, `all`, default: `all`)
@@ -59,29 +63,35 @@ Validates blueprint structural and semantic integrity.
   * `--watch`: Watch files and re-validate on change
   * `--fail-on <level>`: Severity level to trigger non-zero exit code
 * **Example**: `bp verify --level all --watch`
-* **Error codes**: [4](18-errors.md#code-4) Structural · [5](18-errors.md#code-5) Semantic · [6](18-errors.md#code-6) Drift · [1](18-errors.md#code-1) Unexpected error
+* **Error codes**: [4](troubleshooting.md#code-4) Structural · [5](troubleshooting.md#code-5) Semantic · [6](troubleshooting.md#code-6) Drift · [1](troubleshooting.md#code-1) Unexpected error
 
 ### `bp sync`
+
 Detects and resolves repository structural drift.
+
 * **Options**:
   * `--auto-apply`: Automatically apply safe structural/drift fixes
   * `--report`: Print the drift report only and exit
   * `--json`: Emit the drift report as machine-readable JSON
 * **Example**: `bp sync --auto-apply`
-* **Error codes**: [6](18-errors.md#code-6) Drift detected · [1](18-errors.md#code-1) Unexpected error
+* **Error codes**: [6](troubleshooting.md#code-6) Drift detected · [1](troubleshooting.md#code-1) Unexpected error
 
 ### `bp convert`
+
 Translates blueprint governance configurations between backends.
+
 * **Options**:
   * `--from <backend>`: Source backend (`claude`, `cursor`, `generic`)
   * `--to <backend>`: Target backend (`claude`, `cursor`, `generic`)
   * `--input <path>`: Source directory containing blueprints (default: `.`)
   * `--output <path>`: Target directory for translated outputs
 * **Example**: `bp convert --from claude --to cursor --output ./translated-rules`
-* **Error codes**: [7](18-errors.md#code-7) Translation error · [9](18-errors.md#code-9) Path traversal · [1](18-errors.md#code-1) Unexpected error
+* **Error codes**: [7](troubleshooting.md#code-7) Translation error · [9](troubleshooting.md#code-9) Path traversal · [1](troubleshooting.md#code-1) Unexpected error
 
 ### `bp dev`
+
 Live reload dev server with real-time validation and browser dashboard.
+
 * **Options**:
   * `--watch <path>`: Directory to watch (default: `.`)
   * `--level <level>`: Validation level (structural|semantic|logical|drift|all, default: `all`)
@@ -90,14 +100,18 @@ Live reload dev server with real-time validation and browser dashboard.
 * **Example**: `bp dev --dashboard --port 4000`
 
 ### `bp docs`
+
 Generate governance documentation from blueprint.
+
 * **Options**:
   * `--format <format>`: Output format (markdown|html, default: `markdown`)
   * `--output <path>`: Target output file path
 * **Example**: `bp docs --format markdown --output docs/GOVERNANCE.md`
 
 ### `bp diff`
+
 Show semantic diff between two blueprints.
+
 * **Arguments**: `<file1>` `<file2>`
 * **Options**:
   * `-f, --format <format>`: Output format: text, json, markdown (default: `text`)
@@ -106,32 +120,40 @@ Show semantic diff between two blueprints.
 * **Example**: `bp diff base-blueprint.json target-blueprint.json --format markdown`
 
 ### `bp merge`
+
 Three-way merge of blueprints with conflict detection and resolution.
+
 * **Arguments**: `<base>` `<ours>` `<theirs>`
 * **Options**:
   * `--output <path>`: Path to write the merged blueprint
 * **Example**: `bp merge base.json ours.json theirs.json --output merged.json`
 
 ### `bp template`
+
 Manage template packs.
+
 * **Subcommands**:
   * `list`: List all official and locally installed template packs.
   * `install <pkg>`: Download, verify cryptographic signatures, and install a package.
   * `publish <path>`: Packages, cryptographically signs, and uploads a template pack.
 * **Example**: `bp template install @bp-templates/fastapi`
-* **Error codes**: [8](18-errors.md#code-8) Network error · [9](18-errors.md#code-9) Path traversal
+* **Error codes**: [8](troubleshooting.md#code-8) Network error · [9](troubleshooting.md#code-9) Path traversal
 
 ### `bp doctor`
+
 Diagnostic mode for troubleshooting agent ignores or configurations.
+
 * **Options**:
   * `--tool <backend>`: Test configurations for a specific backend
   * `--verbose`: Output timing, path checks, and detailed trace logs
   * `--cost`: Include cost estimation report
 * **Example**: `bp doctor --verbose --cost`
-* **Error codes**: [3](18-errors.md#code-3) Config error · [1](18-errors.md#code-1) Unexpected error
+* **Error codes**: [3](troubleshooting.md#code-3) Config error · [1](troubleshooting.md#code-1) Unexpected error
 
 ### `bp rule`
+
 Rule management utilities.
+
 * **Subcommands**:
   * `lint <file>`: Check structural and glob scope validity for a rule.
   * `test <file>`: Dry-run a rule against mock filesystem scenarios.
@@ -139,15 +161,19 @@ Rule management utilities.
 * **Example**: `bp rule lint .claude/rules/01-security.md`
 
 ### `bp hook`
+
 Hook management.
+
 * **Subcommands**:
   * `generate`: Scaffolds hook script stubs for the current active backend.
   * `validate <file>`: Runs static analysis on hook scripts to ensure safety.
 * **Example**: `bp hook generate`
-* **Error codes**: [4](18-errors.md#code-4) Hook safety failure · [9](18-errors.md#code-9) Path traversal
+* **Error codes**: [4](troubleshooting.md#code-4) Hook safety failure · [9](troubleshooting.md#code-9) Path traversal
 
 ### `bp config`
+
 Configuration management.
+
 * **Subcommands**:
   * `get <key>`: View a configuration property.
   * `set <key> <value>`: Modify a configuration property.
@@ -155,11 +181,15 @@ Configuration management.
 * **Example**: `bp config set default_backend cursor`
 
 ### `bp update`
+
 Update bp itself to the latest version.
+
 * **Example**: `bp update`
 
 ### `bp migrate`
+
 Migrate blueprint between backends or upgrade schema version.
+
 * **Options**:
   * `--from <backend>`: Source backend platform
   * `--to <backend>`: Target backend platform
@@ -167,7 +197,9 @@ Migrate blueprint between backends or upgrade schema version.
 * **Example**: `bp migrate --from claude --to cursor`
 
 ### `bp agent`
+
 Manage local agent registry.
+
 * **Subcommands**:
   * `list`: List all registered agents.
   * `register <name> <path>`: Add an agent configuration path.
@@ -175,7 +207,9 @@ Manage local agent registry.
 * **Example**: `bp agent list`
 
 ### `bp mcp`
+
 Manage MCP server configurations.
+
 * **Subcommands**:
   * `list`: List active MCP configurations.
   * `add <name>`: Add an MCP server config.
@@ -183,7 +217,9 @@ Manage MCP server configurations.
 * **Example**: `bp mcp list`
 
 ### `bp team`
+
 Manage agent team configurations.
+
 * **Subcommands**:
   * `create <name>`: Create a new agent team.
   * `list`: List agent teams.
@@ -191,7 +227,9 @@ Manage agent team configurations.
 * **Example**: `bp team list`
 
 ### `bp chain`
+
 Manage agent chain configurations.
+
 * **Subcommands**:
   * `create <name>`: Instantiate a new chain.
   * `list`: View all registered chains.
@@ -199,7 +237,9 @@ Manage agent chain configurations.
 * **Example**: `bp chain run research-and-write`
 
 ### `bp memory`
+
 Audit and govern persistent memory directories.
+
 * **Subcommands**:
   * `audit`: Scan memory directories for structural safety.
   * `prune`: Clean up orphaned or stale memory files.
@@ -207,7 +247,9 @@ Audit and govern persistent memory directories.
 * **Example**: `bp memory audit`
 
 ### `bp telemetry`
+
 Telemetry configuration commands.
+
 * **Subcommands**:
   * `enable`: Turn on global telemetry transmission.
   * `disable`: Turn off telemetry transmission.
@@ -215,7 +257,9 @@ Telemetry configuration commands.
 * **Example**: `bp telemetry status`
 
 ### `bp cost`
+
 Cost tracking and budget commands.
+
 * **Subcommands**:
   * `report`: Display current month usage estimates.
   * `budget <limit>`: Set monthly cost budget limits.
@@ -223,7 +267,9 @@ Cost tracking and budget commands.
 * **Example**: `bp cost report`
 
 ### `bp drift`
+
 Semantic drift detection commands.
+
 * **Options**:
   * `--level <level>`: Set drift sensitivity level (low|medium|high)
   * `--json`: Format drift report as JSON
@@ -231,10 +277,12 @@ Semantic drift detection commands.
 * **Example**: `bp drift --level high`
 
 ### `bp marketplace`
+
 Browse and interact with blueprint marketplace.
+
 * **Subcommands**:
   * `search <query>`: Search for template packs in the registry.
   * `install <pack>`: Download and register a pack.
   * `publish <dir>`: Package and submit a template.
 * **Example**: `bp marketplace search fastapi`
-* **Error codes**: [8](18-errors.md#code-8) Network error · [9](18-errors.md#code-9) Path traversal
+* **Error codes**: [8](troubleshooting.md#code-8) Network error · [9](troubleshooting.md#code-9) Path traversal

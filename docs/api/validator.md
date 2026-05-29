@@ -46,7 +46,7 @@ interface ValidationResult {
 
 ## Drift State Machine
 
-```
+```text
               ┌──────────────┐
               │    CLEAN     │  ← initial state after bp init
               └──────┬───────┘

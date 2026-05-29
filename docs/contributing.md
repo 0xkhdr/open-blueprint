@@ -1,4 +1,5 @@
 # 💻 Codebase Contributor Guide
+
 Permalink: Codebase Contributor Guide
 
 Welcome! This guide outlines how to set up, test, compile, and contribute improvements to the **open-blueprint (`bp`)** tool.
@@ -6,6 +7,7 @@ Welcome! This guide outlines how to set up, test, compile, and contribute improv
 ---
 
 ## 🛠️ Environment Setup
+
 Permalink: Environment Setup
 
 Ensure you have [Bun](https://bun.sh) (v1.1+) or [Node.js](https://nodejs.org) (v20+) installed before starting development.
@@ -22,6 +24,7 @@ npm install
 ---
 
 ## 🧪 Verification & Testing
+
 Permalink: Verification & Testing
 
 Always verify your changes before proposing pull requests.
@@ -46,6 +49,7 @@ npm run typecheck
 ---
 
 ## 💻 Running Locally in Dev Mode
+
 Permalink: Running Locally in Dev Mode
 
 To test CLI commands in real-time without building:
@@ -58,6 +62,7 @@ npm run dev -- init --tool claude --dry-run
 ---
 
 ## 🏗️ Compilation & Build
+
 Permalink: Compilation & Build
 
 To compile standard ES Modules for npm release:
@@ -75,6 +80,7 @@ bun build --compile src/cli/index.ts --outfile bp
 ---
 
 ## 📋 Architecture Decision Records (ADRs)
+
 Permalink: Architecture Decision Records (ADRs)
 
 To maintain context and clarity for modular scaling, all major design architectural adjustments follow the ADR system:

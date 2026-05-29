@@ -6,9 +6,10 @@ This developer guide details how to implement and register a custom **backend tr
 
 ## 1. Adapter Philosophy & Pipeline
 
-`bp` utilizes a decoupled translator model. Instead of writing separate compilers for every platform combination ($N \times M$ complexity), the Translator converts all formats into a common, Zod-validated Intermediate Representation (`BlueprintIR`). 
+`bp` utilizes a decoupled translator model. Instead of writing separate compilers for every platform combination ($N \times M$ complexity), the Translator converts all formats into a common, Zod-validated Intermediate Representation (`BlueprintIR`).
 
 Decoupled translation flow:
+
 1. **Parser Phase**: Target-specific adapters parse platform-native files (e.g. `.cursorrules`, `.claude/rules/*.md`) into the standardized `BlueprintIR` schema.
 2. **Intermediate Representation**: The Zod validator ensures the schema perfectly conforms to structural compliance rules.
 3. **Renderer Phase**: Target-specific adapters parse the `BlueprintIR` and output fully compliant vendor configuration structures.
@@ -142,6 +143,7 @@ export const BlueprintIRSchema = z.object({
 To add a new platform adapter (for example, a custom tool named `mytool`):
 
 ### Step 3.1: Create the Adapter File
+
 Create a new file `src/translator/adapters/mytool.ts` implementing the parse and render signatures:
 
 ```typescript
