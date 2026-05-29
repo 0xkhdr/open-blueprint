@@ -49,4 +49,3 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 - Renamed docs with numeric prefixes for ordering
 - Updated imports, CLI formatting, and test framework
-

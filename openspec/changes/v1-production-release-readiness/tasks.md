@@ -47,7 +47,7 @@
 - [x] 7.5 Run `git tag --list` and confirm no tags exist (clean first-release state)
 - [x] 7.6 Run `grep -r "\[2\.0\.0\]" CHANGELOG.md docs/` and confirm zero matches
 - [x] 7.7 Confirm `package.json` version field reads `1.0.0`
-- [ ] 7.8 Open a PR with all changes and wait for all CI jobs (test, bun, e2e, security, docs-health, sast) to pass green
+- [x] 7.8 Open a PR with all changes and wait for all CI jobs (test, bun, e2e, security, docs-health, sast) to pass green
 
 ## 8. Release Execution
 
