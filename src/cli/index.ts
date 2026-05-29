@@ -20,6 +20,9 @@ import { createTeamCommand } from "./commands/team.js";
 import { createTemplateCommand } from "./commands/template.js";
 import { createUpdateCommand } from "./commands/update.js";
 import { createVerifyCommand } from "./commands/verify.js";
+import { createTelemetryCommand } from "./commands/telemetry.js";
+import { createCostCommand } from "./commands/cost.js";
+import { createDriftCommand } from "./commands/drift.js";
 
 const pkg = {
   name: "@agentic/bp",
@@ -55,6 +58,9 @@ program.addCommand(createMCPCommand());
 program.addCommand(createTeamCommand());
 program.addCommand(createChainCommand());
 program.addCommand(createMemoryCommand());
+program.addCommand(createTelemetryCommand());
+program.addCommand(createCostCommand());
+program.addCommand(createDriftCommand());
 
 // Audit logging hook
 program.hook("preAction", (_thisCommand, actionCommand) => {

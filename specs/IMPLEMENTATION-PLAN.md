@@ -499,7 +499,7 @@ bun test tests/unit/multiagent/
 ## Domain 08 — Observability & Cost Governance
 
 **Spec File:** `specs/08-OBSERVABILITY-COST.md`
-**Status:** ⚠️ SCHEMAS ONLY — algorithms + dashboard + CLI missing
+**Status:** ✅ COMPLETE — drift detection, anomaly detection, cost dashboard, telemetry detect, alert engine, 84 tests
 **Effort:** ~8h
 **Commit:** `feat(observability): drift detection, anomaly detection, cost dashboard, alert engine`
 
@@ -559,12 +559,12 @@ bun test tests/unit/observability/
 ```
 
 ### Done Criteria
-- [ ] `detectSemanticDrift()` identifies rule_effectiveness and token_inflation drifts
-- [ ] `detectAnomalies()` catches z-score > 3 deviations
-- [ ] `generateCostDashboard()` produces markdown with ASCII progress bar
-- [ ] `detectTelemetryPlatform()` identifies opentelemetry/datadog/newrelic
-- [ ] Alert engine evaluates conditions and formats for slack/pagerduty/email
-- [ ] 80+ tests passing
+- [x] `detectSemanticDrift()` identifies rule_effectiveness and token_inflation drifts
+- [x] `detectAnomalies()` catches z-score > 3 deviations
+- [x] `generateCostDashboard()` produces markdown with ASCII progress bar
+- [x] `detectTelemetryPlatform()` identifies opentelemetry/datadog/newrelic
+- [x] Alert engine evaluates conditions and formats for slack/pagerduty/email
+- [x] 84 tests passing
 
 ---
 
