@@ -239,7 +239,7 @@ bun test tests/unit/detector/
 ## Domain 04 — Validator Enhancement
 
 **Spec File:** `specs/04-VALIDATOR-ENHANCEMENT.md`
-**Status:** ⚠️ PARTIAL — base validation done, cross-layer + performance missing
+**Status:** ✅ COMPLETE — cross-layer refs, layer 6-8 deep validation, perf audit, 63 new tests
 **Effort:** ~6h
 **Commit:** `feat(validator): add cross-layer refs, layer 6-8 deep validation, perf audit`
 
@@ -287,12 +287,12 @@ bun test tests/unit/validator/
 ```
 
 ### Done Criteria
-- [ ] `validateCrossLayerReferences` in pipeline, catches broken rule→skill refs
-- [ ] Settings approval_mode vs risk_tier mismatch flagged as warning
-- [ ] Duplicate command names flagged as error
-- [ ] MCP auth missing for high-risk tools flagged as warning
-- [ ] Performance audit warns at thresholds
-- [ ] 45+ new tests passing, no regressions in existing tests
+- [x] `validateCrossLayerReferences` in pipeline, catches broken rule→skill refs
+- [x] Settings approval_mode vs risk_tier mismatch flagged as warning
+- [x] Duplicate command names flagged as error
+- [x] MCP auth missing for high-risk tools flagged as warning
+- [x] Performance audit warns at thresholds
+- [x] 63 new tests passing, no regressions in existing tests (689 total)
 
 ---
 

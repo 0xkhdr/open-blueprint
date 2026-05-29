@@ -15,7 +15,10 @@ import { PIAdapter } from "../translator/adapters/pi.js";
 import { validateAlertingConfig } from "./alerting.js";
 import { loadCache, saveCache } from "./cache.js";
 import { validateCostConfig } from "./cost.js";
+import { validateCrossLayerReferences } from "./cross-layer.js";
 import { validateDrift } from "./drift.js";
+import { validateCommandsDeep, validateMCPServersDeep, validateSettingsDeep } from "./layers-deep.js";
+import { auditPerformance } from "./performance.js";
 import {
   validateAudit,
   validateCommands,
@@ -234,6 +237,32 @@ async function validateGovernance(
       errors.push(...orchestrationSemanticErrors);
     }
 
+    // Cross-layer reference validation
+    {
+      const crossLayerErrors = validateCrossLayerReferences(ir, blueprintFile);
+      errors.push(...crossLayerErrors);
+    }
+
+    // Layer 6-8 deep validation
+    {
+      const settingsDeepErrors = validateSettingsDeep(ir, blueprintFile);
+      errors.push(...settingsDeepErrors);
+    }
+    {
+      const commandsDeepErrors = validateCommandsDeep(ir, blueprintFile);
+      errors.push(...commandsDeepErrors);
+    }
+    {
+      const mcpDeepErrors = validateMCPServersDeep(ir, blueprintFile);
+      errors.push(...mcpDeepErrors);
+    }
+
+    // Performance audit
+    {
+      const perfResult = auditPerformance(ir, blueprintFile);
+      errors.push(...perfResult.warnings);
+    }
+
     // Phase 4: Observability & Cost validation
     if (ir.cost) {
       const costErrors = validateCostConfig(ir);
@@ -411,7 +440,11 @@ export function exitCodeForResult(result: ValidationResult): number {
       e.type === "ZERO_MATCH_SCOPE" ||
       e.type === "INVALID_SCOPE_PATTERN" ||
       e.type === "MISSING_SKILL_REFERENCE" ||
-      e.type === "UNKNOWN_TOOL_REFERENCE"
+      e.type === "UNKNOWN_TOOL_REFERENCE" ||
+      e.type === "UNKNOWN_COMMAND_REFERENCE" ||
+      e.type === "DUPLICATE_COMMAND" ||
+      e.type === "INVALID_BUDGET" ||
+      e.type === "MCP_SERVER_INCOMPLETE"
   );
   if (hasSemantic) return EXIT_CODES.SEMANTIC_FAILURE;
 
