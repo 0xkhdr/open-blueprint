@@ -100,9 +100,7 @@ export function createDevCommand(): Command {
         } else {
           spinner.stop();
           console.log(
-            chalk.yellow(
-              `\n⚠ Found ${errorCount} error(s), ${warningCount} warning(s):\n`
-            )
+            chalk.yellow(`\n⚠ Found ${errorCount} error(s), ${warningCount} warning(s):\n`)
           );
 
           for (const err of errors) {
@@ -113,15 +111,11 @@ export function createDevCommand(): Command {
           if (lastErrors.length > 0) {
             const newErrors = errors.filter(
               (e) =>
-                !lastErrors.some(
-                  (l) => l.file === e.file && l.type === e.type && l.line === e.line
-                )
+                !lastErrors.some((l) => l.file === e.file && l.type === e.type && l.line === e.line)
             );
             const fixedErrors = lastErrors.filter(
               (e) =>
-                !errors.some(
-                  (n) => n.file === e.file && n.type === e.type && n.line === e.line
-                )
+                !errors.some((n) => n.file === e.file && n.type === e.type && n.line === e.line)
             );
 
             if (newErrors.length > 0) {

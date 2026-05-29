@@ -196,7 +196,8 @@ This document describes the agents and tools available in this blueprint. It is 
       content += `**Agent Teams:**\n`;
       for (const team of ir.orchestration.agent_teams) {
         content += `- **${team.team_name}**: ${team.agents.join(", ")}`;
-        if (team.owner || team.purpose) content += ` (Owner: ${team.owner}, Purpose: ${team.purpose})`;
+        if (team.owner || team.purpose)
+          content += ` (Owner: ${team.owner}, Purpose: ${team.purpose})`;
         content += `\n`;
       }
       content += `\n`;

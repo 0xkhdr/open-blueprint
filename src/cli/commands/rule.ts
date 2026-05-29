@@ -386,9 +386,7 @@ export function createRuleCommand(): Command {
     .command("pack:search <query>")
     .description("Search rule packs by name, description, or tags")
     .action(async (query: string) => {
-      const { createRuleLibraryManager } = await import(
-        "../../rule-library/manager.js"
-      );
+      const { createRuleLibraryManager } = await import("../../rule-library/manager.js");
       const manager = createRuleLibraryManager();
       const results = manager.searchPacks(query);
       if (results.length === 0) {
@@ -407,24 +405,16 @@ export function createRuleCommand(): Command {
     .description("Install a rule pack into the blueprint")
     .option("--input <path>", "Input blueprint file (JSON)", "blueprint.json")
     .option("--output <path>", "Output file (default: overwrite input)")
-    .option(
-      "--merge",
-      "Merge rules (add new, keep existing)",
-      false
-    )
+    .option("--merge", "Merge rules (add new, keep existing)", false)
     .option("--force", "Replace all rules with pack rules", false)
     .action(async (packId: string, options) => {
-      const { createRuleLibraryManager } = await import(
-        "../../rule-library/manager.js"
-      );
+      const { createRuleLibraryManager } = await import("../../rule-library/manager.js");
       const { BlueprintIRSchema } = await import("../../translator/ir.js");
       const manager = createRuleLibraryManager();
 
       const inputPath = path.resolve(options.input);
       if (!fs.existsSync(inputPath)) {
-        console.error(
-          chalk.red(`Error: Blueprint file not found: ${options.input}`)
-        );
+        console.error(chalk.red(`Error: Blueprint file not found: ${options.input}`));
         process.exit(1);
       }
 
@@ -455,10 +445,7 @@ export function createRuleCommand(): Command {
 
       // Write output
       const outputPath = options.output || options.input;
-      fs.writeFileSync(
-        path.resolve(outputPath),
-        JSON.stringify(result.blueprint, null, 2)
-      );
+      fs.writeFileSync(path.resolve(outputPath), JSON.stringify(result.blueprint, null, 2));
 
       console.log(chalk.green(`✓ ${result.message}`));
       console.log(`  Output: ${outputPath}`);

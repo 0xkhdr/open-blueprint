@@ -3,25 +3,25 @@ import * as path from "node:path";
 import {
   type CodeAction,
   CodeActionKind,
-  createConnection,
-  type Diagnostic,
-  DiagnosticSeverity,
-  type HoverParams,
-  type Hover,
-  type InitializeParams,
-  type InitializeResult,
-  type Position,
-  type CompletionParams,
   type CompletionItem,
   CompletionItemKind,
-  type DefinitionParams,
+  type CompletionParams,
+  createConnection,
   type Definition,
+  type DefinitionParams,
+  type Diagnostic,
+  DiagnosticSeverity,
+  type Hover,
+  type HoverParams,
+  type InitializeParams,
+  type InitializeResult,
   type LocationLink,
+  type Position,
   ProposedFeatures,
   type SymbolInformation,
+  SymbolKind,
   TextDocumentSyncKind,
   TextDocuments,
-  SymbolKind,
 } from "vscode-languageserver/node.js";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { detect } from "../detector/index.js";
@@ -115,7 +115,11 @@ function getLineContent(document: TextDocument, line: number): string {
   return lines[line] || "";
 }
 
-function extractFrontmatterFieldAtPosition(document: TextDocument, line: number, character: number): string | null {
+function extractFrontmatterFieldAtPosition(
+  document: TextDocument,
+  line: number,
+  character: number
+): string | null {
   const lineContent = getLineContent(document, line);
   const match = lineContent.match(/^\s*(\w+)\s*:/);
   return match?.[1] ?? null;
@@ -128,7 +132,7 @@ function findAllBlueprints(projectRoot: string): Map<string, { id: string; file:
       const entries = fs.readdirSync(dir, { withFileTypes: true });
       for (const entry of entries) {
         const fullPath = path.join(dir, entry.name);
-        if (entry.isDirectory() && (entry.name === ".claude")) {
+        if (entry.isDirectory() && entry.name === ".claude") {
           const rulesDir = path.join(fullPath, "rules");
           if (fs.existsSync(rulesDir)) {
             const ruleFiles = fs.readdirSync(rulesDir).filter((f) => f.endsWith(".md"));
@@ -175,19 +179,26 @@ connection.onHover(async (params: HoverParams): Promise<Hover | null> => {
   if (!field) return null;
 
   const docs: Record<string, string> = {
-    scope: "Glob pattern(s) that define which files this rule applies to. Examples: `**/*.ts`, `.claude/rules/**`",
-    severity: "Rule severity level. `hard` = strict enforcement (read-only approval), `soft` = advisory (auto approval)",
-    action: "Description of what should be done when this rule is triggered. Be specific about the expected behavior.",
+    scope:
+      "Glob pattern(s) that define which files this rule applies to. Examples: `**/*.ts`, `.claude/rules/**`",
+    severity:
+      "Rule severity level. `hard` = strict enforcement (read-only approval), `soft` = advisory (auto approval)",
+    action:
+      "Description of what should be done when this rule is triggered. Be specific about the expected behavior.",
     tags: "Comma-separated list of categories/tags for organizing and filtering rules.",
     id: "Unique identifier for this rule. Used in conflict resolution and cross-references.",
-    when_to_use: "Clear description of when and why to use this skill or agent. Include prerequisites.",
-    tools_required: "List of tools or APIs that must be available for this skill/agent to function.",
+    when_to_use:
+      "Clear description of when and why to use this skill or agent. Include prerequisites.",
+    tools_required:
+      "List of tools or APIs that must be available for this skill/agent to function.",
     name: "Display name for this skill, agent, or component. Should be clear and memorable.",
     description: "Brief description of purpose and primary function.",
     role: "Agent role: Developer, Reviewer, Ops, Analyst, etc. Defines primary responsibilities.",
-    constraints: "List of constraints or limitations on agent behavior. Examples: budget limits, approval scopes.",
+    constraints:
+      "List of constraints or limitations on agent behavior. Examples: budget limits, approval scopes.",
     allowed_tools: "Tools and capabilities this agent is permitted to use.",
-    rationale: "Explanation of why this rule, skill, or configuration exists. Include any context or decisions.",
+    rationale:
+      "Explanation of why this rule, skill, or configuration exists. Include any context or decisions.",
   };
 
   if (docs[field]) {
@@ -270,7 +281,9 @@ connection.onDefinition(async (params: DefinitionParams): Promise<Definition | n
   const document = documents.get(textDocument.uri);
   if (!document) return null;
 
-  const projectRoot = findProjectRoot(document.uri.startsWith("file://") ? new URL(document.uri).pathname : document.uri);
+  const projectRoot = findProjectRoot(
+    document.uri.startsWith("file://") ? new URL(document.uri).pathname : document.uri
+  );
   if (!projectRoot) return null;
 
   const blueprints = findAllBlueprints(projectRoot);

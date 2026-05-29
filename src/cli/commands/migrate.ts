@@ -3,6 +3,8 @@ import * as path from "node:path";
 import chalk from "chalk";
 import { Command } from "commander";
 import ora from "ora";
+import { detect } from "../../detector/index.js";
+import { resolveTemplatePack } from "../../templater/selector.js";
 import { AntigravityAdapter } from "../../translator/adapters/antigravity.js";
 import { ClaudeAdapter } from "../../translator/adapters/claude.js";
 import { CodexAdapter } from "../../translator/adapters/codex.js";
@@ -13,10 +15,8 @@ import { GenericAdapter } from "../../translator/adapters/generic.js";
 import { KiroAdapter } from "../../translator/adapters/kiro.js";
 import { OpenDevAdapter } from "../../translator/adapters/opendev.js";
 import { PIAdapter } from "../../translator/adapters/pi.js";
-import { detect } from "../../detector/index.js";
-import { resolveTemplatePack } from "../../templater/selector.js";
-import { EXIT_CODES } from "../../validator/index.js";
 import { loadStoredFingerprint, storeFingerprint } from "../../validator/drift.js";
+import { EXIT_CODES } from "../../validator/index.js";
 
 const VALID_BACKENDS = [
   "claude",
@@ -119,121 +119,121 @@ export function createMigrateCommand(): Command {
     )
     .option("--input <path>", "Source directory (default: .)", ".")
     .option("--output <path>", "Output directory (default: same as input)", ".")
-    .action(
-      async (opts: { from?: string; to?: string; input: string; output: string }) => {
-        const cwd = process.cwd();
+    .action(async (opts: { from?: string; to?: string; input: string; output: string }) => {
+      const cwd = process.cwd();
 
-        // If --from and --to not specified, do schema migration
-        if (!opts.from || !opts.to) {
-          const fingerprint = loadStoredFingerprint(cwd);
+      // If --from and --to not specified, do schema migration
+      if (!opts.from || !opts.to) {
+        const fingerprint = loadStoredFingerprint(cwd);
 
-          if (!fingerprint) {
-            console.log(
-              chalk.yellow(
-                "No stored blueprint fingerprint found. Use --from/--to for cross-backend migration."
-              )
-            );
-            process.exit(0);
-          }
-
-          const spinner = ora({ text: "Checking schema version...", color: "cyan" }).start();
-          if (fingerprint.version === "1.0") {
-            fingerprint.version = "1.0";
-            fingerprint.detected_at = new Date().toISOString();
-            storeFingerprint(cwd, fingerprint);
-            spinner.succeed(chalk.green("Blueprint is up to date."));
-          } else {
-            spinner.succeed(chalk.green("Blueprint is already at latest schema version."));
-          }
-          return;
-        }
-
-        // Cross-backend migration
-        const fromBackend = opts.from.toLowerCase();
-        const toBackend = opts.to.toLowerCase();
-        const inputDir = path.resolve(opts.input);
-        const outputDir = path.resolve(opts.output);
-
-        if (!VALID_BACKENDS.includes(fromBackend as Backend)) {
-          console.error(
-            chalk.red(
-              `Unsupported source backend: "${opts.from}". Valid: ${VALID_BACKENDS.join(", ")}`
+        if (!fingerprint) {
+          console.log(
+            chalk.yellow(
+              "No stored blueprint fingerprint found. Use --from/--to for cross-backend migration."
             )
           );
-          process.exit(EXIT_CODES.UNSUPPORTED_BACKEND);
+          process.exit(0);
         }
 
-        if (!VALID_BACKENDS.includes(toBackend as Backend)) {
-          console.error(
-            chalk.red(
-              `Unsupported target backend: "${opts.to}". Valid: ${VALID_BACKENDS.join(", ")}`
-            )
-          );
-          process.exit(EXIT_CODES.UNSUPPORTED_BACKEND);
+        const spinner = ora({ text: "Checking schema version...", color: "cyan" }).start();
+        if (fingerprint.version === "1.0") {
+          fingerprint.version = "1.0";
+          fingerprint.detected_at = new Date().toISOString();
+          storeFingerprint(cwd, fingerprint);
+          spinner.succeed(chalk.green("Blueprint is up to date."));
+        } else {
+          spinner.succeed(chalk.green("Blueprint is already at latest schema version."));
         }
-
-        if (!fs.existsSync(inputDir)) {
-          console.error(chalk.red(`Input directory does not exist: ${inputDir}`));
-          process.exit(EXIT_CODES.GENERAL_ERROR);
-        }
-
-        if (!fs.existsSync(outputDir)) {
-          fs.mkdirSync(outputDir, { recursive: true });
-        }
-
-        const spinner = ora({
-          text: `Migrating blueprint from ${fromBackend} to ${toBackend}...`,
-          color: "cyan",
-        }).start();
-
-        try {
-          const sourceAdapter = getAdapter(fromBackend);
-          const targetAdapter = getAdapter(toBackend);
-
-          if (!sourceAdapter || !targetAdapter) {
-            spinner.fail(chalk.red("Failed to load adapters"));
-            process.exit(EXIT_CODES.GENERAL_ERROR);
-          }
-
-          // Parse source blueprint
-          const sourceIR = await sourceAdapter.parse(inputDir);
-          spinner.text = `Rendering ${toBackend} blueprint...`;
-
-          // Render to target backend
-          const targetFiles = await targetAdapter.render(sourceIR, outputDir);
-
-          spinner.succeed(chalk.green(`Blueprint migrated successfully!`));
-
-          // Generate migration report
-          const report: MigrationReport = {
-            from: fromBackend,
-            to: toBackend,
-            timestamp: new Date().toISOString(),
-            filesGenerated: targetFiles,
-            filesModified: [],
-            compatibilityWarnings: [],
-            nextSteps: [
-              `Review generated files in ${outputDir}`,
-              "Run `bp verify` to validate the migrated blueprint",
-              "Compare source and target blueprints for feature compatibility",
-              "Update your CI/CD pipeline if needed",
-            ],
-          };
-
-          await generateMigrationReport(report, outputDir);
-
-          console.log(chalk.cyan(`\n📋 Generated files:`));
-          for (const file of targetFiles) {
-            console.log(chalk.cyan(`  ✔ ${path.relative(outputDir, file)}`));
-          }
-
-          console.log(chalk.dim(`\nDetailed report: ${path.relative(cwd, path.join(outputDir, "MIGRATION_REPORT.md"))}`));
-        } catch (e) {
-          spinner.fail(chalk.red(`Migration failed: ${e instanceof Error ? e.message : String(e)}`));
-          process.exit(EXIT_CODES.GENERAL_ERROR);
-        }
+        return;
       }
-    );
+
+      // Cross-backend migration
+      const fromBackend = opts.from.toLowerCase();
+      const toBackend = opts.to.toLowerCase();
+      const inputDir = path.resolve(opts.input);
+      const outputDir = path.resolve(opts.output);
+
+      if (!VALID_BACKENDS.includes(fromBackend as Backend)) {
+        console.error(
+          chalk.red(
+            `Unsupported source backend: "${opts.from}". Valid: ${VALID_BACKENDS.join(", ")}`
+          )
+        );
+        process.exit(EXIT_CODES.UNSUPPORTED_BACKEND);
+      }
+
+      if (!VALID_BACKENDS.includes(toBackend as Backend)) {
+        console.error(
+          chalk.red(`Unsupported target backend: "${opts.to}". Valid: ${VALID_BACKENDS.join(", ")}`)
+        );
+        process.exit(EXIT_CODES.UNSUPPORTED_BACKEND);
+      }
+
+      if (!fs.existsSync(inputDir)) {
+        console.error(chalk.red(`Input directory does not exist: ${inputDir}`));
+        process.exit(EXIT_CODES.GENERAL_ERROR);
+      }
+
+      if (!fs.existsSync(outputDir)) {
+        fs.mkdirSync(outputDir, { recursive: true });
+      }
+
+      const spinner = ora({
+        text: `Migrating blueprint from ${fromBackend} to ${toBackend}...`,
+        color: "cyan",
+      }).start();
+
+      try {
+        const sourceAdapter = getAdapter(fromBackend);
+        const targetAdapter = getAdapter(toBackend);
+
+        if (!sourceAdapter || !targetAdapter) {
+          spinner.fail(chalk.red("Failed to load adapters"));
+          process.exit(EXIT_CODES.GENERAL_ERROR);
+        }
+
+        // Parse source blueprint
+        const sourceIR = await sourceAdapter.parse(inputDir);
+        spinner.text = `Rendering ${toBackend} blueprint...`;
+
+        // Render to target backend
+        const targetFiles = await targetAdapter.render(sourceIR, outputDir);
+
+        spinner.succeed(chalk.green(`Blueprint migrated successfully!`));
+
+        // Generate migration report
+        const report: MigrationReport = {
+          from: fromBackend,
+          to: toBackend,
+          timestamp: new Date().toISOString(),
+          filesGenerated: targetFiles,
+          filesModified: [],
+          compatibilityWarnings: [],
+          nextSteps: [
+            `Review generated files in ${outputDir}`,
+            "Run `bp verify` to validate the migrated blueprint",
+            "Compare source and target blueprints for feature compatibility",
+            "Update your CI/CD pipeline if needed",
+          ],
+        };
+
+        await generateMigrationReport(report, outputDir);
+
+        console.log(chalk.cyan(`\n📋 Generated files:`));
+        for (const file of targetFiles) {
+          console.log(chalk.cyan(`  ✔ ${path.relative(outputDir, file)}`));
+        }
+
+        console.log(
+          chalk.dim(
+            `\nDetailed report: ${path.relative(cwd, path.join(outputDir, "MIGRATION_REPORT.md"))}`
+          )
+        );
+      } catch (e) {
+        spinner.fail(chalk.red(`Migration failed: ${e instanceof Error ? e.message : String(e)}`));
+        process.exit(EXIT_CODES.GENERAL_ERROR);
+      }
+    });
 
   return cmd;
 }

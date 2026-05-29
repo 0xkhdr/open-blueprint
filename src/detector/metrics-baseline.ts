@@ -76,7 +76,7 @@ export function generateGrafanaDashboard(ir: BlueprintIR): GrafanaDashboard {
     gridPos: { x: 0, y: yPos, w: 12, h: 8 },
     targets: [
       {
-        expr: 'histogram_quantile(0.95, agent_latency_ms)',
+        expr: "histogram_quantile(0.95, agent_latency_ms)",
         legendFormat: "P95 Latency (ms)",
       },
     ],
@@ -90,7 +90,7 @@ export function generateGrafanaDashboard(ir: BlueprintIR): GrafanaDashboard {
     gridPos: { x: 12, y: yPos - 8, w: 12, h: 8 },
     targets: [
       {
-        expr: 'rate(agent_errors_total[5m])',
+        expr: "rate(agent_errors_total[5m])",
         legendFormat: "Error Rate",
       },
     ],
@@ -103,8 +103,7 @@ export function generateGrafanaDashboard(ir: BlueprintIR): GrafanaDashboard {
     gridPos: { x: 0, y: yPos, w: 12, h: 8 },
     targets: [
       {
-        expr:
-          'sum(rate(agent_successes_total[5m])) / (sum(rate(agent_successes_total[5m])) + sum(rate(agent_errors_total[5m])))',
+        expr: "sum(rate(agent_successes_total[5m])) / (sum(rate(agent_successes_total[5m])) + sum(rate(agent_errors_total[5m])))",
         legendFormat: "Success Rate",
       },
     ],

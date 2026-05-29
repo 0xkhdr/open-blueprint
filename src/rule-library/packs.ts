@@ -1,5 +1,5 @@
 import { Rule } from "../translator/ir.js";
-import { RulePack } from "./types.js";
+import type { RulePack } from "./types.js";
 
 export const GDPR_PACK: RulePack = {
   id: "gdpr-baseline",
@@ -15,24 +15,21 @@ export const GDPR_PACK: RulePack = {
       scope: "**/*.ts",
       severity: "hard",
       action: "require('consent-management' in features)",
-      rationale:
-        "Article 7: Explicit consent mechanism required for data processing",
+      rationale: "Article 7: Explicit consent mechanism required for data processing",
     },
     {
       id: "gdpr-data-minimization",
       scope: "**/*.ts",
       severity: "hard",
       action: "require(dataCollected.length <= dataNeeded.length)",
-      rationale:
-        "Article 5(1)(c): Only collect data adequate to purpose (data minimization)",
+      rationale: "Article 5(1)(c): Only collect data adequate to purpose (data minimization)",
     },
     {
       id: "gdpr-retention",
       scope: "**/*.ts",
       severity: "hard",
       action: "require(retentionPolicy !== null)",
-      rationale:
-        "Article 5(1)(e): Data kept no longer than necessary (storage limitation)",
+      rationale: "Article 5(1)(e): Data kept no longer than necessary (storage limitation)",
     },
     {
       id: "gdpr-dpia",
@@ -53,8 +50,7 @@ export const GDPR_PACK: RulePack = {
       scope: "**/*.ts",
       severity: "hard",
       action: "require(auditLoggingEnabled && auditLogRetention >= 365)",
-      rationale:
-        "Article 5(2): Accountability demonstrated via audit logs (1 year minimum)",
+      rationale: "Article 5(2): Accountability demonstrated via audit logs (1 year minimum)",
     },
   ],
   metadata: {
@@ -98,8 +94,7 @@ export const SOC2_PACK: RulePack = {
       scope: "**/*.ts",
       severity: "hard",
       action: "require(backupFrequency <= 24 && backupVerified)",
-      rationale:
-        "A1.1: Data backed up and tested for recovery (daily backup required)",
+      rationale: "A1.1: Data backed up and tested for recovery (daily backup required)",
     },
     {
       id: "soc2-incident-response",
@@ -129,24 +124,21 @@ export const HIPAA_PACK: RulePack = {
       scope: "**/*.ts",
       severity: "hard",
       action: "require(encryption === 'aes-256' && keyManagementHSM)",
-      rationale:
-        "§164.312(a)(2)(ii): Encryption and decryption of PHI required",
+      rationale: "§164.312(a)(2)(ii): Encryption and decryption of PHI required",
     },
     {
       id: "hipaa-access-control",
       scope: "**/*.ts",
       severity: "hard",
       action: "require(mfa === true && idleTimeout <= 15)",
-      rationale:
-        "§164.312(a)(2)(i): Access controls with unique IDs and MFA required",
+      rationale: "§164.312(a)(2)(i): Access controls with unique IDs and MFA required",
     },
     {
       id: "hipaa-audit-logging",
       scope: "**/*.ts",
       severity: "hard",
       action: "require(auditLogEnabled && auditLogTamperProof && auditLogRetention >= 730)",
-      rationale:
-        "§164.312(b): Audit logs for 2 years minimum with integrity controls",
+      rationale: "§164.312(b): Audit logs for 2 years minimum with integrity controls",
     },
     {
       id: "hipaa-breach-notification",
@@ -197,16 +189,14 @@ export const PCIDSS_PACK: RulePack = {
       scope: "**/*.ts",
       severity: "hard",
       action: "require(tlsVersion >= '1.2' && encryption === 'tls-required')",
-      rationale:
-        "Requirement 4: Encrypt transmission of card data (TLS 1.2 minimum)",
+      rationale: "Requirement 4: Encrypt transmission of card data (TLS 1.2 minimum)",
     },
     {
       id: "pcidss-access-control",
       scope: "**/*.ts",
       severity: "hard",
       action: "require(rbac && userIdTracking && accessLogging)",
-      rationale:
-        "Requirement 7: Restrict access to card data by business need (RBAC)",
+      rationale: "Requirement 7: Restrict access to card data by business need (RBAC)",
     },
     {
       id: "pcidss-tracking-monitoring",
@@ -223,20 +213,13 @@ export const PCIDSS_PACK: RulePack = {
 };
 
 // Export all packs
-export const BUILT_IN_PACKS: RulePack[] = [
-  GDPR_PACK,
-  SOC2_PACK,
-  HIPAA_PACK,
-  PCIDSS_PACK,
-];
+export const BUILT_IN_PACKS: RulePack[] = [GDPR_PACK, SOC2_PACK, HIPAA_PACK, PCIDSS_PACK];
 
 export function getRulePack(id: string): RulePack | undefined {
   return BUILT_IN_PACKS.find((pack) => pack.id === id);
 }
 
-export function getRulePacksByFramework(
-  framework: string
-): RulePack[] {
+export function getRulePacksByFramework(framework: string): RulePack[] {
   return BUILT_IN_PACKS.filter((pack) => pack.framework === framework);
 }
 

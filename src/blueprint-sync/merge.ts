@@ -1,11 +1,6 @@
-import { BlueprintIR, Rule, Skill, Persona } from "../translator/ir.js";
-import {
-  MergeResult,
-  MergeConflict,
-  MergeOptions,
-  DiffChange,
-} from "./types.js";
+import { type BlueprintIR, Persona, Rule, Skill } from "../translator/ir.js";
 import { diffBlueprints } from "./diff.js";
+import { DiffChange, type MergeConflict, type MergeOptions, type MergeResult } from "./types.js";
 
 export class BlueprintMerger {
   private defaultOptions: MergeOptions = {
@@ -146,11 +141,7 @@ export class BlueprintMerger {
     const theirsMap = new Map(theirs.map((item) => [getId(item), item]));
 
     // Merge: process all unique IDs
-    const allIds = new Set([
-      ...baseMap.keys(),
-      ...oursMap.keys(),
-      ...theirsMap.keys(),
-    ]);
+    const allIds = new Set([...baseMap.keys(), ...oursMap.keys(), ...theirsMap.keys()]);
 
     for (const id of allIds) {
       const baseItem = baseMap.get(id);
@@ -158,11 +149,7 @@ export class BlueprintMerger {
       const theirsItem = theirsMap.get(id);
 
       // Both changed and differ = conflict
-      if (
-        oursItem &&
-        theirsItem &&
-        !this.deepEqual(oursItem, theirsItem)
-      ) {
+      if (oursItem && theirsItem && !this.deepEqual(oursItem, theirsItem)) {
         conflicts.push({
           path: `${layer}[${id}]`,
           layer,
@@ -255,13 +242,7 @@ export class BlueprintMerger {
     return count;
   }
 
-
-
-  private setNestedValue(
-    obj: unknown,
-    path: string,
-    value: unknown
-  ): void {
+  private setNestedValue(obj: unknown, path: string, value: unknown): void {
     const parts = path.split(".");
     if (parts.length === 0) return;
 
@@ -297,10 +278,7 @@ export class BlueprintMerger {
       const keysB = Object.keys(b as Record<string, unknown>);
       if (keysA.length !== keysB.length) return false;
       return keysA.every((key) =>
-        this.deepEqual(
-          (a as Record<string, unknown>)[key],
-          (b as Record<string, unknown>)[key]
-        )
+        this.deepEqual((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key])
       );
     }
 

@@ -164,7 +164,7 @@ export function generatePrometheusConfig(ir: BlueprintIR): TelemetryConfig | nul
 export function generateCloudWatchConfig(ir: BlueprintIR): TelemetryConfig | null {
   if (!ir.telemetry) return null;
 
-  let json = JSON.stringify(
+  const json = JSON.stringify(
     {
       agent: {
         metrics_collection_interval: 60,

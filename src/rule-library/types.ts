@@ -1,4 +1,4 @@
-import { Rule } from "../translator/ir.js";
+import type { Rule } from "../translator/ir.js";
 
 export interface RulePack {
   id: string;

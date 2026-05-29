@@ -1,4 +1,4 @@
-import { BlueprintIR } from "../translator/ir.js";
+import type { BlueprintIR } from "../translator/ir.js";
 
 // Semantic diff operations
 export type DiffOp = "add" | "remove" | "modify" | "reorder";

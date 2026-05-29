@@ -1,0 +1,27 @@
+---
+render_if:
+  risk_tier: [critical]
+priority: 41
+---
+# Critical Escalation Runbook
+
+## Immediate Response (< 15 min)
+
+1. Isolate affected systems
+2. Page security lead and on-call engineer simultaneously
+3. Open P0 incident ticket
+4. Notify legal and compliance team
+
+## Escalation Matrix
+
+| Severity | Response Time | Escalation Path |
+|----------|--------------|-----------------|
+| P0 (Critical) | 15 min | On-call → Security Lead → CTO |
+| P1 (High) | 1 hour | On-call → Security Lead |
+| P2 (Medium) | 4 hours | On-call engineer |
+
+## Communication
+
+- Internal: incident channel immediately
+- External: PR team approves all statements — no individual communication
+- Regulatory: legal team handles within required timeframe

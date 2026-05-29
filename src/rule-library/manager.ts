@@ -1,6 +1,6 @@
-import { BlueprintIR, Rule } from "../translator/ir.js";
-import { RulePack, RuleLibraryIndex, RulePackMetadata, InstallOptions } from "./types.js";
+import type { BlueprintIR, Rule } from "../translator/ir.js";
 import { BUILT_IN_PACKS, getRulePack } from "./packs.js";
+import type { InstallOptions, RuleLibraryIndex, RulePack, RulePackMetadata } from "./types.js";
 
 export class RuleLibraryManager {
   installPack(
@@ -54,9 +54,7 @@ export class RuleLibraryManager {
     };
   }
 
-  private validateRules(
-    rules: Rule[]
-  ): { valid: boolean; errors: string[] } {
+  private validateRules(rules: Rule[]): { valid: boolean; errors: string[] } {
     const errors: string[] = [];
 
     for (const rule of rules) {
@@ -81,16 +79,19 @@ export class RuleLibraryManager {
   }
 
   generateIndex(): RuleLibraryIndex {
-    const packs = BUILT_IN_PACKS.map((pack) => ({
-      id: pack.id,
-      name: pack.name,
-      version: pack.version,
-      framework: pack.framework,
-      description: pack.description,
-      rules_count: pack.rules.length,
-      author: pack.author,
-      tags: pack.tags,
-    } as RulePackMetadata));
+    const packs = BUILT_IN_PACKS.map(
+      (pack) =>
+        ({
+          id: pack.id,
+          name: pack.name,
+          version: pack.version,
+          framework: pack.framework,
+          description: pack.description,
+          rules_count: pack.rules.length,
+          author: pack.author,
+          tags: pack.tags,
+        }) as RulePackMetadata
+    );
 
     return {
       version: "1.0",

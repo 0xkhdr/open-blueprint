@@ -81,8 +81,7 @@ async function interactiveWizard(): Promise<{
   teamName: string;
 }> {
   console.log(
-    chalk.cyan.bold("\n🚀 Blueprint Interactive Setup\n") +
-      chalk.dim("(Press Ctrl+C to cancel)\n")
+    chalk.cyan.bold("\n🚀 Blueprint Interactive Setup\n") + chalk.dim("(Press Ctrl+C to cancel)\n")
   );
 
   const backend = (await promptChoose(
@@ -118,7 +117,10 @@ export function createInitCommand(): Command {
 
   cmd
     .description("Scaffold blueprint for current repository")
-    .argument("[tool]", "Backend tool: claude | cursor | opendev | generic | codex | pi | kiro | antigravity | copilot | gemini")
+    .argument(
+      "[tool]",
+      "Backend tool: claude | cursor | opendev | generic | codex | pi | kiro | antigravity | copilot | gemini"
+    )
     .option("--tool <backend>", "Backend (alias for positional arg)")
     .option("--template <name>", "Use specific template pack")
     .option("--force", "Overwrite existing blueprint files", false)

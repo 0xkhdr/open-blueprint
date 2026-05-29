@@ -1,0 +1,15 @@
+---
+render_if:
+  risk_tier: [high, critical]
+priority: 30
+---
+# Strict Security Rules
+
+Project risk tier: **{{risk_tier}}**. Strict rules apply.
+
+- All secrets must use a secrets manager (not env vars)
+- External API calls require explicit approval
+- Input validation required at every boundary
+- Audit logging for all data mutations
+- Security review required for dependency changes
+- No `eval`, `exec`, or dynamic code execution

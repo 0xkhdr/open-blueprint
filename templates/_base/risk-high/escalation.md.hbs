@@ -1,0 +1,22 @@
+---
+render_if:
+  risk_tier: [high, critical]
+priority: 31
+---
+# Escalation Runbook
+
+Risk tier: **{{risk_tier}}**
+
+## Escalation Triggers
+
+- Any security vulnerability (CVSS ≥ 7.0) → immediate escalation
+- Data breach or unauthorized access → P0 incident
+- Compliance violation → legal team notification within 1 hour
+
+## Contacts
+
+| Role | Action |
+|------|--------|
+| Security Lead | First contact for security incidents |
+| Compliance Officer | Regulatory and audit issues |
+| On-call Engineer | Runtime and availability issues |

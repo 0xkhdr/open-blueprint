@@ -1,0 +1,17 @@
+---
+render_if:
+  risk_tier: [critical]
+priority: 40
+---
+# Maximum Security Rules
+
+Project risk tier: **critical**. All rules are mandatory and non-negotiable.
+
+- All external API calls must be audited and logged
+- All secrets must use vault integration with rotation
+- All database queries must be parameterized — no string interpolation
+- Multi-factor authentication required for all admin operations
+- Static analysis (SAST) must pass before any merge
+- Dependency scanning (SCA) required for every dependency change
+- Penetration testing required before production releases
+- Zero-trust network access for all service-to-service communication

@@ -126,7 +126,7 @@ export class CursorAdapter implements BlueprintAdapter {
     }
 
     // 4. MCP Servers (if .cursor/mcp.json exists)
-    let mcpServers: MCPServer[] = [];
+    const mcpServers: MCPServer[] = [];
     const mcpPath = path.join(cursorDir, "mcp.json");
     if (fs.existsSync(mcpPath)) {
       try {

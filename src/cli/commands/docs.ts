@@ -133,10 +133,7 @@ function generateComplianceDoc(ir: any): string {
   const frameworks = compliance.frameworks || {};
 
   const frameworksList = Object.entries(frameworks)
-    .map(
-      ([name, status]) =>
-        `- **${name.toUpperCase()}**: ${status ? "✓ Mapped" : "✗ Not mapped"}`
-    )
+    .map(([name, status]) => `- **${name.toUpperCase()}**: ${status ? "✓ Mapped" : "✗ Not mapped"}`)
     .join("\n");
 
   return `# Compliance Checklist
@@ -201,9 +198,7 @@ export function createDocsCommand(): Command {
         // Parse .claude/rules/*.md files
         const rulesDir = path.join(cwd, ".claude", "rules");
         if (fs.existsSync(rulesDir)) {
-          const ruleFiles = fs
-            .readdirSync(rulesDir)
-            .filter((f) => f.endsWith(".md"));
+          const ruleFiles = fs.readdirSync(rulesDir).filter((f) => f.endsWith(".md"));
           for (const file of ruleFiles) {
             const filePath = path.join(rulesDir, file);
             const content = fs.readFileSync(filePath, "utf-8");
@@ -230,9 +225,7 @@ export function createDocsCommand(): Command {
         // Parse .claude/skills/*.md files
         const skillsDir = path.join(cwd, ".claude", "skills");
         if (fs.existsSync(skillsDir)) {
-          const skillFiles = fs
-            .readdirSync(skillsDir)
-            .filter((f) => f.endsWith(".md"));
+          const skillFiles = fs.readdirSync(skillsDir).filter((f) => f.endsWith(".md"));
           for (const file of skillFiles) {
             const filePath = path.join(skillsDir, file);
             const content = fs.readFileSync(filePath, "utf-8");
@@ -242,9 +235,7 @@ export function createDocsCommand(): Command {
                 const yamlBlock = match[1] ?? "";
                 const skill: any = {};
                 const nameMatch = yamlBlock.match(/name:\s*"?([^"\n]+)"?/);
-                const descMatch = yamlBlock.match(
-                  /description:\s*"?([^"\n]+)"?/
-                );
+                const descMatch = yamlBlock.match(/description:\s*"?([^"\n]+)"?/);
                 if (nameMatch?.[1]) skill.name = nameMatch[1];
                 if (descMatch?.[1]) skill.description = descMatch[1];
                 ir.skills.push(skill);
@@ -271,11 +262,7 @@ export function createDocsCommand(): Command {
         fs.writeFileSync(path.join(outputDir, "SKILLS.md"), docs.skills, "utf-8");
         fs.writeFileSync(path.join(outputDir, "AGENTS.md"), docs.agents, "utf-8");
         if (docs.compliance) {
-          fs.writeFileSync(
-            path.join(outputDir, "COMPLIANCE.md"),
-            docs.compliance,
-            "utf-8"
-          );
+          fs.writeFileSync(path.join(outputDir, "COMPLIANCE.md"), docs.compliance, "utf-8");
         }
 
         spinner.succeed(chalk.green("Documentation generated!"));
@@ -288,13 +275,13 @@ export function createDocsCommand(): Command {
           console.log(chalk.cyan(`  ✔ COMPLIANCE.md`));
         }
 
-        console.log(
-          chalk.dim(
-            `\nOutput: ${path.relative(cwd, outputDir)}`
+        console.log(chalk.dim(`\nOutput: ${path.relative(cwd, outputDir)}`));
+      } catch (e) {
+        spinner.fail(
+          chalk.red(
+            `Documentation generation failed: ${e instanceof Error ? e.message : String(e)}`
           )
         );
-      } catch (e) {
-        spinner.fail(chalk.red(`Documentation generation failed: ${e instanceof Error ? e.message : String(e)}`));
         process.exit(EXIT_CODES.GENERAL_ERROR);
       }
     });

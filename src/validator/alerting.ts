@@ -227,7 +227,7 @@ export function detectAnomaly(
 
   const mean = baselineValues.reduce((a, b) => a + b, 0) / baselineValues.length;
   const variance =
-    baselineValues.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / baselineValues.length;
+    baselineValues.reduce((sum, val) => sum + (val - mean) ** 2, 0) / baselineValues.length;
   const stdDev = Math.sqrt(variance);
 
   let zscore = 0;

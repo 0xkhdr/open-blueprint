@@ -1,19 +1,15 @@
+import { Command } from "commander";
 import fs from "fs";
 import path from "path";
-import { Command } from "commander";
-import { BlueprintIRSchema } from "../../translator/ir.js";
 import { diffBlueprints } from "../../blueprint-sync/diff.js";
+import { BlueprintIRSchema } from "../../translator/ir.js";
 
 export function createDiffCommand(): Command {
   return new Command("diff")
     .description("Show semantic diff between two blueprints")
     .argument("<file1>", "First blueprint file")
     .argument("<file2>", "Second blueprint file")
-    .option(
-      "-f, --format <format>",
-      "Output format: text, json, markdown",
-      "text"
-    )
+    .option("-f, --format <format>", "Output format: text, json, markdown", "text")
     .option("--ignore-metadata", "Ignore metadata and optional layers", false)
     .option("--ignore-order", "Ignore array order", false)
     .action(async (file1: string, file2: string, options) => {
@@ -39,19 +35,13 @@ export function createDiffCommand(): Command {
         // Exit code: 0 if identical, 1 if differences
         process.exit(report.changes.length === 0 ? 0 : 1);
       } catch (error) {
-        console.error(
-          "Error:",
-          error instanceof Error ? error.message : String(error)
-        );
+        console.error("Error:", error instanceof Error ? error.message : String(error));
         process.exit(1);
       }
     });
 }
 
-function formatDiffReport(
-  report: ReturnType<typeof diffBlueprints>,
-  format: string
-): string {
+function formatDiffReport(report: ReturnType<typeof diffBlueprints>, format: string): string {
   if (format === "json") {
     return JSON.stringify(report, null, 2);
   }
@@ -64,9 +54,7 @@ function formatDiffReport(
   return formatText(report);
 }
 
-function formatText(
-  report: ReturnType<typeof diffBlueprints>
-): string {
+function formatText(report: ReturnType<typeof diffBlueprints>): string {
   const lines = [
     `Diff Report: ${report.baseVersion} → ${report.targetVersion}`,
     `Generated: ${report.timestamp}`,
@@ -119,9 +107,7 @@ function formatText(
   return lines.join("\n");
 }
 
-function formatMarkdown(
-  report: ReturnType<typeof diffBlueprints>
-): string {
+function formatMarkdown(report: ReturnType<typeof diffBlueprints>): string {
   const lines = [
     `# Diff Report`,
     `**From:** ${report.baseVersion}`,

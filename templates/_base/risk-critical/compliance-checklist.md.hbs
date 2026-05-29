@@ -1,0 +1,31 @@
+---
+render_if:
+  risk_tier: [critical]
+priority: 42
+---
+# Compliance Checklist
+
+Project: **{{project_name}}** | Risk tier: **critical**
+
+## Pre-Release Checklist
+
+- [ ] SAST scan passed (zero high/critical findings)
+- [ ] SCA scan passed (no known CVEs in dependencies)
+- [ ] Penetration test completed
+- [ ] Data classification review done
+- [ ] Privacy impact assessment completed
+- [ ] Audit logging verified end-to-end
+- [ ] Secrets rotation verified
+- [ ] Incident response runbook reviewed
+
+## Regulatory Requirements
+
+- [ ] GDPR: Data processing agreements in place
+- [ ] SOC2: Controls documented and tested
+- [ ] Access controls reviewed and approved
+
+## Sign-offs Required
+
+- [ ] Security Lead
+- [ ] Compliance Officer
+- [ ] Engineering Manager

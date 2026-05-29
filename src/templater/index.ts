@@ -4,7 +4,10 @@ import * as path from "node:path";
 import { loadProjectConfig } from "../config/project.js";
 import type { Fingerprint } from "../detector/fingerprint.js";
 import { RegistryClient } from "../registry/client.js";
-import { registerPartials, renderTemplate } from "./engine.js";
+import { type RenderContext, shouldRenderTemplate } from "./conditional.js";
+import { registerPartials, renderString, renderTemplate } from "./engine.js";
+import { hasTemplateMetadata, parseTemplateMetadata, stripMetadata } from "./metadata.js";
+import { mergeRiskTemplates, resolveRiskTemplatePack } from "./risk-selector.js";
 import { getTemplatesRoot, resolveTemplatePack } from "./selector.js";
 import type { WriteResult } from "./writer.js";
 import { writeFile } from "./writer.js";
@@ -14,6 +17,7 @@ export interface TemplaterOptions {
   templateOverride?: string | undefined;
   dryRun?: boolean | undefined;
   force?: boolean | undefined;
+  verbose?: boolean | undefined;
 }
 
 export interface TemplaterResult {
@@ -49,10 +53,15 @@ export interface TemplateContext {
   estimated_monthly_tokens?: number;
 }
 
+const BP_VERSION = "1.0.0";
+
 function buildContext(fingerprint: Fingerprint): TemplateContext {
   const primaryLang = fingerprint.languages.find((l) => l.primary);
   const topFramework = fingerprint.frameworks[0];
   const firstEntry = fingerprint.entry_points[0];
+  const enhanced = fingerprint as Fingerprint & {
+    risk_tier?: "low" | "medium" | "high" | "critical";
+  };
 
   return {
     project_name: fingerprint.project.name,
@@ -75,6 +84,7 @@ function buildContext(fingerprint: Fingerprint): TemplateContext {
     detected_at: fingerprint.detected_at,
     src_dirs: fingerprint.directory_topology.src_dirs,
     test_dirs: fingerprint.directory_topology.test_dirs,
+    risk_tier: enhanced.risk_tier ?? "low",
   };
 }
 
@@ -115,6 +125,7 @@ export async function runTemplater(
     templateOverride,
     dryRun = false,
     force = false,
+    verbose = false,
     isExtendedRun = false,
   } = options;
 
@@ -151,16 +162,49 @@ export async function runTemplater(
   }
 
   const pack = resolveTemplatePack(fingerprint, backend, templateOverride);
-  const context = buildContext(fingerprint) as unknown as Record<string, unknown>;
+  const ctx = buildContext(fingerprint);
+  const context = ctx as unknown as Record<string, unknown>;
 
-  const templateFiles = findTemplateFiles(pack.directory);
+  const baseFiles = findTemplateFiles(pack.directory);
+  const riskTier = ctx.risk_tier ?? "low";
+  const riskDir = resolveRiskTemplatePack(pack.directory, riskTier);
+  const riskFiles = riskDir ? findTemplateFiles(riskDir) : [];
+  const templateFiles = mergeRiskTemplates(baseFiles, riskFiles);
+
+  const renderCtx: RenderContext = {
+    risk_tier: riskTier,
+    primary_language: ctx.primary_language,
+    primary_framework: ctx.primary_framework,
+    project_type: ctx.project_type,
+    backend_manifest: pack.manifest,
+    bp_version: BP_VERSION,
+  };
 
   for (const templateFile of templateFiles) {
-    // Skip manifest.json.hbs if it exists
     if (path.basename(templateFile) === "manifest.json.hbs") continue;
 
-    const rendered = renderTemplate(templateFile, context);
-    const outputPath = getOutputPath(templateFile, pack.directory, projectRoot);
+    const meta = parseTemplateMetadata(templateFile);
+    const check = shouldRenderTemplate(meta, renderCtx);
+    if (!check.render) {
+      if (verbose) {
+        console.log(
+          `[templater] skip ${path.relative(pack.directory, templateFile)}: ${check.reason}`
+        );
+      }
+      continue;
+    }
+
+    let rendered: string;
+    if (hasTemplateMetadata(meta)) {
+      const raw = fs.readFileSync(templateFile, "utf-8");
+      rendered = renderString(stripMetadata(raw), context);
+    } else {
+      rendered = renderTemplate(templateFile, context);
+    }
+
+    // Determine output base dir: risk files map to projectRoot directly
+    const baseDir = riskFiles.includes(templateFile) && riskDir ? riskDir : pack.directory;
+    const outputPath = getOutputPath(templateFile, baseDir, projectRoot);
 
     const result = await writeFile(outputPath, rendered, {
       dryRun,

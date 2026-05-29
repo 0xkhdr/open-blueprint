@@ -424,7 +424,9 @@ export type SemanticDrift = z.infer<typeof SemanticDriftSchema>;
 export type BlueprintIR = z.infer<typeof BlueprintIRSchema>;
 
 export function isV2(ir: BlueprintIR): boolean {
-  return ir.meta?.schema_version === "2.0" || ir.settings !== undefined || ir.mcp_servers !== undefined;
+  return (
+    ir.meta?.schema_version === "2.0" || ir.settings !== undefined || ir.mcp_servers !== undefined
+  );
 }
 export function isV1(ir: BlueprintIR): boolean {
   return !isV2(ir);

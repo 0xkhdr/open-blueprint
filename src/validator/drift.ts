@@ -382,18 +382,17 @@ function checkCostDrift(projectRoot: string): ValidationError[] {
 
     // Compute baseline (first half) and current (second half)
     const midpoint = Math.floor(history.length / 2);
-    const baselineTokens = history
-      .slice(0, midpoint)
-      .reduce((sum, e) => sum + e.tokens_used, 0) / midpoint;
-    const currentTokens = history
-      .slice(midpoint)
-      .reduce((sum, e) => sum + e.tokens_used, 0) / (history.length - midpoint);
+    const baselineTokens =
+      history.slice(0, midpoint).reduce((sum, e) => sum + e.tokens_used, 0) / midpoint;
+    const currentTokens =
+      history.slice(midpoint).reduce((sum, e) => sum + e.tokens_used, 0) /
+      (history.length - midpoint);
 
     // Flag if current usage > 2σ above baseline
     const stdDev = Math.sqrt(
       history
         .slice(0, midpoint)
-        .reduce((sum, e) => sum + Math.pow(e.tokens_used - baselineTokens, 2), 0) / midpoint
+        .reduce((sum, e) => sum + (e.tokens_used - baselineTokens) ** 2, 0) / midpoint
     );
     if (currentTokens > baselineTokens + 2 * stdDev) {
       errors.push({
@@ -411,10 +410,7 @@ function checkCostDrift(projectRoot: string): ValidationError[] {
   return errors;
 }
 
-function checkOutputDrift(
-  files: string[],
-  projectRoot: string
-): ValidationError[] {
+function checkOutputDrift(files: string[], projectRoot: string): ValidationError[] {
   const errors: ValidationError[] = [];
   const snapshotFile = path.join(projectRoot, ".bp-output-snapshots.json");
 

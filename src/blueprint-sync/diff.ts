@@ -1,11 +1,6 @@
 import { createHash } from "crypto";
-import { BlueprintIR, Rule, Skill, Persona, Command } from "../translator/ir.js";
-import {
-  DiffChange,
-  DiffReport,
-  DiffStrategy,
-  DiffOptions,
-} from "./types.js";
+import { type BlueprintIR, Command, Persona, Rule, Skill } from "../translator/ir.js";
+import { type DiffChange, type DiffOptions, type DiffReport, DiffStrategy } from "./types.js";
 
 export class BlueprintDiffer {
   private defaultOptions: DiffOptions = {
@@ -15,11 +10,7 @@ export class BlueprintDiffer {
     contextLines: 3,
   };
 
-  diff(
-    base: BlueprintIR,
-    target: BlueprintIR,
-    options: Partial<DiffOptions> = {}
-  ): DiffReport {
+  diff(base: BlueprintIR, target: BlueprintIR, options: Partial<DiffOptions> = {}): DiffReport {
     const opts = { ...this.defaultOptions, ...options };
     const changes: DiffChange[] = [];
 
@@ -27,13 +18,7 @@ export class BlueprintDiffer {
     this.diffSpatialAnchor(base, target, changes);
 
     // Compare personas
-    this.diffArray(
-      base.personas,
-      target.personas,
-      "personas",
-      (p) => p.name,
-      changes
-    );
+    this.diffArray(base.personas, target.personas, "personas", (p) => p.name, changes);
 
     // Compare rules
     this.diffArray(base.rules, target.rules, "rules", (r) => r.id, changes);
@@ -57,24 +42,9 @@ export class BlueprintDiffer {
 
     // Compare enterprise layers
     if (!opts.ignoreMetadata) {
-      this.diffOptional(
-        base.settings,
-        target.settings,
-        "settings",
-        changes
-      );
-      this.diffOptional(
-        base.identity,
-        target.identity,
-        "identity",
-        changes
-      );
-      this.diffOptional(
-        base.compliance,
-        target.compliance,
-        "compliance",
-        changes
-      );
+      this.diffOptional(base.settings, target.settings, "settings", changes);
+      this.diffOptional(base.identity, target.identity, "identity", changes);
+      this.diffOptional(base.compliance, target.compliance, "compliance", changes);
       this.diffOptional(base.risk, target.risk, "risk", changes);
     }
 
@@ -103,11 +73,7 @@ export class BlueprintDiffer {
     };
   }
 
-  private diffSpatialAnchor(
-    base: BlueprintIR,
-    target: BlueprintIR,
-    changes: DiffChange[]
-  ): void {
+  private diffSpatialAnchor(base: BlueprintIR, target: BlueprintIR, changes: DiffChange[]): void {
     const baseAnchor = base.spatial_anchor;
     const targetAnchor = target.spatial_anchor;
 
@@ -154,14 +120,18 @@ export class BlueprintDiffer {
   ): void {
     const base = baseArr ?? [];
     const target = targetArr ?? [];
-    const baseMap = new Map(base.map((item) => {
-      const id = getId(item);
-      return [id, item] as const;
-    }));
-    const targetMap = new Map(target.map((item) => {
-      const id = getId(item);
-      return [id, item] as const;
-    }));
+    const baseMap = new Map(
+      base.map((item) => {
+        const id = getId(item);
+        return [id, item] as const;
+      })
+    );
+    const targetMap = new Map(
+      target.map((item) => {
+        const id = getId(item);
+        return [id, item] as const;
+      })
+    );
 
     // Detect adds
     for (const item of target) {
@@ -260,12 +230,8 @@ export class BlueprintDiffer {
       return diffs;
     }
 
-    const baseKeys = new Set(
-      Object.keys(baseObj as Record<string, unknown>)
-    );
-    const targetKeys = new Set(
-      Object.keys(targetObj as Record<string, unknown>)
-    );
+    const baseKeys = new Set(Object.keys(baseObj as Record<string, unknown>));
+    const targetKeys = new Set(Object.keys(targetObj as Record<string, unknown>));
 
     // Check modified and removed
     for (const key of baseKeys) {
@@ -309,10 +275,7 @@ export class BlueprintDiffer {
       const keysB = Object.keys(b as Record<string, unknown>);
       if (keysA.length !== keysB.length) return false;
       return keysA.every((key) =>
-        this.deepEqual(
-          (a as Record<string, unknown>)[key],
-          (b as Record<string, unknown>)[key]
-        )
+        this.deepEqual((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key])
       );
     }
 

@@ -5,8 +5,8 @@ import matter from "gray-matter";
 import type { BlueprintAdapter } from "../index.js";
 import type { BlueprintIR, Hook, Persona, Rule, Skill } from "../ir.js";
 import { generateAgentsMD } from "./agents-md.js";
-import { generateTeamsYaml } from "./teams-yaml.js";
 import { generateChainsYaml } from "./chains-yaml.js";
+import { generateTeamsYaml } from "./teams-yaml.js";
 
 export class PIAdapter implements BlueprintAdapter {
   async parse(projectRoot: string): Promise<BlueprintIR> {

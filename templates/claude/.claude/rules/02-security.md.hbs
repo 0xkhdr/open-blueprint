@@ -1,4 +1,7 @@
 ---
+render_if:
+  risk_tier: [medium, high, critical]
+  backend_features: [rules]
 scope: "**/*"
 severity: hard
 action: Never introduce security vulnerabilities

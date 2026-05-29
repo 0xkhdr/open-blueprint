@@ -299,7 +299,7 @@ bun test tests/unit/validator/
 ## Domain 05 — Templater Enhancement
 
 **Spec File:** `specs/05-TEMPLATER-ENHANCEMENT.md`
-**Status:** ❌ NOT STARTED for new features — inheritance works, conditional missing
+**Status:** ✅ COMPLETE — metadata system, conditional rendering, risk-aware packs, 59 new tests
 **Effort:** ~5h
 **Commit:** `feat(templater): conditional rendering, risk-aware packs, template metadata`
 
@@ -369,11 +369,11 @@ bun test tests/unit/templater/ tests/integration/templater/
 ```
 
 ### Done Criteria
-- [ ] Templates with `render_if` conditions are correctly skipped
-- [ ] Risk-aware templates produce different output for low vs critical
-- [ ] Template inheritance chain resolves (base → override)
-- [ ] `--verbose` logs skipped templates
-- [ ] 40+ new tests passing
+- [x] Templates with `render_if` conditions are correctly skipped
+- [x] Risk-aware templates produce different output for low vs critical
+- [x] Template inheritance chain resolves (base → override)
+- [x] `--verbose` logs skipped templates
+- [x] 59 new tests passing (94 total in templater suite)
 
 ---
 
