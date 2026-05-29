@@ -380,7 +380,7 @@ bun test tests/unit/templater/ tests/integration/templater/
 ## Domain 06 — Enterprise Governance
 
 **Spec File:** `specs/06-ENTERPRISE-GOVERNANCE.md`
-**Status:** ⚠️ PARTIAL — validation done, secret scan + compliance gap + runbooks missing
+**Status:** ✅ COMPLETE — secrets scan, compliance gap report, escalation runbooks, enhanced bp doctor, 84 tests
 **Effort:** ~7h
 **Commit:** `feat(enterprise): secret scanning, compliance gap report, escalation runbooks`
 
@@ -436,12 +436,12 @@ bun test tests/unit/enterprise/
 ```
 
 ### Done Criteria
-- [ ] `scanForSecrets()` detects all 8 pattern types
-- [ ] `generateGapReport()` produces correct coverage % for GDPR, SOC2, HIPAA
-- [ ] `bp doctor --secret-scan` outputs findings
-- [ ] `bp doctor --compliance-report gdpr` outputs gap report
-- [ ] Escalation runbook varies by risk tier
-- [ ] 50+ tests passing
+- [x] `scanForSecrets()` detects all 8 pattern types
+- [x] `generateGapReport()` produces correct coverage % for GDPR, SOC2, HIPAA
+- [x] `bp doctor --secret-scan` outputs findings
+- [x] `bp doctor --compliance-report gdpr` outputs gap report
+- [x] Escalation runbook varies by risk tier
+- [x] 84 tests passing (exceeds 50+ target)
 
 ---
 

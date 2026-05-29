@@ -4,6 +4,10 @@ import chalk from "chalk";
 import { Command } from "commander";
 import matter from "gray-matter";
 import { detect, enrichFingerprint } from "../../detector/index.js";
+import { formatGapReport, generateGapReport } from "../../enterprise/compliance-report.js";
+import { generateEnvTemplate } from "../../enterprise/env-template.js";
+import { generateEscalationRunbook } from "../../enterprise/runbooks.js";
+import { scanForSecrets } from "../../enterprise/secrets.js";
 import { resolveTemplatePack } from "../../templater/selector.js";
 import { AntigravityAdapter } from "../../translator/adapters/antigravity.js";
 import { ClaudeAdapter } from "../../translator/adapters/claude.js";
@@ -28,9 +32,102 @@ export function createDoctorCommand(): Command {
     .description("Diagnostic mode for troubleshooting")
     .option("--tool <backend>", "Diagnose specific backend config issues")
     .option("--verbose", "Full diagnostic trace with timing")
-    .action(async (opts: { tool?: string; verbose?: boolean }) => {
+    .option("--secret-scan", "Scan project files for leaked secrets")
+    .option("--compliance-report [framework]", "Generate compliance gap report (gdpr, soc2, hipaa)")
+    .option("--risk-audit", "Print risk tier classification and escalation runbook")
+    .option("--env-template", "Generate .env.template from process.env references")
+    .option("--json", "Output results as JSON")
+    .action(async (opts: {
+      tool?: string;
+      verbose?: boolean;
+      secretScan?: boolean;
+      complianceReport?: string | boolean;
+      riskAudit?: boolean;
+      envTemplate?: boolean;
+      json?: boolean;
+    }) => {
       const cwd = process.cwd();
       const startTime = performance.now();
+
+      // --- Secret scan mode ---
+      if (opts.secretScan) {
+        console.log(chalk.bold.cyan("\n🔍 Scanning for secrets...\n"));
+        const findings = scanForSecrets(cwd);
+        if (opts.json) {
+          console.log(JSON.stringify(findings, null, 2));
+        } else if (findings.length === 0) {
+          console.log(chalk.green("✔ No secrets detected."));
+        } else {
+          for (const f of findings) {
+            const color = f.severity === "critical" ? chalk.red : f.severity === "high" ? chalk.yellow : chalk.blue;
+            console.log(color(`[${f.severity.toUpperCase()}] ${f.pattern}`));
+            console.log(`  File: ${f.file}:${f.line}:${f.column}`);
+            console.log(`  Match: ${f.match.slice(0, 40)}...`);
+            console.log();
+          }
+          console.log(chalk.red(`Found ${findings.length} secret(s). Rotate or remove before committing.`));
+        }
+        process.exit(findings.length > 0 ? EXIT_CODES.GENERAL_ERROR : EXIT_CODES.SUCCESS);
+      }
+
+      // --- Compliance report mode ---
+      if (opts.complianceReport !== undefined) {
+        const framework = typeof opts.complianceReport === "string" ? opts.complianceReport : "gdpr";
+        console.log(chalk.bold.cyan(`\n📋 Generating compliance gap report: ${framework.toUpperCase()}\n`));
+        try {
+          const adapterForReport = getAdapterByName(opts.tool ?? "claude");
+          const irForReport = await adapterForReport.parse(cwd);
+          const report = generateGapReport(irForReport, framework);
+          if (opts.json) {
+            console.log(JSON.stringify(report, null, 2));
+          } else {
+            console.log(formatGapReport(report));
+          }
+        } catch (e) {
+          console.error(chalk.red(`Error: ${e instanceof Error ? e.message : String(e)}`));
+          process.exit(EXIT_CODES.GENERAL_ERROR);
+        }
+        process.exit(EXIT_CODES.SUCCESS);
+      }
+
+      // --- Risk audit mode ---
+      if (opts.riskAudit) {
+        console.log(chalk.bold.cyan("\n⚠️  Risk Audit\n"));
+        try {
+          const fingerprint = await detect(cwd);
+          const enriched = enrichFingerprint(fingerprint);
+          const adapterForRisk = getAdapterByName(opts.tool ?? "claude");
+          const irForRisk = await adapterForRisk.parse(cwd);
+          const tier = irForRisk.risk?.risk_tier ?? enriched.risk_tier ?? "medium";
+          console.log(chalk.bold(`Risk Tier: ${tier.toUpperCase()}`));
+          console.log();
+          const runbook = generateEscalationRunbook(irForRisk);
+          if (opts.json) {
+            console.log(JSON.stringify({ risk_tier: tier, runbook }, null, 2));
+          } else {
+            console.log(runbook);
+          }
+        } catch (e) {
+          console.error(chalk.red(`Error: ${e instanceof Error ? e.message : String(e)}`));
+          process.exit(EXIT_CODES.GENERAL_ERROR);
+        }
+        process.exit(EXIT_CODES.SUCCESS);
+      }
+
+      // --- Env template mode ---
+      if (opts.envTemplate) {
+        console.log(chalk.bold.cyan("\n📄 Generating .env.template...\n"));
+        const template = generateEnvTemplate(cwd);
+        const outPath = path.join(cwd, ".env.template");
+        fs.writeFileSync(outPath, template, "utf-8");
+        if (opts.json) {
+          console.log(JSON.stringify({ path: outPath, content: template }, null, 2));
+        } else {
+          console.log(chalk.green(`✔ Written to ${outPath}`));
+          console.log(template);
+        }
+        process.exit(EXIT_CODES.SUCCESS);
+      }
 
       console.log(chalk.bold.cyan("\n🩺 blueprint doctor — Running Diagnostics\n"));
 
