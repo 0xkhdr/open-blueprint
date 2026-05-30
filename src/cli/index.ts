@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { Command } from "commander";
 import { BpError } from "../errors.js";
+import { normalizeError } from "../utils/errors.js";
 import { initCorrelationId, logger, runWithCorrelationId } from "../logger.js";
 import { createAgentCommand } from "./commands/agent.js";
 import { createChainCommand } from "./commands/chain.js";
@@ -70,27 +71,18 @@ program.addCommand(createHealthCommand());
 
 // Audit logging hook
 program.hook("preAction", (_thisCommand, actionCommand) => {
-  try {
-    const { logAudit } = require("../security/audit.js");
-    logAudit({
-      command: actionCommand.name(),
-      args: actionCommand.args,
-      status: "success",
-      log_level: "info",
+  import("../security/audit.js")
+    .then(({ logAudit }) => {
+      logAudit({
+        command: actionCommand.name(),
+        args: actionCommand.args,
+        status: "success",
+        log_level: "info",
+      });
+    })
+    .catch((e: unknown) => {
+      process.stderr.write(`[audit] FAILED: ${normalizeError(e).message}\n`);
     });
-  } catch {
-    // ESM dynamic import fallback
-    import("../security/audit.js")
-      .then(({ logAudit }) => {
-        logAudit({
-          command: actionCommand.name(),
-          args: actionCommand.args,
-          status: "success",
-          log_level: "info",
-        });
-      })
-      .catch(() => {});
-  }
 });
 
 // Graceful shutdown handlers

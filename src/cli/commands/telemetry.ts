@@ -3,6 +3,7 @@ import {
   detectTelemetryPlatform,
   getTelemetryInitConfig,
 } from "../../observability/telemetry-detect.js";
+import { BpError } from "../../errors.js";
 
 export function createTelemetryCommand(): Command {
   const cmd = new Command("telemetry").description("Telemetry configuration commands");
@@ -39,7 +40,7 @@ export function createTelemetryCommand(): Command {
 
       if (!platform) {
         console.error("No telemetry platform detected. Use --platform to specify one.");
-        process.exit(1);
+        throw new BpError("Command failed", 1, "CMD_ERROR", "");
       }
 
       const config = getTelemetryInitConfig(

@@ -16,8 +16,12 @@
     "test:coverage": "vitest run --coverage --exclude 'tests/e2e/**'",
     "lint": "biome check src/",
     "lint:fix": "biome check --write src/",
+    "lint:no-sync-fs": "! grep -n 'fs\\.readFileSync\\|fs\\.readdirSync\\|fs\\.accessSync\\|fs\\.statSync\\|fs\\.existsSync' src/detector/index.ts src/validator/index.ts 2>/dev/null && echo 'lint:no-sync-fs PASS'",
+    "lint:no-interior-exit": "! grep -rn 'process\\.exit(' src/ --include='*.ts' | grep -v 'src/cli/index.ts:' && echo 'lint:no-interior-exit PASS'",
+    "lint:no-require": "! grep -rn 'require(' src/ --include='*.ts' | grep -v '//' | grep -v 'packs.ts' | grep -v 'lsp/server.ts' && echo 'lint:no-require PASS'",
+    "lint:custom": "npm run lint:no-sync-fs && npm run lint:no-interior-exit && npm run lint:no-require",
     "typecheck": "tsc --noEmit",
-    "ci": "npm run typecheck && npm run lint && npm run test:coverage",
+    "ci": "npm run typecheck && npm run lint && npm run lint:custom && npm run test:coverage",
     "sbom": "cyclonedx-npm --output-format json --output-file sbom.json"
   },
   "repository": {

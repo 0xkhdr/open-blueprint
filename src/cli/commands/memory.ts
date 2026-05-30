@@ -8,6 +8,7 @@ import {
   type MemoryGovernanceConfig,
 } from "../../multiagent/memory.js";
 import { BlueprintIRSchema } from "../../translator/ir.js";
+import { BpError } from "../../errors.js";
 
 function loadIR(cwd: string) {
   const blueprintPath = path.join(cwd, ".claude", "blueprint.json");
@@ -85,7 +86,7 @@ export function createMemoryCommand(): Command {
           for (const v of result.violations) {
             console.error(chalk.red(`  • ${v}`));
           }
-          if (!opts.dryRun) process.exit(1);
+          if (!opts.dryRun) throw new BpError("Command failed", 1, "CMD_ERROR", "");
         }
       }
     );

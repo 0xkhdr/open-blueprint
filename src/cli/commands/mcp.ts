@@ -4,12 +4,13 @@ import chalk from "chalk";
 import { Command } from "commander";
 import { generateMCPRiskReport, scoreMCPServer } from "../../multiagent/mcp-governance.js";
 import { BlueprintIRSchema } from "../../translator/ir.js";
+import { BpError } from "../../errors.js";
 
 function loadIR(cwd: string) {
   const blueprintPath = path.join(cwd, ".claude", "blueprint.json");
   if (!fs.existsSync(blueprintPath)) {
     console.error(chalk.red(`No blueprint found at ${blueprintPath}. Run 'bp init' first.`));
-    process.exit(1);
+    throw new BpError("Command failed", 1, "CMD_ERROR", "");
   }
   return BlueprintIRSchema.parse(JSON.parse(fs.readFileSync(blueprintPath, "utf-8")));
 }
@@ -82,7 +83,7 @@ export function createMCPCommand(): Command {
         const color = i.tier === "critical" || i.tier === "high" ? chalk.red : chalk.yellow;
         console.error(color(`  [${i.server}] ${i.issue}`));
       }
-      if (!opts.dryRun) process.exit(1);
+      if (!opts.dryRun) throw new BpError("Command failed", 1, "CMD_ERROR", "");
     });
 
   mcp

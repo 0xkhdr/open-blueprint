@@ -1,26 +1,26 @@
 ## 1. Shared Foundation
 
-- [ ] 1.1 Create `src/constants.ts` — move `EXIT_CODES` here, add `KNOWN_SOURCE_DIRS`, `KNOWN_FRAMEWORK_NAMES`, and default glob patterns
-- [ ] 1.2 Re-export `EXIT_CODES` from `src/validator/index.ts` pointing to `src/constants.ts` (backward compat shim)
-- [ ] 1.3 Create `src/utils/errors.ts` — implement `normalizeError(e: unknown): Error`
-- [ ] 1.4 Replace all `e instanceof Error ? e.message : String(e)` occurrences across the codebase with `normalizeError(e).message`
-- [ ] 1.5 Add `mapLayerErrors(layerName: string, rawErrors: unknown[]): ValidationError[]` as a module-private helper in `src/validator/index.ts` and refactor `validateGovernance` to use it
+- [x] 1.1 Create `src/constants.ts` — move `EXIT_CODES` here, add `KNOWN_SOURCE_DIRS`, `KNOWN_FRAMEWORK_NAMES`, and default glob patterns
+- [x] 1.2 Re-export `EXIT_CODES` from `src/validator/index.ts` pointing to `src/constants.ts` (backward compat shim)
+- [x] 1.3 Create `src/utils/errors.ts` — implement `normalizeError(e: unknown): Error`
+- [x] 1.4 Replace all `e instanceof Error ? e.message : String(e)` occurrences across the codebase with `normalizeError(e).message`
+- [x] 1.5 Add `mapLayerErrors(layerName: string, rawErrors: unknown[]): ValidationError[]` as a module-private helper in `src/validator/index.ts` and refactor `validateGovernance` to use it
 
 ## 2. FileSystem Interface & Async Detector
 
-- [ ] 2.1 Create `src/utils/fs.ts` — define `FileSystem` interface with `readFile`, `readdir`, `stat`, `access`; implement `RealFileSystem` using `node:fs/promises`
-- [ ] 2.2 Implement `InMemoryFileSystem` in `src/utils/fs.ts` (or `src/utils/fs.test-helpers.ts`) with `addFile(path, content)` helper; support `ENOENT` rejection for missing files
-- [ ] 2.3 Rewrite `detect()` in `src/detector/index.ts` to accept `fs?: FileSystem` (default `new RealFileSystem()`); replace all `fs.*Sync` calls with `fs/promises` equivalents; batch independent reads via `Promise.all`
-- [ ] 2.4 Rewrite `scanDirectoryTopology()` to use async `readdir` and `stat`
-- [ ] 2.5 Update all callers of `detect()` that depend on its sync return type to await the new async signature
-- [ ] 2.6 Replace hardcoded source directory and framework name strings in `src/detector/index.ts` with references to `src/constants.ts`
+- [x] 2.1 Create `src/utils/fs.ts` — define `FileSystem` interface with `readFile`, `readdir`, `stat`, `access`; implement `RealFileSystem` using `node:fs/promises`
+- [x] 2.2 Implement `InMemoryFileSystem` in `src/utils/fs.ts` (or `src/utils/fs.test-helpers.ts`) with `addFile(path, content)` helper; support `ENOENT` rejection for missing files
+- [x] 2.3 Rewrite `detect()` in `src/detector/index.ts` to accept `fs?: FileSystem` (default `new RealFileSystem()`); replace all `fs.*Sync` calls with `fs/promises` equivalents; batch independent reads via `Promise.all`
+- [x] 2.4 Rewrite `scanDirectoryTopology()` to use async `readdir` and `stat`
+- [x] 2.5 Update all callers of `detect()` that depend on its sync return type to await the new async signature
+- [x] 2.6 Replace hardcoded source directory and framework name strings in `src/detector/index.ts` with references to `src/constants.ts`
 
 ## 3. Validator Improvements
 
-- [ ] 3.1 Create `src/translator/adapters/registry.ts` — export a `Map<string, () => Adapter>` populated from an adapter registry object; add TypeScript exhaustiveness check against the `Backend` union type
-- [ ] 3.2 Replace `switch`-based `getAdapterByName()` in `src/validator/index.ts` with a lookup against the registry from step 3.1
-- [ ] 3.3 Replace mtime cache key in `src/validator/index.ts` with SHA-256 content-hash using `node:crypto`; implement mtime pre-filter for efficiency
-- [ ] 3.4 Asyncify all cache read/write operations in `src/validator/index.ts` — replace `fs.existsSync` and `fs.statSync` with `fs/promises` equivalents
+- [x] 3.1 Create `src/translator/adapters/registry.ts` — export a `Map<string, () => Adapter>` populated from an adapter registry object; add TypeScript exhaustiveness check against the `Backend` union type
+- [x] 3.2 Replace `switch`-based `getAdapterByName()` in `src/validator/index.ts` with a lookup against the registry from step 3.1
+- [x] 3.3 Replace mtime cache key in `src/validator/index.ts` with SHA-256 content-hash using `node:crypto`; implement mtime pre-filter for efficiency
+- [x] 3.4 Asyncify all cache read/write operations in `src/validator/index.ts` — replace `fs.existsSync` and `fs.statSync` with `fs/promises` equivalents
 
 ## 4. Schema Hardening
 

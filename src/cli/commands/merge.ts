@@ -6,6 +6,7 @@ import type { MergeConflict, MergeOptions } from "../../blueprint-sync/types.js"
 import { BpError } from "../../errors.js";
 import { BlueprintIRSchema } from "../../translator/ir.js";
 import { resolveAndValidatePath } from "../../utils/paths.js";
+import { normalizeError } from "../../utils/errors.js";
 
 export function createMergeCommand(): Command {
   return new Command("merge")
@@ -87,9 +88,9 @@ export function createMergeCommand(): Command {
         }
       } catch (error) {
         if (error instanceof BpError) throw error;
-        console.error("Error:", error instanceof Error ? error.message : String(error));
+        console.error("Error:", normalizeError(error).message);
         throw new BpError(
-          `Merge failed: ${error instanceof Error ? error.message : String(error)}. See: docs/errors.md#code-1`,
+          `Merge failed: ${normalizeError(error).message}. See: docs/errors.md#code-1`,
           1,
           "MERGE_ERROR",
           "See: docs/errors.md#code-1"

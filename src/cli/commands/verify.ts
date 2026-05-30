@@ -11,6 +11,8 @@ import { resolveTemplatePack } from "../../templater/selector.js";
 import type { ValidationLevel } from "../../validator/index.js";
 import { EXIT_CODES, exitCodeForResult, runValidator } from "../../validator/index.js";
 import type { ValidationError } from "../../validator/structural.js";
+import { normalizeError } from "../../utils/errors.js";
+import { BpError } from "../../errors.js";
 
 const VALID_LEVELS = ["structural", "semantic", "logical", "drift", "governance", "all"] as const;
 
@@ -109,7 +111,7 @@ function startWatcher(
     console.log(chalk.dim("Press Ctrl+C to stop.\n"));
   } catch (e) {
     console.warn(
-      chalk.yellow(`Watch mode unavailable: ${e instanceof Error ? e.message : String(e)}`)
+      chalk.yellow(`Watch mode unavailable: ${normalizeError(e).message}`)
     );
   }
 }
@@ -146,7 +148,7 @@ export function createVerifyCommand(): Command {
           console.error(
             chalk.red(`Invalid level: "${opts.level}". Valid: ${VALID_LEVELS.join(", ")}`)
           );
-          process.exit(EXIT_CODES.GENERAL_ERROR);
+          throw new BpError("Command failed", EXIT_CODES.GENERAL_ERROR, "CMD_ERROR", "");
         }
 
         const level = opts.level as ValidationLevel;
@@ -259,26 +261,28 @@ export function createVerifyCommand(): Command {
               }
             } catch (e) {
               spinner?.fail(
-                `[${targetPath}] Validation error: ${e instanceof Error ? e.message : String(e)}`
+                `[${targetPath}] Validation error: ${normalizeError(e).message}`
               );
               _overallPassed = false;
               maxExitCode = Math.max(maxExitCode, EXIT_CODES.GENERAL_ERROR);
               results.push({
                 path: targetPath,
                 passed: false,
-                error: e instanceof Error ? e.message : String(e),
+                error: normalizeError(e).message,
               });
             }
           }
 
           if (opts.json) {
             console.log(JSON.stringify(results.length === 1 ? results[0] : results, null, 2));
-            if (!opts.watch) process.exit(maxExitCode);
+            if (!opts.watch && maxExitCode > 0) {
+              throw new BpError("Validation failed", maxExitCode, "VALIDATION_RESULT", "");
+            }
             return;
           }
 
-          if (!opts.watch) {
-            process.exit(maxExitCode);
+          if (!opts.watch && maxExitCode > 0) {
+            throw new BpError("Validation failed", maxExitCode, "VALIDATION_RESULT", "");
           }
         };
 

@@ -13,6 +13,8 @@ import { EXIT_CODES } from "../../validator/index.js";
 import { validateSemantic } from "../../validator/semantic.js";
 import type { ValidationError } from "../../validator/structural.js";
 import { validateStructural } from "../../validator/structural.js";
+import { normalizeError } from "../../utils/errors.js";
+import { BpError } from "../../errors.js";
 
 interface RuleMeta {
   filename: string;
@@ -46,7 +48,7 @@ export function createRuleCommand(): Command {
       const resolvedPath = path.resolve(file);
       if (!fs.existsSync(resolvedPath)) {
         console.error(chalk.red(`Error: File does not exist: ${file}`));
-        process.exit(1);
+        throw new BpError("Command failed", 1, "CMD_ERROR", "");
       }
 
       try {
@@ -58,7 +60,7 @@ export function createRuleCommand(): Command {
 
         if (!scope) {
           console.error(chalk.red(`Error: Rule is missing required "scope" field in frontmatter.`));
-          process.exit(1);
+          throw new BpError("Command failed", 1, "CMD_ERROR", "");
         }
 
         console.log(
@@ -103,10 +105,10 @@ export function createRuleCommand(): Command {
           }
         }
         console.log();
-        process.exit(0);
+        return;
       } catch (e) {
-        console.error(chalk.red(`Rule test failed: ${e instanceof Error ? e.message : String(e)}`));
-        process.exit(1);
+        console.error(chalk.red(`Rule test failed: ${normalizeError(e).message}`));
+        throw new BpError("Command failed", 1, "CMD_ERROR", "");
       }
     });
 
@@ -117,7 +119,7 @@ export function createRuleCommand(): Command {
       const resolvedPath = path.resolve(file);
       if (!fs.existsSync(resolvedPath)) {
         console.error(chalk.red(`Error: File does not exist: ${file}`));
-        process.exit(1);
+        throw new BpError("Command failed", 1, "CMD_ERROR", "");
       }
 
       const cwd = process.cwd();
@@ -142,7 +144,7 @@ export function createRuleCommand(): Command {
           console.log(
             chalk.green(`✔ [ PASS ] Rule "${file}" is fully valid and conforms to backend spec.`)
           );
-          process.exit(0);
+          return;
         }
 
         console.log(chalk.bold.red(`\nRule "${file}" has validation issues:\n`));
@@ -151,10 +153,10 @@ export function createRuleCommand(): Command {
         }
 
         const hasErrors = allErrors.some((e) => e.severity === "error");
-        process.exit(hasErrors ? EXIT_CODES.STRUCTURAL_FAILURE : EXIT_CODES.SUCCESS);
+        if (hasErrors) throw new BpError("Command failed", EXIT_CODES.STRUCTURAL_FAILURE, "CMD_ERROR", "");
       } catch (e) {
-        console.error(chalk.red(`Lint error: ${e instanceof Error ? e.message : String(e)}`));
-        process.exit(1);
+        console.error(chalk.red(`Lint error: ${normalizeError(e).message}`));
+        throw new BpError("Command failed", 1, "CMD_ERROR", "");
       }
     });
 
@@ -335,7 +337,7 @@ export function createRuleCommand(): Command {
       }
 
       console.log();
-      process.exit(EXIT_CODES.SUCCESS);
+      return;
     });
 
   // Rule pack management
@@ -364,7 +366,7 @@ export function createRuleCommand(): Command {
       const pack = getRulePack(id);
       if (!pack) {
         console.error(chalk.red(`Error: Rule pack not found: ${id}`));
-        process.exit(1);
+        throw new BpError("Command failed", 1, "CMD_ERROR", "");
       }
       console.log(chalk.bold(`${pack.name} (${pack.id})`));
       console.log(`Version: ${pack.version}`);
@@ -392,7 +394,7 @@ export function createRuleCommand(): Command {
       const results = manager.searchPacks(query);
       if (results.length === 0) {
         console.log(chalk.yellow(`No rule packs found matching: ${query}`));
-        process.exit(0);
+        return;
       }
       console.log(chalk.bold(`Found ${results.length} pack(s):\n`));
       for (const pack of results) {
@@ -416,7 +418,7 @@ export function createRuleCommand(): Command {
       const inputPath = path.resolve(options.input);
       if (!fs.existsSync(inputPath)) {
         console.error(chalk.red(`Error: Blueprint file not found: ${options.input}`));
-        process.exit(1);
+        throw new BpError("Command failed", 1, "CMD_ERROR", "");
       }
 
       // Load blueprint
@@ -429,7 +431,7 @@ export function createRuleCommand(): Command {
         if (err instanceof Error) {
           console.error(chalk.dim(err.message));
         }
-        process.exit(1);
+        throw new BpError("Command failed", 1, "CMD_ERROR", "");
       }
 
       // Install pack
@@ -441,7 +443,7 @@ export function createRuleCommand(): Command {
 
       if (!result.success) {
         console.error(chalk.red(`Error: ${result.message}`));
-        process.exit(1);
+        throw new BpError("Command failed", 1, "CMD_ERROR", "");
       }
 
       // Write output
@@ -466,7 +468,7 @@ export function createRuleCommand(): Command {
       if (!pack) {
         const available = Object.keys(BUILTIN_RULE_PACKS).join(", ");
         console.error(chalk.red(`Unknown framework: ${framework}. Available: ${available}`));
-        process.exit(1);
+        throw new BpError("Command failed", 1, "CMD_ERROR", "");
       }
 
       if (options.dryRun) {
@@ -509,8 +511,8 @@ export function createRuleCommand(): Command {
           console.log(chalk.dim(`  Skills → .claude/skills/`));
         }
       } catch (e) {
-        console.error(chalk.red(`Install failed: ${e instanceof Error ? e.message : String(e)}`));
-        process.exit(1);
+        console.error(chalk.red(`Install failed: ${normalizeError(e).message}`));
+        throw new BpError("Command failed", 1, "CMD_ERROR", "");
       }
     });
 

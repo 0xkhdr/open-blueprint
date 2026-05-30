@@ -7,6 +7,8 @@ import ora from "ora";
 import { RegistryClient } from "../../registry/client.js";
 import { getTemplatesRoot } from "../../templater/selector.js";
 import { EXIT_CODES } from "../../validator/index.js";
+import { normalizeError } from "../../utils/errors.js";
+import { BpError } from "../../errors.js";
 
 export function createTemplateCommand(): Command {
   const cmd = new Command("template").description("Manage template packs");
@@ -25,10 +27,10 @@ export function createTemplateCommand(): Command {
           console.log(`  ${chalk.bold.green(pack.name)} (v${pack.version})`);
           console.log(`    ${chalk.dim(pack.description)}`);
         }
-        process.exit(EXIT_CODES.SUCCESS);
+        return;
       } catch (e) {
-        spinner.fail(`Failed to list templates: ${e instanceof Error ? e.message : String(e)}`);
-        process.exit(EXIT_CODES.GENERAL_ERROR);
+        spinner.fail(`Failed to list templates: ${normalizeError(e).message}`);
+        throw new BpError("Command failed", EXIT_CODES.GENERAL_ERROR, "CMD_ERROR", "");
       }
     });
 
@@ -77,12 +79,12 @@ export function createTemplateCommand(): Command {
           `Successfully installed template pack ${chalk.bold(pkgName)} under backend ${chalk.bold(backend)}!`
         );
         console.log(chalk.green(`  Location: ${path.relative(process.cwd(), finalTargetDir)}`));
-        process.exit(EXIT_CODES.SUCCESS);
+        return;
       } catch (e) {
         spinner.fail(
-          `Failed to install template pack: ${e instanceof Error ? e.message : String(e)}`
+          `Failed to install template pack: ${normalizeError(e).message}`
         );
-        process.exit(EXIT_CODES.GENERAL_ERROR);
+        throw new BpError("Command failed", EXIT_CODES.GENERAL_ERROR, "CMD_ERROR", "");
       }
     });
 
@@ -104,7 +106,7 @@ export function createTemplateCommand(): Command {
           const absolutePackDir = path.resolve(packPath);
           if (!fs.existsSync(absolutePackDir)) {
             spinner.fail(`Pack directory does not exist: ${absolutePackDir}`);
-            process.exit(EXIT_CODES.TEMPLATE_NOT_FOUND);
+            throw new BpError("Template not found", EXIT_CODES.TEMPLATE_NOT_FOUND, "TEMPLATE_NOT_FOUND", "");
           }
 
           const client = new RegistryClient(opts.registry, opts.token);
@@ -113,12 +115,12 @@ export function createTemplateCommand(): Command {
           spinner.succeed(
             `Successfully published template pack ${chalk.bold(opts.name)} (v${opts.ver})!`
           );
-          process.exit(EXIT_CODES.SUCCESS);
+          return;
         } catch (e) {
           spinner.fail(
-            `Failed to publish template pack: ${e instanceof Error ? e.message : String(e)}`
+            `Failed to publish template pack: ${normalizeError(e).message}`
           );
-          process.exit(EXIT_CODES.GENERAL_ERROR);
+          throw new BpError("Command failed", EXIT_CODES.GENERAL_ERROR, "CMD_ERROR", "");
         }
       }
     );

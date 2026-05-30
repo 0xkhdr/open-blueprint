@@ -4,12 +4,13 @@ import chalk from "chalk";
 import { Command } from "commander";
 import { fromIRChain, validateChainDAG } from "../../multiagent/chains.js";
 import { BlueprintIRSchema } from "../../translator/ir.js";
+import { BpError } from "../../errors.js";
 
 function loadIR(cwd: string) {
   const blueprintPath = path.join(cwd, ".claude", "blueprint.json");
   if (!fs.existsSync(blueprintPath)) {
     console.error(chalk.red(`No blueprint found at ${blueprintPath}. Run 'bp init' first.`));
-    process.exit(1);
+    throw new BpError("Command failed", 1, "CMD_ERROR", "");
   }
   return BlueprintIRSchema.parse(JSON.parse(fs.readFileSync(blueprintPath, "utf-8")));
 }
@@ -90,7 +91,7 @@ export function createChainCommand(): Command {
         }
       }
 
-      if (totalErrors > 0 && !opts.dryRun) process.exit(1);
+      if (totalErrors > 0 && !opts.dryRun) throw new BpError("Command failed", 1, "CMD_ERROR", "");
     });
 
   return chain;

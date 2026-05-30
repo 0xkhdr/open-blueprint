@@ -9,6 +9,8 @@ import { generateMigrationPlan, generateMigrationReport } from "../../dx/migrate
 import { ConfigError, TranslationError } from "../../errors.js";
 import { resolveAndValidatePath } from "../../utils/paths.js";
 import { loadStoredFingerprint, storeFingerprint } from "../../validator/drift.js";
+import { normalizeError } from "../../utils/errors.js";
+import { BpError } from "../../errors.js";
 
 export function createMigrateCommand(): Command {
   const cmd = new Command("migrate");
@@ -29,17 +31,17 @@ export function createMigrateCommand(): Command {
         const msg = "No .bp.json found in current directory";
         if (opts.json) console.log(JSON.stringify({ status: "error", error: msg }));
         else console.error(chalk.red(msg));
-        process.exit(1);
+        throw new BpError("Command failed", 1, "CMD_ERROR", "");
       }
 
       let raw: Record<string, unknown>;
       try {
         raw = JSON.parse(fs.readFileSync(configPath, "utf-8")) as Record<string, unknown>;
       } catch (e) {
-        const msg = `Cannot parse .bp.json: ${e instanceof Error ? e.message : String(e)}`;
+        const msg = `Cannot parse .bp.json: ${normalizeError(e).message}`;
         if (opts.json) console.log(JSON.stringify({ status: "error", error: msg }));
         else console.error(chalk.red(msg));
-        process.exit(1);
+        throw new BpError("Command failed", 1, "CMD_ERROR", "");
       }
 
       if (!isV1Config(raw)) {
@@ -191,10 +193,10 @@ export function createMigrateCommand(): Command {
         } catch (e) {
           if (e instanceof ConfigError || e instanceof TranslationError) throw e;
           spinner.fail(
-            chalk.red(`Migration failed: ${e instanceof Error ? e.message : String(e)}`)
+            chalk.red(`Migration failed: ${normalizeError(e).message}`)
           );
           throw new TranslationError(
-            `Migration failed: ${e instanceof Error ? e.message : String(e)}. See: docs/errors.md#code-7`
+            `Migration failed: ${normalizeError(e).message}. See: docs/errors.md#code-7`
           );
         }
       }

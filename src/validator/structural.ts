@@ -4,6 +4,7 @@ import remarkParse from "remark-parse";
 import { unified } from "unified";
 import { scanForSecrets } from "../security/scan.js";
 import type { BackendManifest } from "../templater/selector.js";
+import { normalizeError } from "../utils/errors.js";
 
 export interface ValidationError {
   file: string;
@@ -116,7 +117,7 @@ function checkFrontmatter(
       line: 1,
       type: "FRONTMATTER_PARSE_ERROR",
       severity: "error",
-      message: `Failed to parse YAML frontmatter: ${e instanceof Error ? e.message : String(e)}`,
+      message: `Failed to parse YAML frontmatter: ${normalizeError(e).message}`,
       resolution: "Ensure frontmatter is valid YAML between --- delimiters at file start",
     });
     return errors;
@@ -266,7 +267,7 @@ function checkMarkdownWellformedness(filePath: string, content: string): Validat
       line: 1,
       type: "MARKDOWN_PARSE_ERROR",
       severity: "warning",
-      message: `Markdown parse error: ${e instanceof Error ? e.message : String(e)}`,
+      message: `Markdown parse error: ${normalizeError(e).message}`,
       resolution: "Fix malformed markdown syntax",
     });
   }

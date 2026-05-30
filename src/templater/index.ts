@@ -13,6 +13,8 @@ import { mergeRiskTemplates, resolveRiskTemplatePack } from "./risk-selector.js"
 import { getTemplatesRoot, resolveTemplatePack } from "./selector.js";
 import type { WriteResult } from "./writer.js";
 import { writeFile } from "./writer.js";
+import { normalizeError } from "../utils/errors.js";
+import { renderFromRegistry } from "./registry.js";
 
 export interface TemplaterOptions {
   backend: string;
@@ -171,7 +173,7 @@ export async function runTemplater(
         basePackName = baseResult.templatePack;
       } catch (e) {
         logger.warn(
-          { extends: projectConfig.extends, err: e instanceof Error ? e.message : String(e) },
+          { extends: projectConfig.extends, err: normalizeError(e).message },
           "Could not resolve extended template"
         );
       }
@@ -214,12 +216,10 @@ export async function runTemplater(
     }
 
     let rendered: string;
-    if (hasTemplateMetadata(meta)) {
-      const raw = fs.readFileSync(templateFile, "utf-8");
-      rendered = renderString(stripMetadata(raw), context);
-    } else {
-      rendered = renderTemplate(templateFile, context);
-    }
+    const templateName = path.relative(pack.directory, templateFile);
+    const raw = fs.readFileSync(templateFile, "utf-8");
+    const source = hasTemplateMetadata(meta) ? stripMetadata(raw) : raw;
+    rendered = renderFromRegistry(backend, pack.name, templateName, source, context as Record<string, unknown>);
 
     // Determine output base dir: risk files map to projectRoot directly
     const baseDir = riskFiles.includes(templateFile) && riskDir ? riskDir : pack.directory;

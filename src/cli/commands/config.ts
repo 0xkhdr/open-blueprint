@@ -2,6 +2,7 @@ import chalk from "chalk";
 import { Command } from "commander";
 import type { UserConfig } from "../../config/user.js";
 import { loadUserConfig, saveUserConfig } from "../../config/user.js";
+import { BpError } from "../../errors.js";
 
 export function createConfigCommand(): Command {
   const cmd = new Command("config").description("Configuration management");
@@ -15,7 +16,7 @@ export function createConfigCommand(): Command {
         console.log(JSON.stringify(config[key as keyof UserConfig]));
       } else {
         console.error(chalk.red(`Unknown config key: ${key}`));
-        process.exit(1);
+        throw new BpError("Command failed", 1, "CMD_ERROR", "");
       }
     });
 
@@ -26,7 +27,7 @@ export function createConfigCommand(): Command {
       const config = loadUserConfig();
       if (!(key in config)) {
         console.error(chalk.red(`Unknown config key: ${key}`));
-        process.exit(1);
+        throw new BpError("Command failed", 1, "CMD_ERROR", "");
       }
       const existing = config[key as keyof UserConfig];
       let parsed: unknown = value;

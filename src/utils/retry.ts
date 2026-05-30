@@ -1,4 +1,5 @@
 import { NetworkError } from "../errors.js";
+import { normalizeError } from "./errors.js";
 
 export interface RetryOptions {
   attempts?: number;
@@ -31,7 +32,7 @@ export async function withRetry<T>(fn: () => Promise<T>, options: RetryOptions =
     }
   }
 
-  const msg = lastError instanceof Error ? lastError.message : String(lastError);
+  const msg = normalizeError(lastError).message;
   throw new NetworkError(
     `Operation failed after ${attempts} attempts: ${msg}. Fix: Check network connectivity and retry.`,
     attempts

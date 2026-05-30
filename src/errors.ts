@@ -82,3 +82,17 @@ export class HealthError extends BpError {
     this.name = "HealthError";
   }
 }
+
+export class SecurityError extends BpError {
+  constructor(message: string, resolution = "See: docs/errors.md#security") {
+    super(message, 8, "SECURITY_ERROR", resolution);
+    this.name = "SecurityError";
+  }
+}
+
+export class InputValidationError extends BpError {
+  constructor(message: string, resolution = "Provide valid input within allowed constraints") {
+    super(message, 1, "INPUT_VALIDATION_ERROR", resolution);
+    this.name = "InputValidationError";
+  }
+}

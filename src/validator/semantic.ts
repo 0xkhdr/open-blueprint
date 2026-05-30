@@ -4,6 +4,7 @@ import fg from "fast-glob";
 import matter from "gray-matter";
 import type { BackendManifest } from "../templater/selector.js";
 import type { ValidationError } from "./structural.js";
+import { normalizeError } from "../utils/errors.js";
 
 // ---------------------------------------------------------------------------
 // Known agentic tool names (Claude Code tool surface)
@@ -125,7 +126,7 @@ async function checkScopePatterns(
       file: filePath,
       type: "INVALID_SCOPE_PATTERN",
       severity: "error",
-      message: `Scope pattern "${scope}" is not a valid glob: ${e instanceof Error ? e.message : String(e)}`,
+      message: `Scope pattern "${scope}" is not a valid glob: ${normalizeError(e).message}`,
       resolution: "Fix the glob pattern syntax in the scope field",
     });
   }

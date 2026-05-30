@@ -1,5 +1,13 @@
-import * as fs from "node:fs";
 import * as path from "node:path";
+import {
+  KNOWN_CONFIG_DIRS,
+  KNOWN_PACKAGE_DIRS,
+  KNOWN_SERVER_FRAMEWORKS,
+  KNOWN_SOURCE_DIRS,
+  KNOWN_TEST_DIRS,
+  KNOWN_UI_FRAMEWORKS,
+} from "../constants.js";
+import { RealFileSystem, type FileSystem } from "../utils/fs.js";
 import { detectEnterpriseSignals, type EnterpriseSignals } from "./enterprise-signals.js";
 import type { Fingerprint } from "./fingerprint.js";
 import { FingerprintSchema } from "./fingerprint.js";
@@ -30,20 +38,21 @@ interface EntryPoint {
   type: "cli" | "server" | "library" | "ui";
 }
 
-function fileExists(filePath: string): boolean {
+async function fileExists(filePath: string, fs: FileSystem): Promise<boolean> {
   try {
-    fs.accessSync(filePath, fs.constants.F_OK);
+    await fs.access(filePath);
     return true;
   } catch {
     return false;
   }
 }
 
-function detectProjectName(root: string): string {
+async function detectProjectName(root: string, fs: FileSystem): Promise<string> {
   const pkgPath = path.join(root, "package.json");
-  if (fileExists(pkgPath)) {
+  if (await fileExists(pkgPath, fs)) {
     try {
-      const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8")) as { name?: string };
+      const raw = await fs.readFile(pkgPath, "utf-8");
+      const pkg = JSON.parse(raw) as { name?: string };
       if (pkg.name) return pkg.name.replace(/^@[^/]+\//, "");
     } catch {
       /* fall through */
@@ -52,22 +61,38 @@ function detectProjectName(root: string): string {
   return path.basename(root);
 }
 
-function detectProjectType(
-  root: string
-): "monorepo" | "polyrepo" | "library" | "application" | "service" {
-  const isMonorepo =
-    fileExists(path.join(root, "pnpm-workspace.yaml")) ||
-    fileExists(path.join(root, "lerna.json")) ||
-    fileExists(path.join(root, "nx.json")) ||
-    fileExists(path.join(root, "turbo.json")) ||
-    fileExists(path.join(root, "rush.json")) ||
-    fileExists(path.join(root, "packages"));
-  if (isMonorepo) return "monorepo";
+async function detectProjectType(
+  root: string,
+  fs: FileSystem
+): Promise<"monorepo" | "polyrepo" | "library" | "application" | "service"> {
+  const [
+    hasPnpmWorkspace,
+    hasLerna,
+    hasNx,
+    hasTurbo,
+    hasRush,
+    hasPackages,
+    hasDockerfile,
+    hasDockerCompose,
+  ] = await Promise.all([
+    fileExists(path.join(root, "pnpm-workspace.yaml"), fs),
+    fileExists(path.join(root, "lerna.json"), fs),
+    fileExists(path.join(root, "nx.json"), fs),
+    fileExists(path.join(root, "turbo.json"), fs),
+    fileExists(path.join(root, "rush.json"), fs),
+    fileExists(path.join(root, "packages"), fs),
+    fileExists(path.join(root, "Dockerfile"), fs),
+    fileExists(path.join(root, "docker-compose.yml"), fs),
+  ]);
+
+  if (hasPnpmWorkspace || hasLerna || hasNx || hasTurbo || hasRush || hasPackages)
+    return "monorepo";
 
   const pkgPath = path.join(root, "package.json");
-  if (fileExists(pkgPath)) {
+  if (await fileExists(pkgPath, fs)) {
     try {
-      const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8")) as {
+      const raw = await fs.readFile(pkgPath, "utf-8");
+      const pkg = JSON.parse(raw) as {
         main?: string;
         exports?: unknown;
         private?: boolean;
@@ -80,26 +105,30 @@ function detectProjectType(
     }
   }
 
-  if (
-    fileExists(path.join(root, "Dockerfile")) ||
-    fileExists(path.join(root, "docker-compose.yml"))
-  )
-    return "service";
+  if (hasDockerfile || hasDockerCompose) return "service";
 
   return "application";
 }
 
-function detectGitWorkflow(root: string): "github-flow" | "trunk-based" | "gitflow" | "unknown" {
+async function detectGitWorkflow(
+  root: string,
+  fs: FileSystem
+): Promise<"github-flow" | "trunk-based" | "gitflow" | "unknown"> {
   const ghDir = path.join(root, ".github");
-  if (fileExists(ghDir)) {
-    const branchProtection = path.join(ghDir, "workflows");
-    if (fileExists(branchProtection)) return "github-flow";
-  }
-  // Check for gitflow branches in .git
+  const ghWorkflows = path.join(ghDir, "workflows");
   const gitHead = path.join(root, ".git", "HEAD");
-  if (fileExists(gitHead)) {
+
+  const [hasGhDir, hasGhWorkflows, hasGitHead] = await Promise.all([
+    fileExists(ghDir, fs),
+    fileExists(ghWorkflows, fs),
+    fileExists(gitHead, fs),
+  ]);
+
+  if (hasGhDir && hasGhWorkflows) return "github-flow";
+
+  if (hasGitHead) {
     try {
-      const content = fs.readFileSync(gitHead, "utf-8");
+      const content = await fs.readFile(gitHead, "utf-8");
       if (content.includes("develop")) return "gitflow";
       if (content.includes("main") || content.includes("master")) return "trunk-based";
     } catch {
@@ -109,11 +138,14 @@ function detectGitWorkflow(root: string): "github-flow" | "trunk-based" | "gitfl
   return "unknown";
 }
 
-function scanDirectoryTopology(root: string): DirectoryTopology {
-  const srcNames = ["src", "lib", "app", "source"];
-  const testNames = ["tests", "test", "__tests__", "spec", "specs"];
-  const configNames = ["config", "configs", ".config", "settings"];
-  const packageNames = ["packages", "apps", "services", "modules", "libs"];
+async function scanDirectoryTopology(
+  root: string,
+  fs: FileSystem
+): Promise<DirectoryTopology> {
+  const srcNames: string[] = [...KNOWN_SOURCE_DIRS];
+  const testNames: string[] = [...KNOWN_TEST_DIRS];
+  const configNames: string[] = [...KNOWN_CONFIG_DIRS];
+  const packageNames: string[] = [...KNOWN_PACKAGE_DIRS];
 
   const src_dirs: string[] = [];
   const test_dirs: string[] = [];
@@ -121,15 +153,21 @@ function scanDirectoryTopology(root: string): DirectoryTopology {
   const package_dirs: string[] = [];
 
   try {
-    const entries = fs.readdirSync(root, { withFileTypes: true });
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue;
-      const name = entry.name;
-      if (srcNames.includes(name)) src_dirs.push(name);
-      if (testNames.includes(name)) test_dirs.push(name);
-      if (configNames.includes(name)) config_dirs.push(name);
-      if (packageNames.includes(name)) package_dirs.push(name);
-    }
+    const entries = await fs.readdir(root);
+    await Promise.all(
+      entries.map(async (name) => {
+        try {
+          const stat = await fs.stat(path.join(root, name));
+          if (!stat.isDirectory()) return;
+          if (srcNames.includes(name)) src_dirs.push(name);
+          if (testNames.includes(name)) test_dirs.push(name);
+          if (configNames.includes(name)) config_dirs.push(name);
+          if (packageNames.includes(name)) package_dirs.push(name);
+        } catch {
+          /* skip */
+        }
+      })
+    );
   } catch {
     /* skip */
   }
@@ -137,12 +175,15 @@ function scanDirectoryTopology(root: string): DirectoryTopology {
   return { src_dirs, test_dirs, config_dirs, package_dirs };
 }
 
-function detectEntryPoints(root: string, frameworks: Array<{ name: string }>): EntryPoint[] {
+async function detectEntryPoints(
+  root: string,
+  frameworks: Array<{ name: string }>,
+  fs: FileSystem
+): Promise<EntryPoint[]> {
   const entries: EntryPoint[] = [];
 
   const hasFramework = (name: string) => frameworks.some((f) => f.name === name);
 
-  // Server entry points
   const serverFiles = [
     "src/main.ts",
     "src/index.ts",
@@ -156,27 +197,28 @@ function detectEntryPoints(root: string, frameworks: Array<{ name: string }>): E
     "index.php",
     "artisan",
   ];
-  for (const f of serverFiles) {
-    if (fileExists(path.join(root, f))) {
-      const type: "server" | "ui" | "library" | "cli" =
-        hasFramework("nestjs") ||
-        hasFramework("express") ||
-        hasFramework("fastapi") ||
-        hasFramework("laravel")
-          ? "server"
-          : hasFramework("nextjs") || hasFramework("react") || hasFramework("vue")
-            ? "ui"
-            : "library";
-      entries.push({ path: f, type });
-      break;
-    }
+
+  const serverFileChecks = await Promise.all(
+    serverFiles.map((f) => fileExists(path.join(root, f), fs).then((exists) => ({ f, exists })))
+  );
+
+  const firstServer = serverFileChecks.find((c) => c.exists);
+  if (firstServer) {
+    const type: "server" | "ui" | "library" | "cli" = KNOWN_SERVER_FRAMEWORKS.some((n) =>
+      hasFramework(n)
+    )
+      ? "server"
+      : KNOWN_UI_FRAMEWORKS.some((n) => hasFramework(n))
+        ? "ui"
+        : "library";
+    entries.push({ path: firstServer.f, type });
   }
 
-  // CLI entry points
   const pkgPath = path.join(root, "package.json");
-  if (fileExists(pkgPath)) {
+  if (await fileExists(pkgPath, fs)) {
     try {
-      const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8")) as { bin?: Record<string, string> };
+      const raw = await fs.readFile(pkgPath, "utf-8");
+      const pkg = JSON.parse(raw) as { bin?: Record<string, string> };
       if (pkg.bin && typeof pkg.bin === "object") {
         for (const binPath of Object.values(pkg.bin)) {
           entries.push({ path: binPath, type: "cli" });
@@ -209,13 +251,11 @@ function detectRiskTier(fp: Fingerprint): RiskTier {
   if (signals.has_auth) score += 2;
   if (signals.has_docker) score += 1;
 
-  // Extended risk signals
   if (signals.has_data_sensitive) score += 2;
   if (signals.has_financial_data) score += 2;
   if (signals.has_pii) score += 1;
   if (signals.has_encryption) score += 1;
 
-  // Check for sensitive project types
   if (fp.project.type === "service") score += 1;
   if (fp.frameworks.some((f) => f.name.toLowerCase().includes("payment"))) score += 2;
   if (fp.frameworks.some((f) => f.name.toLowerCase().includes("auth"))) score += 1;
@@ -236,10 +276,10 @@ function estimateMonthlyTokens(fp: Fingerprint): number {
   return Math.round((baseCost + codefileMultiplier + frameworkMultiplier) * complexityFactor);
 }
 
-export async function detect(projectRoot: string): Promise<Fingerprint> {
+export async function detect(projectRoot: string, fs: FileSystem = new RealFileSystem()): Promise<Fingerprint> {
   const absoluteRoot = path.resolve(projectRoot);
 
-  if (!fileExists(absoluteRoot)) {
+  if (!(await fileExists(absoluteRoot, fs))) {
     throw new DetectorError(`Project root does not exist: ${absoluteRoot}`);
   }
 
@@ -248,19 +288,24 @@ export async function detect(projectRoot: string): Promise<Fingerprint> {
     Promise.resolve().then(() => detectFrameworks(absoluteRoot)),
     Promise.resolve().then(() => detectTooling(absoluteRoot)),
     Promise.resolve().then(() => detectSecurity(absoluteRoot)),
-    Promise.resolve().then(() => scanDirectoryTopology(absoluteRoot)),
+    scanDirectoryTopology(absoluteRoot, fs),
   ]);
 
-  const entry_points = detectEntryPoints(absoluteRoot, frameworks);
+  const [name, type, git_workflow, entry_points] = await Promise.all([
+    detectProjectName(absoluteRoot, fs),
+    detectProjectType(absoluteRoot, fs),
+    detectGitWorkflow(absoluteRoot, fs),
+    detectEntryPoints(absoluteRoot, frameworks, fs),
+  ]);
 
   const fingerprint = {
     version: "1.0" as const,
     detected_at: new Date().toISOString(),
     project: {
-      name: detectProjectName(absoluteRoot),
+      name,
       root: absoluteRoot,
-      type: detectProjectType(absoluteRoot),
-      git_workflow: detectGitWorkflow(absoluteRoot),
+      type,
+      git_workflow,
     },
     languages,
     frameworks,

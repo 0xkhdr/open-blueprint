@@ -8,6 +8,7 @@ import {
   type RuntimeMetrics,
 } from "../../observability/semantic-drift.js";
 import { detectMultiBackendDrift, saveDriftBaseline } from "../../validator/multi-backend-drift.js";
+import { BpError } from "../../errors.js";
 
 function makeSyntheticBaseline(): BehaviorBaseline {
   return {
@@ -53,7 +54,7 @@ export function createDriftCommand(): Command {
         } else {
           console.error(chalk.red("No .bp.json found. Run bp init first."));
         }
-        process.exit(1);
+        throw new BpError("Command failed", 1, "CMD_ERROR", "");
       }
 
       const configuredBackends =
@@ -96,7 +97,7 @@ export function createDriftCommand(): Command {
 
       const drifted = results.filter((r) => r.status === "drifted" || r.status === "missing");
       if (drifted.length > 0) {
-        process.exit(1);
+        throw new BpError("Command failed", 1, "CMD_ERROR", "");
       }
     });
 
@@ -113,12 +114,12 @@ export function createDriftCommand(): Command {
 
       if (opts.metrics) {
         try {
-          const { readFileSync } = require("node:fs") as typeof import("node:fs");
+          const { readFileSync } = await import("node:fs");
           const lines = readFileSync(opts.metrics, "utf-8").split("\n").filter(Boolean);
           metrics = lines.map((l) => JSON.parse(l) as RuntimeMetrics);
         } catch {
           console.error("Failed to read metrics file.");
-          process.exit(1);
+          throw new BpError("Command failed", 1, "CMD_ERROR", "");
         }
       } else {
         console.warn("No metrics file provided. Using synthetic baseline.");

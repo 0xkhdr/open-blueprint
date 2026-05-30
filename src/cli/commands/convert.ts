@@ -9,6 +9,7 @@ import { ConfigError, TranslationError } from "../../errors.js";
 import { parseBlueprint, renderBlueprint } from "../../translator/index.js";
 import { BlueprintIRSchema } from "../../translator/ir.js";
 import { resolveAndValidatePath } from "../../utils/paths.js";
+import { normalizeError } from "../../utils/errors.js";
 
 export function createConvertCommand(): Command {
   return new Command("convert")
@@ -172,9 +173,9 @@ export function createConvertCommand(): Command {
           }
         } catch (e) {
           if (e instanceof TranslationError || e instanceof ConfigError) throw e;
-          spinner?.fail(`Conversion failed: ${e instanceof Error ? e.message : String(e)}`);
+          spinner?.fail(`Conversion failed: ${normalizeError(e).message}`);
           throw new TranslationError(
-            `Conversion failed: ${e instanceof Error ? e.message : String(e)}. See: docs/errors.md#code-7`
+            `Conversion failed: ${normalizeError(e).message}. See: docs/errors.md#code-7`
           );
         }
       }

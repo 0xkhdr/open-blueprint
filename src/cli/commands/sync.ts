@@ -12,6 +12,8 @@ import { FINGERPRINT_FILE, storeFingerprint, validateDrift } from "../../validat
 import { EXIT_CODES } from "../../validator/index.js";
 import type { ValidationError } from "../../validator/structural.js";
 import { validateStructuralBatch } from "../../validator/structural.js";
+import { normalizeError } from "../../utils/errors.js";
+import { BpError } from "../../errors.js";
 
 // ---------------------------------------------------------------------------
 // Safe auto-apply fixes for drift issues
@@ -186,7 +188,7 @@ export function createSyncCommand(): Command {
               2
             )
           );
-          process.exit(driftErrors.length > 0 ? EXIT_CODES.DRIFT_DETECTED : EXIT_CODES.SUCCESS);
+          if (driftErrors.length > 0) throw new BpError("Command failed", EXIT_CODES.DRIFT_DETECTED, "CMD_ERROR", "");
         }
 
         if (structuralHardFail) {
@@ -200,7 +202,7 @@ export function createSyncCommand(): Command {
 
         if (driftErrors.length === 0) {
           console.log(chalk.green("✔ No drift detected. Blueprint is up to date."));
-          process.exit(EXIT_CODES.SUCCESS);
+          return;
         }
 
         // Separate auto-fixable from manual
@@ -224,7 +226,7 @@ export function createSyncCommand(): Command {
             console.log(chalk.white(`    ${err.message}`));
             console.log(chalk.dim(`    → ${err.resolution}`));
           }
-          process.exit(EXIT_CODES.DRIFT_DETECTED);
+          throw new BpError("Drift detected", EXIT_CODES.DRIFT_DETECTED, "DRIFT_DETECTED", "");
         }
 
         // Store current fingerprint baseline after sync
@@ -243,15 +245,15 @@ export function createSyncCommand(): Command {
           console.log(chalk.dim("\nNo changes applied."));
         }
 
-        process.exit(
-          driftErrors.length > fixedCount ? EXIT_CODES.DRIFT_DETECTED : EXIT_CODES.SUCCESS
-        );
-      } catch (e) {
-        spinner?.fail(`Sync error: ${e instanceof Error ? e.message : String(e)}`);
-        if (opts.json) {
-          console.log(JSON.stringify({ error: e instanceof Error ? e.message : String(e) }));
+        if (driftErrors.length > fixedCount) {
+          throw new BpError("Drift detected", EXIT_CODES.DRIFT_DETECTED, "DRIFT_DETECTED", "");
         }
-        process.exit(EXIT_CODES.GENERAL_ERROR);
+      } catch (e) {
+        spinner?.fail(`Sync error: ${normalizeError(e).message}`);
+        if (opts.json) {
+          console.log(JSON.stringify({ error: normalizeError(e).message }));
+        }
+        throw new BpError("Command failed", EXIT_CODES.GENERAL_ERROR, "CMD_ERROR", "");
       }
     });
 

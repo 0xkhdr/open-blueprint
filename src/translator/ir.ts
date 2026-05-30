@@ -1,35 +1,45 @@
 import { z } from "zod";
 
+const irIdentifier = z.string().max(64).regex(/^[a-z0-9_-]+$/i);
+const irShortString = z.string().max(512);
+const irPathField = z.string().max(256);
+const irContentField = z.string().max(2048);
+const noGlobOverrun = (s: string) => !/\*{4,}/.test(s);
+const irGlobField = z
+  .string()
+  .max(256)
+  .refine(noGlobOverrun, { message: "Glob pattern must not contain 4 or more consecutive '*' characters" });
+
 export const SpatialAnchorSchema = z.object({
-  project_name: z.string(),
-  surface: z.string(),
-  temporal_anchor: z.string(),
-  conventions: z.array(z.string()),
+  project_name: irShortString,
+  surface: irShortString,
+  temporal_anchor: irShortString,
+  conventions: z.array(irShortString),
 });
 
 export const PersonaSchema = z.object({
-  name: z.string(),
-  role: z.string(),
-  reasoning_style: z.string(),
-  constraints: z.array(z.string()),
-  allowed_tools: z.array(z.string()).optional(),
+  name: irShortString,
+  role: irShortString,
+  reasoning_style: irShortString,
+  constraints: z.array(irShortString),
+  allowed_tools: z.array(irShortString).optional(),
 });
 
 export const RuleSchema = z.object({
-  id: z.string(),
-  scope: z.string(),
+  id: irIdentifier,
+  scope: irGlobField,
   severity: z.enum(["hard", "soft"]),
-  action: z.string(),
-  rationale: z.string().optional(),
-  tags: z.array(z.string()).optional(),
+  action: irContentField,
+  rationale: irContentField.optional(),
+  tags: z.array(irShortString).optional(),
 });
 
 export const SkillSchema = z.object({
-  name: z.string(),
-  description: z.string(),
-  when_to_use: z.string(),
-  tools_required: z.array(z.string()),
-  procedure: z.string(),
+  name: irShortString,
+  description: irShortString,
+  when_to_use: irContentField,
+  tools_required: z.array(irShortString),
+  procedure: irContentField,
   disable_model_invocation: z.boolean().optional(),
 });
 

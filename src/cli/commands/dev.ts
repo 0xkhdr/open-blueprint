@@ -11,6 +11,8 @@ import { resolveTemplatePack } from "../../templater/selector.js";
 import type { ValidationLevel } from "../../validator/index.js";
 import { EXIT_CODES, runValidator } from "../../validator/index.js";
 import type { ValidationError } from "../../validator/structural.js";
+import { normalizeError } from "../../utils/errors.js";
+import { BpError } from "../../errors.js";
 
 function formatError(err: ValidationError, cwd: string): string {
   const loc = err.line ? `:${err.line}` : "";
@@ -49,7 +51,7 @@ async function runValidation(
 
     return [...result.errors, ...result.warnings];
   } catch (e) {
-    console.error(chalk.red(`Validation error: ${e instanceof Error ? e.message : String(e)}`));
+    console.error(chalk.red(`Validation error: ${normalizeError(e).message}`));
     return [];
   }
 }
@@ -74,7 +76,7 @@ export function createDevCommand(): Command {
 
       if (!fs.existsSync(watchDir)) {
         console.error(chalk.red(`Watch directory does not exist: ${watchDir}`));
-        process.exit(EXIT_CODES.GENERAL_ERROR);
+        throw new BpError("Command failed", EXIT_CODES.GENERAL_ERROR, "CMD_ERROR", "");
       }
 
       if (opts.dashboard) {
@@ -172,7 +174,7 @@ export function createDevCommand(): Command {
       process.on("SIGINT", () => {
         console.log(chalk.cyan("\n\n✓ Dev server stopped."));
         watcher.close();
-        process.exit(0);
+        return;
       });
     });
 

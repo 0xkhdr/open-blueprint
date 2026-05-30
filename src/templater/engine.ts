@@ -93,6 +93,18 @@ function deepFreeze<T>(obj: T): T {
   return Object.freeze(obj);
 }
 
+export function compileTemplate(source: string): HandlebarsTemplateDelegate {
+  return hbs.compile(source, { noEscape: true, strict: false });
+}
+
+export function renderCompiled(
+  compiled: HandlebarsTemplateDelegate,
+  context: Record<string, unknown>
+): string {
+  const frozenCtx = deepFreeze(structuredClone(context));
+  return compiled(frozenCtx);
+}
+
 export function clearTemplateCache(): void {
   templateCache.clear();
 }

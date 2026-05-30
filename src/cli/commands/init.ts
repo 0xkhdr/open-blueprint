@@ -5,26 +5,17 @@ import chalk from "chalk";
 import { Command } from "commander";
 import ora from "ora";
 import { getBackend, listBackendIds } from "../../backends/registry.js";
-import { initProjectConfig, loadProjectConfig } from "../../config/project.js";
 import { loadUserConfig } from "../../config/user.js";
-import type { Fingerprint } from "../../detector/fingerprint.js";
-import { detect } from "../../detector/index.js";
-import { runTemplater } from "../../templater/index.js";
-import { EXIT_CODES } from "../../validator/index.js";
+import { EXIT_CODES } from "../../constants.js";
+import { SecurityError } from "../../errors.js";
+import { normalizeError } from "../../utils/errors.js";
+import { validateUserInput } from "../../utils/input.js";
+import { InitOrchestrator } from "../orchestrators/init.js";
 
 const RISK_TIERS = ["low", "medium", "high", "critical"] as const;
 type RiskTier = (typeof RISK_TIERS)[number];
 
 const COMPLIANCE_FRAMEWORKS = ["gdpr", "hipaa", "soc2", "iso42001", "nist"] as const;
-
-function validateBackend(value: string): string {
-  const ids = listBackendIds();
-  if (!ids.includes(value)) {
-    console.error(chalk.red(`Unsupported backend: "${value}". Valid: ${ids.join(", ")}`));
-    process.exit(EXIT_CODES.UNSUPPORTED_BACKEND);
-  }
-  return value;
-}
 
 function resolveToolsList(toolsArg: string): string[] {
   if (toolsArg === "all") return listBackendIds();
@@ -37,7 +28,12 @@ async function promptUser(question: string, defaultValue = ""): Promise<string> 
     const q = defaultValue ? `${question} [${defaultValue}] ` : `${question} `;
     rl.question(q, (answer) => {
       rl.close();
-      resolve(answer.trim().toLowerCase() || defaultValue);
+      const raw = answer.trim().toLowerCase() || defaultValue;
+      try {
+        resolve(validateUserInput(raw));
+      } catch {
+        resolve(defaultValue);
+      }
     });
   });
 }
@@ -92,10 +88,16 @@ function resolveCodexCommandsPath(backend: string): string | null {
     const config = getBackend(backend);
     if (!config.globalHomeEnv) return null;
     const envVal = process.env[config.globalHomeEnv];
-    if (envVal) return path.join(envVal, "prompts");
-    const fallback = config.fallbackGlobalPath ?? `~/.${backend}/prompts`;
-    return fallback.replace(/^~/, os.homedir());
-  } catch {
+    const rawBase = envVal ?? (config.fallbackGlobalPath ?? `~/.${backend}`).replace(/^~/, os.homedir());
+    if (!rawBase) return null;
+    const base = path.resolve(path.normalize(rawBase));
+    const resolved = path.resolve(path.normalize(path.join(base, "prompts")));
+    if (!resolved.startsWith(base + path.sep) && resolved !== base) {
+      throw new SecurityError("Path traversal detected in environment variable");
+    }
+    return resolved;
+  } catch (e) {
+    if (e instanceof SecurityError) throw e;
     return null;
   }
 }
@@ -133,7 +135,8 @@ export function createInitCommand(): Command {
           confirmGlobal: boolean;
           json: boolean;
         }
-      ) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ): Promise<any> => {
         const cwd = process.cwd();
         const userConfig = loadUserConfig();
 
@@ -160,14 +163,18 @@ export function createInitCommand(): Command {
                 })
               );
             }
-            process.exit(EXIT_CODES.UNSUPPORTED_BACKEND);
+            return EXIT_CODES.UNSUPPORTED_BACKEND;
           }
         } else {
           const backendRaw = toolArg ?? opts.tool ?? userConfig.default_backend;
-          backends = [validateBackend(backendRaw)];
+          const ids = listBackendIds();
+          if (!ids.includes(backendRaw)) {
+            console.error(chalk.red(`Unsupported backend: "${backendRaw}". Valid: ${ids.join(", ")}`));
+            return EXIT_CODES.UNSUPPORTED_BACKEND;
+          }
+          backends = [backendRaw];
         }
 
-        // Handle github-copilot warning
         if (backends.includes("github-copilot")) {
           if (!opts.json) {
             console.warn(
@@ -178,7 +185,6 @@ export function createInitCommand(): Command {
           }
         }
 
-        // Handle codex global path confirmation
         if (backends.includes("codex")) {
           const codexPath = resolveCodexCommandsPath("codex");
           if (!opts.json) {
@@ -193,121 +199,47 @@ export function createInitCommand(): Command {
           }
         }
 
-        const jsonOutput: {
-          status: string;
-          backends: Array<{ backend: string; filesWritten: string[]; templatePack?: string }>;
-        } = { status: "ok", backends: [] };
+        const orchestrator = new InitOrchestrator({
+          cwd,
+          options: {
+            backends,
+            template: opts.template,
+            force: opts.force,
+            dryRun: opts.dryRun,
+            json: opts.json,
+          },
+        });
 
-        if (!opts.json) {
-          const spinner = ora({
-            text: `Detecting repository fingerprint...`,
-            color: "cyan",
-          }).start();
-          let fingerprint: Fingerprint;
-          try {
-            fingerprint = await detect(cwd);
-            spinner.succeed(
-              `Detected: ${chalk.bold(fingerprint.project.name)} ` +
-                `[${fingerprint.languages
-                  .filter((l) => l.primary)
-                  .map((l) => l.name)
-                  .join(", ")}]`
-            );
-          } catch (e) {
-            spinner.fail(`Detection failed: ${e instanceof Error ? e.message : String(e)}`);
-            process.exit(EXIT_CODES.GENERAL_ERROR);
-          }
-        }
-
-        const allWritten: string[] = [];
-
-        for (const backend of backends) {
-          if (!opts.json) {
-            const templateSpinner = ora({
-              text: `Generating ${backend} blueprint...`,
-              color: "cyan",
-            }).start();
-            try {
-              let fingerprint: Fingerprint;
-              try {
-                fingerprint = await detect(cwd);
-              } catch {
-                fingerprint = {
-                  project: { name: path.basename(cwd), type: "unknown", git_workflow: "unknown" },
-                  languages: [],
-                  frameworks: [],
-                  tooling: { test_command: "", package_manager: "", linters: [], formatters: [] },
-                  directory_topology: { src_dirs: [], test_dirs: [], config_dirs: [] },
-                  security: { has_secrets_manager: false, has_auth_layer: false },
-                  metrics: { estimated_lines: 0 },
-                } as unknown as Fingerprint;
-              }
-
-              const result = await runTemplater(fingerprint, cwd, {
-                backend,
-                templateOverride: opts.template ?? undefined,
-                dryRun: opts.dryRun,
-                force: opts.force,
-              });
-
-              templateSpinner.succeed(
-                `${backend}: Blueprint generated (${result.files.length} files)`
-              );
-
-              const createdFiles = result.files.filter((f) => f.action === "created");
-              const updatedFiles = result.files.filter((f) => f.action === "updated");
-              const skippedFiles = result.files.filter((f) => f.action === "skipped");
-
-              if (createdFiles.length > 0) {
-                console.log(chalk.green(`  Created (${createdFiles.length}):`));
-                for (const f of createdFiles)
-                  console.log(chalk.green(`    + ${path.relative(cwd, f.path)}`));
-              }
-              if (updatedFiles.length > 0) {
-                console.log(chalk.blue(`  Updated (${updatedFiles.length}):`));
-                for (const f of updatedFiles)
-                  console.log(chalk.blue(`    ~ ${path.relative(cwd, f.path)}`));
-              }
-              if (skippedFiles.length > 0) {
-                console.log(
-                  chalk.gray(`  Skipped (${skippedFiles.length}) — use --force to overwrite`)
-                );
-              }
-
-              allWritten.push(...result.files.map((f) => f.path));
-              jsonOutput.backends.push({
-                backend,
-                filesWritten: result.files.map((f) => f.path),
-                templatePack: result.templatePack,
-              });
-            } catch (e) {
-              templateSpinner.fail(
-                `${backend}: Generation failed: ${e instanceof Error ? e.message : String(e)}`
-              );
-            }
-          } else {
-            jsonOutput.backends.push({ backend, filesWritten: [] });
-          }
-        }
-
-        if (opts.dryRun && !opts.json) {
-          console.log(
-            chalk.yellow("\n[DRY RUN] No files written. Use without --dry-run to apply.")
-          );
-        }
-
-        // Write .bp.json in v2 format
-        if (!opts.dryRun && !loadProjectConfig(cwd)) {
-          initProjectConfig(cwd, backends);
-          if (!opts.json) console.log(chalk.dim("  Created: .bp.json"));
-        }
+        const result = await orchestrator.run();
 
         if (opts.json) {
-          console.log(JSON.stringify(jsonOutput, null, 2));
-          return;
+          console.log(
+            JSON.stringify({ status: result.exitCode === 0 ? "ok" : "error", backends: result.backends }, null, 2)
+          );
+          return result.exitCode;
         }
 
-        console.log(chalk.green("\nBlueprint ready."));
+        for (const msg of result.messages) {
+          switch (msg.level) {
+            case "success":
+              console.log(chalk.green(`✓ ${msg.text}`));
+              break;
+            case "error":
+              console.error(chalk.red(`✗ ${msg.text}`));
+              break;
+            case "warning":
+              console.warn(chalk.yellow(msg.text));
+              break;
+            default:
+              console.log(chalk.dim(`  ${msg.text}`));
+          }
+        }
+
+        if (result.exitCode === EXIT_CODES.SUCCESS) {
+          console.log(chalk.green("\nBlueprint ready."));
+        }
+
+        return result.exitCode;
       }
     );
 

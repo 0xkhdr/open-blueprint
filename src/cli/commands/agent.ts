@@ -3,12 +3,13 @@ import * as path from "node:path";
 import chalk from "chalk";
 import { Command } from "commander";
 import { BlueprintIRSchema } from "../../translator/ir.js";
+import { BpError } from "../../errors.js";
 
 function loadIR(cwd: string) {
   const blueprintPath = path.join(cwd, ".claude", "blueprint.json");
   if (!fs.existsSync(blueprintPath)) {
     console.error(chalk.red(`No blueprint found at ${blueprintPath}. Run 'bp init' first.`));
-    process.exit(1);
+    throw new BpError("Command failed", 1, "CMD_ERROR", "");
   }
   return BlueprintIRSchema.parse(JSON.parse(fs.readFileSync(blueprintPath, "utf-8")));
 }
@@ -91,7 +92,7 @@ export function createAgentCommand(): Command {
         for (const e of errors) {
           console.error(chalk.red(`  [${e.agent}] ${e.issue}`));
         }
-        if (!opts.dryRun) process.exit(1);
+        if (!opts.dryRun) throw new BpError("Command failed", 1, "CMD_ERROR", "");
       }
     });
 
@@ -121,7 +122,7 @@ export function createAgentCommand(): Command {
         const existing = ir.agent_registry?.agents.find((a) => a.name === name);
         if (existing) {
           console.error(chalk.red(`Agent '${name}' already exists.`));
-          process.exit(1);
+          throw new BpError("Command failed", 1, "CMD_ERROR", "");
         }
 
         const entry = {

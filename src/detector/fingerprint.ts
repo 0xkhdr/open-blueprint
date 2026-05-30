@@ -15,12 +15,16 @@ export const LanguageNameSchema = z.enum([
   "php",
 ]);
 
+const identifierField = z.string().max(64).regex(/^[a-z0-9_-]+$/);
+const freeStringField = z.string().max(512);
+const pathField = z.string().max(256);
+
 export const FingerprintSchema = z.object({
   version: z.literal("1.0"),
   detected_at: z.string().datetime(),
   project: z.object({
-    name: z.string(),
-    root: z.string(),
+    name: freeStringField,
+    root: pathField,
     type: z.enum(["monorepo", "polyrepo", "library", "application", "service"]),
     git_workflow: z.enum(["github-flow", "trunk-based", "gitflow", "unknown"]),
   }),
@@ -33,30 +37,30 @@ export const FingerprintSchema = z.object({
   ),
   frameworks: z.array(
     z.object({
-      name: z.string(),
+      name: freeStringField,
       confidence: z.number().min(0).max(1),
     })
   ),
   entry_points: z.array(
     z.object({
-      path: z.string(),
+      path: pathField,
       type: z.enum(["cli", "server", "library", "ui"]),
     })
   ),
   tooling: z.object({
-    package_manager: z.string().optional(),
-    test_runner: z.string().optional(),
-    test_command: z.string().optional(),
-    build_tool: z.string().optional(),
-    linter: z.string().optional(),
-    formatter: z.string().optional(),
-    ci_system: z.string().optional(),
+    package_manager: freeStringField.optional(),
+    test_runner: freeStringField.optional(),
+    test_command: freeStringField.optional(),
+    build_tool: freeStringField.optional(),
+    linter: freeStringField.optional(),
+    formatter: freeStringField.optional(),
+    ci_system: freeStringField.optional(),
   }),
   directory_topology: z.object({
-    src_dirs: z.array(z.string()),
-    test_dirs: z.array(z.string()),
-    config_dirs: z.array(z.string()),
-    package_dirs: z.array(z.string()),
+    src_dirs: z.array(freeStringField),
+    test_dirs: z.array(freeStringField),
+    config_dirs: z.array(freeStringField),
+    package_dirs: z.array(freeStringField),
   }),
   security_signals: z.object({
     has_auth: z.boolean(),

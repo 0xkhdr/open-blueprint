@@ -5,6 +5,7 @@ import { loadProjectConfig } from "../../config/project.js";
 import { loadUserConfig } from "../../config/user.js";
 import { HealthError } from "../../errors.js";
 import { getCorrelationId } from "../../logger.js";
+import { normalizeError } from "../../utils/errors.js";
 
 interface HealthCheck {
   name: string;
@@ -21,7 +22,7 @@ export async function checkConfigParseable(cwd: string): Promise<HealthCheck> {
     return {
       name: "config-parse",
       status: "FAIL",
-      message: `Config parse error: ${e instanceof Error ? e.message : String(e)}`,
+      message: `Config parse error: ${normalizeError(e).message}`,
     };
   }
 }
@@ -37,7 +38,7 @@ export async function checkEnginesImportable(): Promise<HealthCheck> {
     return {
       name: "engines-importable",
       status: "FAIL",
-      message: `Engine import error: ${e instanceof Error ? e.message : String(e)}`,
+      message: `Engine import error: ${normalizeError(e).message}`,
     };
   }
 }
@@ -105,7 +106,7 @@ export async function checkNoConflictingConfigs(cwd: string): Promise<HealthChec
     return {
       name: "no-config-conflict",
       status: "FAIL",
-      message: `Config conflict check error: ${e instanceof Error ? e.message : String(e)}`,
+      message: `Config conflict check error: ${normalizeError(e).message}`,
     };
   }
 }

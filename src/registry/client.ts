@@ -2,6 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { PermissionError } from "../errors.js";
 import { DEFAULT_PUBLIC_KEY, signData, verifySignature } from "./signer.js";
+import { normalizeError } from "../utils/errors.js";
 
 function assertHttpsUrl(url: string): void {
   if (!url.startsWith("https://")) {
@@ -135,7 +136,7 @@ export class RegistryClient {
         }
       } catch (err) {
         throw new Error(
-          `Failed to extract package archive: ${err instanceof Error ? err.message : String(err)}`
+          `Failed to extract package archive: ${normalizeError(err).message}`
         );
       }
     } else {

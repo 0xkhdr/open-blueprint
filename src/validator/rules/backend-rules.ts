@@ -1,6 +1,7 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import matter from "gray-matter";
 import { type BackendConfig, getBackend, listBackendIds } from "../../backends/registry.js";
 import type { ValidationError } from "../structural.js";
 
@@ -190,8 +191,6 @@ export const BACKEND_RULES: BackendValidationRule[] = [
           const ruleId = ruleFile.replace(/\.md$/, "");
           try {
             const content = fs.readFileSync(path.join(rulesDir, ruleFile), "utf-8");
-            // eslint-disable-next-line @typescript-eslint/no-var-requires
-            const matter = require("gray-matter");
             const parsed = matter(content);
             const severity = parsed.data?.severity;
             if (typeof severity !== "string") continue;

@@ -1,9 +1,14 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach , afterEach } from "vitest";
 import { renderString, clearTemplateCache } from "../../../src/templater/engine.js";
+import { clearForTesting } from "../../../src/templater/registry.js";
 
 describe("renderString", () => {
   beforeEach(() => {
     clearTemplateCache();
+  });
+
+  afterEach(() => {
+    clearForTesting();
   });
 
   it("renders simple variable substitution", () => {

@@ -24,6 +24,8 @@ import { OpenDevAdapter } from "../../translator/adapters/opendev.js";
 import { PIAdapter } from "../../translator/adapters/pi.js";
 import { generateComplianceReport } from "../../validator/compliance.js";
 import { EXIT_CODES } from "../../validator/index.js";
+import { normalizeError } from "../../utils/errors.js";
+import { BpError } from "../../errors.js";
 
 interface BackendHealthResult {
   id: string;
@@ -157,9 +159,10 @@ export function createDoctorCommand(): Command {
 
           if (opts.json) {
             console.log(JSON.stringify({ backends: results }, null, 2));
-            process.exit(
-              results.every((r) => r.healthy) ? EXIT_CODES.SUCCESS : EXIT_CODES.GENERAL_ERROR
-            );
+            if (!results.every((r) => r.healthy)) {
+              throw new BpError("Command failed", EXIT_CODES.GENERAL_ERROR, "CMD_ERROR", "");
+            }
+            return;
           }
 
           for (const result of results) {
@@ -172,9 +175,9 @@ export function createDoctorCommand(): Command {
             }
           }
 
-          process.exit(
-            results.every((r) => r.healthy) ? EXIT_CODES.SUCCESS : EXIT_CODES.GENERAL_ERROR
-          );
+          if (!results.every((r) => r.healthy)) {
+            throw new BpError("Command failed", EXIT_CODES.GENERAL_ERROR, "CMD_ERROR", "");
+          }
         }
 
         // --- v1 config deprecation warning ---
@@ -224,7 +227,7 @@ export function createDoctorCommand(): Command {
               chalk.red(`Found ${findings.length} secret(s). Rotate or remove before committing.`)
             );
           }
-          process.exit(findings.length > 0 ? EXIT_CODES.GENERAL_ERROR : EXIT_CODES.SUCCESS);
+          if (findings.length > 0) throw new BpError("Command failed", EXIT_CODES.GENERAL_ERROR, "CMD_ERROR", "");
         }
 
         // --- Compliance report mode ---
@@ -244,10 +247,10 @@ export function createDoctorCommand(): Command {
               console.log(formatGapReport(report));
             }
           } catch (e) {
-            console.error(chalk.red(`Error: ${e instanceof Error ? e.message : String(e)}`));
-            process.exit(EXIT_CODES.GENERAL_ERROR);
+            console.error(chalk.red(`Error: ${normalizeError(e).message}`));
+            throw new BpError("Command failed", EXIT_CODES.GENERAL_ERROR, "CMD_ERROR", "");
           }
-          process.exit(EXIT_CODES.SUCCESS);
+          return;
         }
 
         // --- Risk audit mode ---
@@ -268,10 +271,10 @@ export function createDoctorCommand(): Command {
               console.log(runbook);
             }
           } catch (e) {
-            console.error(chalk.red(`Error: ${e instanceof Error ? e.message : String(e)}`));
-            process.exit(EXIT_CODES.GENERAL_ERROR);
+            console.error(chalk.red(`Error: ${normalizeError(e).message}`));
+            throw new BpError("Command failed", EXIT_CODES.GENERAL_ERROR, "CMD_ERROR", "");
           }
-          process.exit(EXIT_CODES.SUCCESS);
+          return;
         }
 
         // --- Env template mode ---
@@ -286,7 +289,7 @@ export function createDoctorCommand(): Command {
             console.log(chalk.green(`✔ Written to ${outPath}`));
             console.log(template);
           }
-          process.exit(EXIT_CODES.SUCCESS);
+          return;
         }
 
         console.log(chalk.bold.cyan("\n🩺 blueprint doctor — Running Diagnostics\n"));
@@ -358,7 +361,7 @@ export function createDoctorCommand(): Command {
               } catch (e) {
                 return {
                   status: "fail",
-                  message: `Manifest validation error: ${e instanceof Error ? e.message : String(e)}`,
+                  message: `Manifest validation error: ${normalizeError(e).message}`,
                   resolution: "Check if the template backend has a valid manifest.json",
                 };
               }
@@ -503,7 +506,7 @@ export function createDoctorCommand(): Command {
               } catch (e) {
                 return {
                   status: "warn",
-                  message: `Compliance check skipped: ${e instanceof Error ? e.message : String(e)}`,
+                  message: `Compliance check skipped: ${normalizeError(e).message}`,
                   resolution: "Ensure blueprint is valid and compliance.frameworks is configured.",
                 };
               }
@@ -610,14 +613,14 @@ export function createDoctorCommand(): Command {
           console.log(
             chalk.bold.green("✔ Diagnostics completed successfully. Everything looks healthy!")
           );
-          process.exit(EXIT_CODES.SUCCESS);
+          return;
         } else {
           console.log(
             chalk.bold.red(
               "✘ Diagnostics completed with failures. Please review and fix the issues above."
             )
           );
-          process.exit(EXIT_CODES.GENERAL_ERROR);
+          throw new BpError("Command failed", EXIT_CODES.GENERAL_ERROR, "CMD_ERROR", "");
         }
       }
     );

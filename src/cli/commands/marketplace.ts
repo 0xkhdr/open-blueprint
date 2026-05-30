@@ -6,6 +6,8 @@ import {
   rateTemplate,
   searchMarketplace,
 } from "../../ecosystem/marketplace-v2.js";
+import { BpError } from "../../errors.js";
+import { normalizeError } from "../../utils/errors.js";
 
 export function createMarketplaceCommand(): Command {
   const cmd = new Command("marketplace").description(
@@ -66,8 +68,8 @@ export function createMarketplaceCommand(): Command {
             console.log();
           }
         } catch (e) {
-          spinner.fail(chalk.red(`Search failed: ${e instanceof Error ? e.message : String(e)}`));
-          process.exit(1);
+          spinner.fail(chalk.red(`Search failed: ${normalizeError(e).message}`));
+          throw new BpError("Command failed", 1, "CMD_ERROR", "");
         }
       }
     );
@@ -82,13 +84,13 @@ export function createMarketplaceCommand(): Command {
       const authToken = opts.token || process.env.BP_TOKEN || "";
       if (!authToken) {
         console.error(chalk.red("Auth token required. Use --token or set BP_TOKEN env var."));
-        process.exit(1);
+        throw new BpError("Command failed", 1, "CMD_ERROR", "");
       }
 
       const rating = parseInt(opts.rating, 10);
       if (Number.isNaN(rating) || rating < 1 || rating > 5) {
         console.error(chalk.red("Rating must be between 1 and 5"));
-        process.exit(1);
+        throw new BpError("Command failed", 1, "CMD_ERROR", "");
       }
 
       const spinner = ora({ text: `Rating ${name}...`, color: "cyan" }).start();
@@ -96,8 +98,8 @@ export function createMarketplaceCommand(): Command {
         await rateTemplate(name, rating, opts.comment, authToken);
         spinner.succeed(chalk.green(`Rated ${name}: ${rating}/5`));
       } catch (e) {
-        spinner.fail(chalk.red(`Rating failed: ${e instanceof Error ? e.message : String(e)}`));
-        process.exit(1);
+        spinner.fail(chalk.red(`Rating failed: ${normalizeError(e).message}`));
+        throw new BpError("Command failed", 1, "CMD_ERROR", "");
       }
     });
 
@@ -128,8 +130,8 @@ export function createMarketplaceCommand(): Command {
           if (r.comment) console.log(`  ${r.comment}`);
         }
       } catch (e) {
-        spinner.fail(chalk.red(`Fetch failed: ${e instanceof Error ? e.message : String(e)}`));
-        process.exit(1);
+        spinner.fail(chalk.red(`Fetch failed: ${normalizeError(e).message}`));
+        throw new BpError("Command failed", 1, "CMD_ERROR", "");
       }
     });
 

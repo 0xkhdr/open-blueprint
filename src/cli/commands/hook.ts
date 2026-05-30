@@ -4,6 +4,8 @@ import * as readline from "node:readline";
 import chalk from "chalk";
 import { Command } from "commander";
 import { detectHookCycles, validateHookSafety } from "../../validator/hook.js";
+import { normalizeError } from "../../utils/errors.js";
+import { BpError } from "../../errors.js";
 
 function findHookDirs(cwd: string): string[] {
   const candidates = [
@@ -109,7 +111,7 @@ export default async function hook(context) {
         console.log(chalk.green("  ✔ Generated stubs inside .claude/hooks/"));
       } catch (e) {
         console.error(
-          chalk.red(`Failed to generate hooks: ${e instanceof Error ? e.message : String(e)}`)
+          chalk.red(`Failed to generate hooks: ${normalizeError(e).message}`)
         );
       }
     });
@@ -157,7 +159,7 @@ export default async function hook(context) {
       if (!target) {
         console.error(chalk.red(`  ✗ Hook not found: ${name}`));
         console.error(chalk.dim(`  Run 'bp hook list' to see available hooks.`));
-        process.exit(1);
+        throw new BpError("Command failed", 1, "CMD_ERROR", "");
       }
 
       const proceed =
@@ -172,9 +174,9 @@ export default async function hook(context) {
         console.log(chalk.green(`  ✔ Removed ${target.filePath}`));
       } catch (e) {
         console.error(
-          chalk.red(`  ✗ Failed to remove: ${e instanceof Error ? e.message : String(e)}`)
+          chalk.red(`  ✗ Failed to remove: ${normalizeError(e).message}`)
         );
-        process.exit(1);
+        throw new BpError("Command failed", 1, "CMD_ERROR", "");
       }
     });
 
@@ -217,7 +219,7 @@ export default async function hook(context) {
           if (result.cyclePath) {
             console.error(chalk.yellow(`  Path: ${result.cyclePath.join(" → ")}`));
           }
-          process.exit(1);
+          throw new BpError("Command failed", 1, "CMD_ERROR", "");
         } else {
           console.log(chalk.green(`  ✔ No cycles detected across ${hooks.length} hook(s).`));
         }
@@ -238,7 +240,7 @@ export default async function hook(context) {
           console.error(chalk.red(`    [${err.type}] ${err.message}`));
           console.error(chalk.yellow(`    → ${err.resolution}`));
         }
-        process.exit(1);
+        throw new BpError("Command failed", 1, "CMD_ERROR", "");
       }
     });
 

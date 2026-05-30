@@ -1,19 +1,13 @@
-import * as fs from "node:fs";
+import * as crypto from "node:crypto";
+import * as fsPromises from "node:fs/promises";
 import * as path from "node:path";
 import fg from "fast-glob";
+import { EXIT_CODES } from "../constants.js";
 import type { Fingerprint } from "../detector/fingerprint.js";
 import type { BackendManifest } from "../templater/selector.js";
-import { AntigravityAdapter } from "../translator/adapters/antigravity.js";
-import { ClaudeAdapter } from "../translator/adapters/claude.js";
-import { CodexAdapter } from "../translator/adapters/codex.js";
-import { CopilotAdapter } from "../translator/adapters/copilot.js";
-import { CursorAdapter } from "../translator/adapters/cursor.js";
-import { GeminiAdapter } from "../translator/adapters/gemini.js";
-import { GenericAdapter } from "../translator/adapters/generic.js";
-import { KiroAdapter } from "../translator/adapters/kiro.js";
-import { PIAdapter } from "../translator/adapters/pi.js";
+import { getRegisteredAdapter } from "../translator/adapters/registry.js";
 import { validateAlertingConfig } from "./alerting.js";
-import { loadCache, saveCache } from "./cache.js";
+import { loadCacheAsync, saveCacheAsync } from "./cache.js";
 import { validateCostConfig } from "./cost.js";
 import { validateCrossLayerReferences } from "./cross-layer.js";
 import { validateDrift } from "./drift.js";
@@ -68,19 +62,22 @@ export interface ValidationResult {
   filesChecked: number;
 }
 
-export const EXIT_CODES = {
-  SUCCESS: 0,
-  GENERAL_ERROR: 1,
-  STRUCTURAL_FAILURE: 2,
-  SEMANTIC_FAILURE: 3,
-  LOGICAL_FAILURE: 4,
-  DRIFT_DETECTED: 5,
-  UNSUPPORTED_BACKEND: 6,
-  TEMPLATE_NOT_FOUND: 7,
-  PERMISSION_DENIED: 8,
-  REGISTRY_UNREACHABLE: 9,
-  SIGNATURE_FAILED: 10,
-} as const;
+export { EXIT_CODES };
+
+function mapLayerErrors(
+  layerName: string,
+  rawErrors: Array<{ message: string; field?: string }>,
+  blueprintFile: string
+): ValidationError[] {
+  const type = `GOVERNANCE_${layerName.toUpperCase().replace(/\s+/g, "_")}_INVALID`;
+  return rawErrors.map((e) => ({
+    file: blueprintFile,
+    type,
+    severity: "error" as const,
+    message: `${layerName} layer: ${e.message}`,
+    resolution: `Fix ${layerName.toLowerCase()} configuration at ${e.field || "root"}`,
+  }));
+}
 
 async function collectBlueprintFiles(
   projectRoot: string,
@@ -117,122 +114,46 @@ async function validateGovernance(
 
     // Validate each enterprise layer
     if (ir.settings) {
-      const settingsErrors = validateSettings(ir.settings);
-      errors.push(
-        ...settingsErrors.map((e) => ({
-          file: blueprintFile,
-          type: "GOVERNANCE_SETTINGS_INVALID",
-          severity: "error" as const,
-          message: `Settings layer: ${e.message}`,
-          resolution: `Fix settings configuration at ${e.field || "root"}`,
-        }))
-      );
+      errors.push(...mapLayerErrors("settings", validateSettings(ir.settings), blueprintFile));
     }
 
     if (ir.commands && ir.commands.length > 0) {
-      const commandErrors = validateCommands(ir.commands);
-      errors.push(
-        ...commandErrors.map((e) => ({
-          file: blueprintFile,
-          type: "GOVERNANCE_COMMANDS_INVALID",
-          severity: "error" as const,
-          message: `Commands layer: ${e.message}`,
-          resolution: `Fix commands configuration at ${e.field || "root"}`,
-        }))
-      );
+      errors.push(...mapLayerErrors("commands", validateCommands(ir.commands), blueprintFile));
     }
 
     if (ir.mcp_servers && ir.mcp_servers.length > 0) {
-      const mcpErrors = validateMCPServers(ir.mcp_servers);
       errors.push(
-        ...mcpErrors.map((e) => ({
-          file: blueprintFile,
-          type: "GOVERNANCE_MCP_INVALID",
-          severity: "error" as const,
-          message: `MCP servers layer: ${e.message}`,
-          resolution: `Fix MCP server configuration at ${e.field || "root"}`,
-        }))
+        ...mapLayerErrors("mcp servers", validateMCPServers(ir.mcp_servers), blueprintFile)
       );
     }
 
     if (ir.identity !== undefined) {
-      const identityErrors = validateIdentity(ir.identity);
-      errors.push(
-        ...identityErrors.map((e) => ({
-          file: blueprintFile,
-          type: "GOVERNANCE_IDENTITY_INVALID",
-          severity: "error" as const,
-          message: `Identity layer: ${e.message}`,
-          resolution: `Fix identity configuration at ${e.field || "root"}`,
-        }))
-      );
-
+      errors.push(...mapLayerErrors("identity", validateIdentity(ir.identity), blueprintFile));
       const rbacErrors = validateRBAC({ identity: ir.identity }, blueprintFile);
       errors.push(...rbacErrors);
     }
 
     if (ir.audit) {
-      const auditErrors = validateAudit(ir.audit);
-      errors.push(
-        ...auditErrors.map((e) => ({
-          file: blueprintFile,
-          type: "GOVERNANCE_AUDIT_INVALID",
-          severity: "error" as const,
-          message: `Audit layer: ${e.message}`,
-          resolution: `Fix audit configuration at ${e.field || "root"}`,
-        }))
-      );
+      errors.push(...mapLayerErrors("audit", validateAudit(ir.audit), blueprintFile));
     }
 
     if (ir.compliance) {
-      const complianceErrors = validateCompliance(ir.compliance);
       errors.push(
-        ...complianceErrors.map((e) => ({
-          file: blueprintFile,
-          type: "GOVERNANCE_COMPLIANCE_INVALID",
-          severity: "error" as const,
-          message: `Compliance layer: ${e.message}`,
-          resolution: `Fix compliance configuration at ${e.field || "root"}`,
-        }))
+        ...mapLayerErrors("compliance", validateCompliance(ir.compliance), blueprintFile)
       );
     }
 
     if (ir.risk) {
-      const riskErrors = validateRisk(ir.risk);
-      errors.push(
-        ...riskErrors.map((e) => ({
-          file: blueprintFile,
-          type: "GOVERNANCE_RISK_INVALID",
-          severity: "error" as const,
-          message: `Risk layer: ${e.message}`,
-          resolution: `Fix risk configuration at ${e.field || "root"}`,
-        }))
-      );
+      errors.push(...mapLayerErrors("risk", validateRisk(ir.risk), blueprintFile));
     }
 
     if (ir.registry) {
-      const registryErrors = validateRegistry(ir.registry);
-      errors.push(
-        ...registryErrors.map((e) => ({
-          file: blueprintFile,
-          type: "GOVERNANCE_REGISTRY_INVALID",
-          severity: "error" as const,
-          message: `Registry layer: ${e.message}`,
-          resolution: `Fix registry configuration at ${e.field || "root"}`,
-        }))
-      );
+      errors.push(...mapLayerErrors("registry", validateRegistry(ir.registry), blueprintFile));
     }
 
     if (ir.orchestration) {
-      const orchestrationErrors = validateOrchestration(ir.orchestration);
       errors.push(
-        ...orchestrationErrors.map((e) => ({
-          file: blueprintFile,
-          type: "GOVERNANCE_ORCHESTRATION_INVALID",
-          severity: "error" as const,
-          message: `Orchestration layer: ${e.message}`,
-          resolution: `Fix orchestration configuration at ${e.field || "root"}`,
-        }))
+        ...mapLayerErrors("orchestration", validateOrchestration(ir.orchestration), blueprintFile)
       );
     }
 
@@ -294,54 +215,55 @@ async function validateGovernance(
 }
 
 function getAdapterByName(backend: string) {
-  switch (backend) {
-    case "claude":
-      return new ClaudeAdapter();
-    case "cursor":
-      return new CursorAdapter();
-    case "codex":
-      return new CodexAdapter();
-    case "pi":
-      return new PIAdapter();
-    case "copilot":
-      return new CopilotAdapter();
-    case "gemini":
-      return new GeminiAdapter();
-    case "kiro":
-      return new KiroAdapter();
-    case "antigravity":
-      return new AntigravityAdapter();
-    default:
-      return new GenericAdapter();
-  }
+  return getRegisteredAdapter(backend);
+}
+
+async function computeContentHash(filePath: string): Promise<string> {
+  const content = await fsPromises.readFile(filePath);
+  return crypto.createHash("sha256").update(content).digest("hex");
 }
 
 export async function runValidator(options: ValidatorOptions): Promise<ValidationResult> {
   const { level, projectRoot, manifest, fingerprint } = options;
 
   const files = await collectBlueprintFiles(projectRoot, manifest);
-  const cache = loadCache(projectRoot, manifest.version);
-  const cacheUpdatedFiles: Record<string, { mtime: number; errors: ValidationError[] }> = {
-    ...cache.files,
-  };
+  const cache = await loadCacheAsync(projectRoot, manifest.version);
+  const cacheUpdatedFiles: Record<
+    string,
+    { mtime: number; contentHash: string; errors: ValidationError[] }
+  > = { ...cache.files };
 
   const filesToValidate: string[] = [];
   const cachedErrors: ValidationError[] = [];
 
-  for (const file of files) {
-    if (!fs.existsSync(file)) {
-      filesToValidate.push(file);
-      continue;
-    }
-    const stat = fs.statSync(file);
-    const mtime = stat.mtimeMs;
-    const cachedEntry = cache.files[file];
-    if (cachedEntry && cachedEntry.mtime === mtime) {
-      cachedErrors.push(...cachedEntry.errors);
-    } else {
-      filesToValidate.push(file);
-    }
-  }
+  await Promise.all(
+    files.map(async (file) => {
+      let stat;
+      try {
+        stat = await fsPromises.stat(file);
+      } catch {
+        filesToValidate.push(file);
+        return;
+      }
+      const mtime = stat.mtimeMs;
+      const cachedEntry = cache.files[file];
+      if (!cachedEntry) {
+        filesToValidate.push(file);
+        return;
+      }
+      if (cachedEntry.mtime === mtime) {
+        cachedErrors.push(...cachedEntry.errors);
+        return;
+      }
+      const contentHash = await computeContentHash(file);
+      if (cachedEntry.contentHash === contentHash) {
+        cacheUpdatedFiles[file] = { ...cachedEntry, mtime };
+        cachedErrors.push(...cachedEntry.errors);
+      } else {
+        filesToValidate.push(file);
+      }
+    })
+  );
 
   const newErrors: ValidationError[] = [];
 
@@ -359,19 +281,22 @@ export async function runValidator(options: ValidatorOptions): Promise<Validatio
   }
 
   // Update cache for the validated files
-  for (const file of filesToValidate) {
-    if (!fs.existsSync(file)) continue;
-    const stat = fs.statSync(file);
-    // Find all errors for this specific file
-    const fileErrors = newErrors.filter((e) => e.file === file);
-    cacheUpdatedFiles[file] = {
-      mtime: stat.mtimeMs,
-      errors: fileErrors,
-    };
-  }
+  await Promise.all(
+    filesToValidate.map(async (file) => {
+      let stat;
+      try {
+        stat = await fsPromises.stat(file);
+      } catch {
+        return;
+      }
+      const contentHash = await computeContentHash(file);
+      const fileErrors = newErrors.filter((e) => e.file === file);
+      cacheUpdatedFiles[file] = { mtime: stat.mtimeMs, contentHash, errors: fileErrors };
+    })
+  );
 
   // Save the updated cache
-  saveCache(projectRoot, {
+  await saveCacheAsync(projectRoot, {
     version: "1.0",
     manifestVersion: manifest.version,
     files: cacheUpdatedFiles,

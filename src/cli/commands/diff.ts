@@ -4,6 +4,7 @@ import { Command } from "commander";
 import { diffBlueprints } from "../../blueprint-sync/diff.js";
 import { BpError } from "../../errors.js";
 import { BlueprintIRSchema } from "../../translator/ir.js";
+import { normalizeError } from "../../utils/errors.js";
 
 export function createDiffCommand(): Command {
   return new Command("diff")
@@ -44,9 +45,9 @@ export function createDiffCommand(): Command {
         }
       } catch (error) {
         if (error instanceof BpError) throw error;
-        console.error("Error:", error instanceof Error ? error.message : String(error));
+        console.error("Error:", normalizeError(error).message);
         throw new BpError(
-          `Diff failed: ${error instanceof Error ? error.message : String(error)}. See: docs/errors.md#code-1`,
+          `Diff failed: ${normalizeError(error).message}. See: docs/errors.md#code-1`,
           1,
           "DIFF_ERROR",
           "See: docs/errors.md#code-1"
