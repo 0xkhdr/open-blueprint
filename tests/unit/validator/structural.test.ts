@@ -67,12 +67,12 @@ describe("validateStructural", () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("reports FILE_NOT_FOUND for missing file", () => {
-    const errors = validateStructural(path.join(tmpDir, "missing.md"), MOCK_MANIFEST);
+  it("reports FILE_NOT_FOUND for missing file", async () => {
+    const errors = await validateStructural(path.join(tmpDir, "missing.md"), MOCK_MANIFEST);
     expect(errors.some((e) => e.type === "FILE_NOT_FOUND")).toBe(true);
   });
 
-  it("passes valid rule file with all required fields", () => {
+  it("passes valid rule file with all required fields", async () => {
     const filePath = writeFile(
       tmpDir,
       ".claude/rules/01-test.md",
@@ -85,12 +85,12 @@ action: Do the thing
 # Rule body content
 `
     );
-    const errors = validateStructural(filePath, MOCK_MANIFEST);
+    const errors = await validateStructural(filePath, MOCK_MANIFEST);
     const errorOnly = errors.filter((e) => e.severity === "error");
     expect(errorOnly).toHaveLength(0);
   });
 
-  it("detects FRONTMATTER_PARSE_ERROR for malformed YAML", () => {
+  it("detects FRONTMATTER_PARSE_ERROR for malformed YAML", async () => {
     const filePath = writeFile(
       tmpDir,
       ".claude/rules/01-malformed.md",
@@ -100,11 +100,11 @@ scope: [unclosed bracket
 # Body
 `
     );
-    const errors = validateStructural(filePath, MOCK_MANIFEST);
+    const errors = await validateStructural(filePath, MOCK_MANIFEST);
     expect(errors.some((e) => e.type === "FRONTMATTER_PARSE_ERROR")).toBe(true);
   });
 
-  it("detects MISSING_REQUIRED_FIELD for rules missing scope", () => {
+  it("detects MISSING_REQUIRED_FIELD for rules missing scope", async () => {
     const filePath = writeFile(
       tmpDir,
       ".claude/rules/01-bad.md",
@@ -115,11 +115,11 @@ severity: hard
 # Body
 `
     );
-    const errors = validateStructural(filePath, MOCK_MANIFEST);
+    const errors = await validateStructural(filePath, MOCK_MANIFEST);
     expect(errors.some((e) => e.type === "MISSING_REQUIRED_FIELD" && e.message.includes("scope"))).toBe(true);
   });
 
-  it("detects MISSING_REQUIRED_FIELD for rules missing severity", () => {
+  it("detects MISSING_REQUIRED_FIELD for rules missing severity", async () => {
     const filePath = writeFile(
       tmpDir,
       ".claude/rules/01-bad.md",
@@ -130,11 +130,11 @@ scope: "src/**/*"
 # Body
 `
     );
-    const errors = validateStructural(filePath, MOCK_MANIFEST);
+    const errors = await validateStructural(filePath, MOCK_MANIFEST);
     expect(errors.some((e) => e.type === "MISSING_REQUIRED_FIELD" && e.message.includes("severity"))).toBe(true);
   });
 
-  it("detects INVALID_SEVERITY for bad severity value", () => {
+  it("detects INVALID_SEVERITY for bad severity value", async () => {
     const filePath = writeFile(
       tmpDir,
       ".claude/rules/01-bad.md",
@@ -146,11 +146,11 @@ severity: critical
 # Body
 `
     );
-    const errors = validateStructural(filePath, MOCK_MANIFEST);
+    const errors = await validateStructural(filePath, MOCK_MANIFEST);
     expect(errors.some((e) => e.type === "INVALID_SEVERITY")).toBe(true);
   });
 
-  it("detects UNCLOSED_CODE_FENCE", () => {
+  it("detects UNCLOSED_CODE_FENCE", async () => {
     const filePath = writeFile(
       tmpDir,
       ".claude/rules/01-fence.md",
@@ -164,42 +164,42 @@ const x = 1;
 // no closing fence
 `
     );
-    const errors = validateStructural(filePath, MOCK_MANIFEST);
+    const errors = await validateStructural(filePath, MOCK_MANIFEST);
     expect(errors.some((e) => e.type === "UNCLOSED_CODE_FENCE")).toBe(true);
   });
 
-  it("detects BOM_DETECTED", () => {
+  it("detects BOM_DETECTED", async () => {
     const filePath = path.join(tmpDir, ".claude/rules/bom.md");
     fs.mkdirSync(path.dirname(filePath), { recursive: true });
     // Write file with UTF-8 BOM
     const bom = Buffer.from([0xef, 0xbb, 0xbf]);
     const content = Buffer.from("---\nscope: '**/*'\nseverity: soft\n---\n# test");
     fs.writeFileSync(filePath, Buffer.concat([bom, content]));
-    const errors = validateStructural(filePath, MOCK_MANIFEST);
+    const errors = await validateStructural(filePath, MOCK_MANIFEST);
     expect(errors.some((e) => e.type === "BOM_DETECTED")).toBe(true);
   });
 
-  it("detects FILE_TOO_LARGE", () => {
+  it("detects FILE_TOO_LARGE", async () => {
     const largeContent = "---\nscope: \"**/*\"\nseverity: soft\n---\n" + "x".repeat(11000);
     const filePath = writeFile(tmpDir, ".claude/rules/large.md", largeContent);
-    const errors = validateStructural(filePath, MOCK_MANIFEST);
+    const errors = await validateStructural(filePath, MOCK_MANIFEST);
     expect(errors.some((e) => e.type === "FILE_TOO_LARGE")).toBe(true);
   });
 
-  it("all errors include resolution path", () => {
+  it("all errors include resolution path", async () => {
     const filePath = writeFile(
       tmpDir,
       ".claude/rules/01-bad.md",
       "---\nseverity: hard\n---\n# body"
     );
-    const errors = validateStructural(filePath, MOCK_MANIFEST);
+    const errors = await validateStructural(filePath, MOCK_MANIFEST);
     for (const err of errors) {
       expect(err.resolution).toBeTruthy();
       expect(err.resolution.length).toBeGreaterThan(0);
     }
   });
 
-  it("detects HEADING_HIERARCHY when a heading level is skipped", () => {
+  it("detects HEADING_HIERARCHY when a heading level is skipped", async () => {
     const filePath = writeFile(
       tmpDir,
       ".claude/rules/01-headings.md",
@@ -211,18 +211,18 @@ severity: soft
 ### Heading level 3 (skipped level 2)
 `
     );
-    const errors = validateStructural(filePath, MOCK_MANIFEST);
+    const errors = await validateStructural(filePath, MOCK_MANIFEST);
     expect(errors.some((e) => e.type === "HEADING_HIERARCHY")).toBe(true);
   });
 
-  it("handles generic fallback paths correctly for rules, skills, and agents", () => {
+  it("handles generic fallback paths correctly for rules, skills, and agents", async () => {
     const fileRule = writeFile(tmpDir, "generic/rules/my-rule.md", "---\nscope: '**'\nseverity: soft\n---\n# Rule");
     const fileSkill = writeFile(tmpDir, "generic/skills/my-skill.md", "---\nname: skill\ndescription: desc\n---\n# Skill");
     const fileAgent = writeFile(tmpDir, "generic/agents/my-agent.md", "---\nname: agent\n---\n# Agent");
 
-    expect(validateStructural(fileRule, MOCK_MANIFEST)).toHaveLength(0);
-    expect(validateStructural(fileSkill, MOCK_MANIFEST)).toHaveLength(0);
-    expect(validateStructural(fileAgent, MOCK_MANIFEST)).toHaveLength(0);
+    expect(await validateStructural(fileRule, MOCK_MANIFEST)).toHaveLength(0);
+    expect(await validateStructural(fileSkill, MOCK_MANIFEST)).toHaveLength(0);
+    expect(await validateStructural(fileAgent, MOCK_MANIFEST)).toHaveLength(0);
   });
 });
 
@@ -237,22 +237,22 @@ describe("validateStructuralBatch", () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("collects errors from multiple files", () => {
+  it("collects errors from multiple files", async () => {
     const f1 = writeFile(tmpDir, ".claude/rules/01.md", "---\nseverity: hard\n---\n# body");
     const f2 = writeFile(tmpDir, ".claude/rules/02.md", "---\nscope: '**'\n---\n# body");
-    const errors = validateStructuralBatch([f1, f2], MOCK_MANIFEST);
+    const errors = await validateStructuralBatch([f1, f2], MOCK_MANIFEST);
     const files = new Set(errors.map((e) => e.file));
     expect(files.size).toBe(2);
   });
 
-  it("continues validating after first file error", () => {
+  it("continues validating after first file error", async () => {
     const missing = path.join(tmpDir, "nonexistent.md");
     const valid = writeFile(
       tmpDir,
       ".claude/rules/valid.md",
       "---\nscope: '**/*'\nseverity: soft\n---\n# body"
     );
-    const errors = validateStructuralBatch([missing, valid], MOCK_MANIFEST);
+    const errors = await validateStructuralBatch([missing, valid], MOCK_MANIFEST);
     expect(errors.some((e) => e.type === "FILE_NOT_FOUND")).toBe(true);
   });
 });

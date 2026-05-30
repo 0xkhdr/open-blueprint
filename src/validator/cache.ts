@@ -1,6 +1,7 @@
 import * as fs from "node:fs";
 import * as fsPromises from "node:fs/promises";
 import * as path from "node:path";
+import { logger } from "../logger.js";
 import type { ValidationError } from "./structural.js";
 
 export interface CacheEntry {
@@ -34,8 +35,8 @@ export function loadCache(projectRoot: string, manifestVersion: string): Validat
     if (parsed.version === "1.0" && parsed.manifestVersion === manifestVersion) {
       return parsed;
     }
-  } catch {
-    // Ignore and return default
+  } catch (err) {
+    logger.warn({ err }, "Validation cache unreadable; starting fresh");
   }
 
   return defaultCache;
@@ -49,8 +50,8 @@ export function saveCache(projectRoot: string, cache: ValidationCache): void {
       fs.mkdirSync(dir, { recursive: true });
     }
     fs.writeFileSync(cachePath, JSON.stringify(cache, null, 2), "utf-8");
-  } catch {
-    // Ignore write failures
+  } catch (err) {
+    logger.warn({ err }, "Failed to write validation cache");
   }
 }
 
@@ -67,8 +68,8 @@ export async function loadCacheAsync(
     if (parsed.version === "1.0" && parsed.manifestVersion === manifestVersion) {
       return parsed;
     }
-  } catch {
-    // Cache miss
+  } catch (err) {
+    logger.warn({ err }, "Async validation cache unreadable; starting fresh");
   }
 
   return defaultCache;
@@ -80,7 +81,7 @@ export async function saveCacheAsync(projectRoot: string, cache: ValidationCache
     const dir = path.dirname(cachePath);
     await fsPromises.mkdir(dir, { recursive: true });
     await fsPromises.writeFile(cachePath, JSON.stringify(cache, null, 2), "utf-8");
-  } catch {
-    // Ignore write failures
+  } catch (err) {
+    logger.warn({ err }, "Failed to write async validation cache");
   }
 }

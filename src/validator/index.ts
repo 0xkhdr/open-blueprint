@@ -4,6 +4,8 @@ import * as path from "node:path";
 import fg from "fast-glob";
 import { EXIT_CODES } from "../constants.js";
 import type { Fingerprint } from "../detector/fingerprint.js";
+import { logger } from "../logger.js";
+import { ResourceLimitError, ValidationTimeoutError } from "./errors.js";
 import type { BackendManifest } from "../templater/selector.js";
 import { getRegisteredAdapter } from "../translator/adapters/registry.js";
 import { validateAlertingConfig } from "./alerting.js";
@@ -35,6 +37,10 @@ import { runBackendRules } from "./rules/backend-rules.js";
 import { validateSemantic } from "./semantic.js";
 import type { ValidationError } from "./structural.js";
 import { validateStructuralBatch } from "./structural.js";
+
+export const MAX_VALIDATION_FILES = Number(process.env.BP_MAX_VALIDATION_FILES ?? 1000);
+export const MAX_VALIDATION_BYTES = Number(process.env.BP_MAX_VALIDATION_BYTES ?? 52_428_800);
+export const VALIDATION_TIMEOUT_MS = Number(process.env.BP_VALIDATION_TIMEOUT_MS ?? 30_000);
 
 export type ValidationLevel =
   | "structural"
@@ -223,10 +229,40 @@ async function computeContentHash(filePath: string): Promise<string> {
   return crypto.createHash("sha256").update(content).digest("hex");
 }
 
-export async function runValidator(options: ValidatorOptions): Promise<ValidationResult> {
+async function runValidationPipeline(options: ValidatorOptions): Promise<ValidationResult> {
   const { level, projectRoot, manifest, fingerprint } = options;
 
   const files = await collectBlueprintFiles(projectRoot, manifest);
+
+  // Pre-validation file count check
+  if (files.length > MAX_VALIDATION_FILES) {
+    throw new ResourceLimitError(
+      `File count ${files.length} exceeds limit ${MAX_VALIDATION_FILES}`,
+      files.length,
+      MAX_VALIDATION_FILES
+    );
+  }
+
+  // Pre-validation total byte size check
+  const sizes = await Promise.all(
+    files.map(async (f) => {
+      try {
+        const stat = await fsPromises.stat(f);
+        return stat.size;
+      } catch {
+        return 0;
+      }
+    })
+  );
+  const totalBytes = sizes.reduce((a, b) => a + b, 0);
+  if (totalBytes > MAX_VALIDATION_BYTES) {
+    throw new ResourceLimitError(
+      `Total size ${totalBytes} bytes exceeds limit ${MAX_VALIDATION_BYTES} bytes`,
+      totalBytes,
+      MAX_VALIDATION_BYTES
+    );
+  }
+
   const cache = await loadCacheAsync(projectRoot, manifest.version);
   const cacheUpdatedFiles: Record<
     string,
@@ -268,7 +304,7 @@ export async function runValidator(options: ValidatorOptions): Promise<Validatio
   const newErrors: ValidationError[] = [];
 
   // Layer 1: Structural (always run for modified/new files)
-  const structuralErrors = validateStructuralBatch(filesToValidate, manifest);
+  const structuralErrors = await validateStructuralBatch(filesToValidate, manifest);
   newErrors.push(...structuralErrors);
 
   // Short-circuit: if structural hard failures exist, skip deeper layers
@@ -353,6 +389,23 @@ export async function runValidator(options: ValidatorOptions): Promise<Validatio
     level,
     filesChecked: files.length,
   };
+}
+
+export async function runValidator(options: ValidatorOptions): Promise<ValidationResult> {
+  const startMs = Date.now();
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    const t = setTimeout(() => {
+      const elapsedMs = Date.now() - startMs;
+      const err = new ValidationTimeoutError(elapsedMs, VALIDATION_TIMEOUT_MS);
+      logger.warn({ elapsedMs, timeoutMs: VALIDATION_TIMEOUT_MS }, "Validation timed out");
+      reject(err);
+    }, VALIDATION_TIMEOUT_MS);
+    // Avoid keeping the process alive if the pipeline finishes first
+    if (typeof t === "object" && "unref" in t) t.unref();
+  });
+
+  return Promise.race([runValidationPipeline(options), timeoutPromise]);
 }
 
 export function exitCodeForResult(result: ValidationResult): number {

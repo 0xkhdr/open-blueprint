@@ -7,113 +7,60 @@ export interface BlueprintAdapter {
 
 export type { BlueprintIR };
 
-async function buildAdapterMap(): Promise<Record<string, BlueprintAdapter>> {
-  const [
-    { ClaudeAdapter },
-    { CursorAdapter },
-    { CodexAdapter },
-    { PIAdapter },
-    { KiroAdapter },
-    { AntigravityAdapter },
-    { CopilotAdapter },
-    { GeminiAdapter },
-    { OpenDevAdapter },
-    { GenericAdapter },
-    { AmazonQAdapter },
-    { AuggieAdapter },
-    { BobAdapter },
-    { ClineAdapter },
-    { CodeBuddyAdapter },
-    { ContinueAdapter },
-    { CostrictAdapter },
-    { CrushAdapter },
-    { FactoryAdapter },
-    { ForgeCodeAdapter },
-    { IFlowAdapter },
-    { JunieAdapter },
-    { KiloCodeAdapter },
-    { KimiAdapter },
-    { LingmaAdapter },
-    { OpenCodeAdapter },
-    { QoderAdapter },
-    { QwenAdapter },
-    { RooCodeAdapter },
-    { TraeAdapter },
-    { WindsurfAdapter },
-  ] = await Promise.all([
-    import("./adapters/claude.js"),
-    import("./adapters/cursor.js"),
-    import("./adapters/codex.js"),
-    import("./adapters/pi.js"),
-    import("./adapters/kiro.js"),
-    import("./adapters/antigravity.js"),
-    import("./adapters/copilot.js"),
-    import("./adapters/gemini.js"),
-    import("./adapters/opendev.js"),
-    import("./adapters/generic.js"),
-    import("./adapters/amazon-q.js"),
-    import("./adapters/auggie.js"),
-    import("./adapters/bob.js"),
-    import("./adapters/cline.js"),
-    import("./adapters/codebuddy.js"),
-    import("./adapters/continue.js"),
-    import("./adapters/costrict.js"),
-    import("./adapters/crush.js"),
-    import("./adapters/factory.js"),
-    import("./adapters/forgecode.js"),
-    import("./adapters/iflow.js"),
-    import("./adapters/junie.js"),
-    import("./adapters/kilocode.js"),
-    import("./adapters/kimi.js"),
-    import("./adapters/lingma.js"),
-    import("./adapters/opencode.js"),
-    import("./adapters/qoder.js"),
-    import("./adapters/qwen.js"),
-    import("./adapters/roocode.js"),
-    import("./adapters/trae.js"),
-    import("./adapters/windsurf.js"),
-  ]);
+export class UnsupportedBackendError extends Error {
+  constructor(backend: string) {
+    super(`Unknown backend: ${backend}`);
+    this.name = "UnsupportedBackendError";
+  }
+}
 
-  return {
-    claude: new ClaudeAdapter(),
-    cursor: new CursorAdapter(),
-    codex: new CodexAdapter(),
-    pi: new PIAdapter(),
-    kiro: new KiroAdapter(),
-    antigravity: new AntigravityAdapter(),
-    "github-copilot": new CopilotAdapter(),
-    copilot: new CopilotAdapter(),
-    gemini: new GeminiAdapter(),
-    opendev: new OpenDevAdapter(),
-    generic: new GenericAdapter(),
-    "amazon-q": new AmazonQAdapter(),
-    auggie: new AuggieAdapter(),
-    bob: new BobAdapter(),
-    cline: new ClineAdapter(),
-    codebuddy: new CodeBuddyAdapter(),
-    continue: new ContinueAdapter(),
-    costrict: new CostrictAdapter(),
-    crush: new CrushAdapter(),
-    factory: new FactoryAdapter(),
-    forgecode: new ForgeCodeAdapter(),
-    iflow: new IFlowAdapter(),
-    junie: new JunieAdapter(),
-    kilocode: new KiloCodeAdapter(),
-    kimi: new KimiAdapter(),
-    lingma: new LingmaAdapter(),
-    opencode: new OpenCodeAdapter(),
-    qoder: new QoderAdapter(),
-    qwen: new QwenAdapter(),
-    roocode: new RooCodeAdapter(),
-    trae: new TraeAdapter(),
-    windsurf: new WindsurfAdapter(),
-  };
+// Allowlisted backends prevent path traversal via dynamic imports
+const ADAPTER_LOADERS: Record<string, () => Promise<BlueprintAdapter>> = {
+  claude: async () => { const m = await import("./adapters/claude.js"); return new m.ClaudeAdapter(); },
+  cursor: async () => { const m = await import("./adapters/cursor.js"); return new m.CursorAdapter(); },
+  codex: async () => { const m = await import("./adapters/codex.js"); return new m.CodexAdapter(); },
+  pi: async () => { const m = await import("./adapters/pi.js"); return new m.PIAdapter(); },
+  kiro: async () => { const m = await import("./adapters/kiro.js"); return new m.KiroAdapter(); },
+  antigravity: async () => { const m = await import("./adapters/antigravity.js"); return new m.AntigravityAdapter(); },
+  "github-copilot": async () => { const m = await import("./adapters/copilot.js"); return new m.CopilotAdapter(); },
+  copilot: async () => { const m = await import("./adapters/copilot.js"); return new m.CopilotAdapter(); },
+  gemini: async () => { const m = await import("./adapters/gemini.js"); return new m.GeminiAdapter(); },
+  opendev: async () => { const m = await import("./adapters/opendev.js"); return new m.OpenDevAdapter(); },
+  generic: async () => { const m = await import("./adapters/generic.js"); return new m.GenericAdapter(); },
+  "amazon-q": async () => { const m = await import("./adapters/amazon-q.js"); return new m.AmazonQAdapter(); },
+  auggie: async () => { const m = await import("./adapters/auggie.js"); return new m.AuggieAdapter(); },
+  bob: async () => { const m = await import("./adapters/bob.js"); return new m.BobAdapter(); },
+  cline: async () => { const m = await import("./adapters/cline.js"); return new m.ClineAdapter(); },
+  codebuddy: async () => { const m = await import("./adapters/codebuddy.js"); return new m.CodeBuddyAdapter(); },
+  continue: async () => { const m = await import("./adapters/continue.js"); return new m.ContinueAdapter(); },
+  costrict: async () => { const m = await import("./adapters/costrict.js"); return new m.CostrictAdapter(); },
+  crush: async () => { const m = await import("./adapters/crush.js"); return new m.CrushAdapter(); },
+  factory: async () => { const m = await import("./adapters/factory.js"); return new m.FactoryAdapter(); },
+  forgecode: async () => { const m = await import("./adapters/forgecode.js"); return new m.ForgeCodeAdapter(); },
+  iflow: async () => { const m = await import("./adapters/iflow.js"); return new m.IFlowAdapter(); },
+  junie: async () => { const m = await import("./adapters/junie.js"); return new m.JunieAdapter(); },
+  kilocode: async () => { const m = await import("./adapters/kilocode.js"); return new m.KiloCodeAdapter(); },
+  kimi: async () => { const m = await import("./adapters/kimi.js"); return new m.KimiAdapter(); },
+  lingma: async () => { const m = await import("./adapters/lingma.js"); return new m.LingmaAdapter(); },
+  opencode: async () => { const m = await import("./adapters/opencode.js"); return new m.OpenCodeAdapter(); },
+  qoder: async () => { const m = await import("./adapters/qoder.js"); return new m.QoderAdapter(); },
+  qwen: async () => { const m = await import("./adapters/qwen.js"); return new m.QwenAdapter(); },
+  roocode: async () => { const m = await import("./adapters/roocode.js"); return new m.RooCodeAdapter(); },
+  trae: async () => { const m = await import("./adapters/trae.js"); return new m.TraeAdapter(); },
+  windsurf: async () => { const m = await import("./adapters/windsurf.js"); return new m.WindsurfAdapter(); },
+};
+
+export async function getAdapter(backend: string): Promise<BlueprintAdapter> {
+  const normalized = backend.toLowerCase();
+  const loader = ADAPTER_LOADERS[normalized];
+  if (!loader) {
+    throw new UnsupportedBackendError(normalized);
+  }
+  return loader();
 }
 
 export async function parseBlueprint(projectRoot: string, backend: string): Promise<BlueprintIR> {
-  const adapters = await buildAdapterMap();
-  const adapter = adapters[backend.toLowerCase()];
-  if (!adapter) throw new Error(`Unknown backend: ${backend}`);
+  const adapter = await getAdapter(backend);
   return adapter.parse(projectRoot);
 }
 
@@ -122,8 +69,6 @@ export async function renderBlueprint(
   projectRoot: string,
   backend: string
 ): Promise<string[]> {
-  const adapters = await buildAdapterMap();
-  const adapter = adapters[backend.toLowerCase()];
-  if (!adapter) throw new Error(`Unknown backend: ${backend}`);
+  const adapter = await getAdapter(backend);
   return adapter.render(ir, projectRoot);
 }

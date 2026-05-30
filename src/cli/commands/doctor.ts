@@ -13,16 +13,7 @@ import { generateEscalationRunbook } from "../../enterprise/runbooks.js";
 import { scanForSecrets } from "../../enterprise/secrets.js";
 import { BpError } from "../../errors.js";
 import { resolveTemplatePack } from "../../templater/selector.js";
-import { AntigravityAdapter } from "../../translator/adapters/antigravity.js";
-import { ClaudeAdapter } from "../../translator/adapters/claude.js";
-import { CodexAdapter } from "../../translator/adapters/codex.js";
-import { CopilotAdapter } from "../../translator/adapters/copilot.js";
-import { CursorAdapter } from "../../translator/adapters/cursor.js";
-import { GeminiAdapter } from "../../translator/adapters/gemini.js";
-import { GenericAdapter } from "../../translator/adapters/generic.js";
-import { KiroAdapter } from "../../translator/adapters/kiro.js";
-import { OpenDevAdapter } from "../../translator/adapters/opendev.js";
-import { PIAdapter } from "../../translator/adapters/pi.js";
+import { getAdapter } from "../../translator/index.js";
 import { normalizeError } from "../../utils/errors.js";
 import { generateComplianceReport } from "../../validator/compliance.js";
 import { EXIT_CODES } from "../../validator/index.js";
@@ -241,7 +232,7 @@ export function createDoctorCommand(): Command {
             chalk.bold.cyan(`\n📋 Generating compliance gap report: ${framework.toUpperCase()}\n`)
           );
           try {
-            const adapterForReport = getAdapterByName(opts.tool ?? "claude");
+            const adapterForReport = await getAdapter(opts.tool ?? "claude");
             const irForReport = await adapterForReport.parse(cwd);
             const report = generateGapReport(irForReport, framework);
             if (opts.json) {
@@ -262,7 +253,7 @@ export function createDoctorCommand(): Command {
           try {
             const fingerprint = await detect(cwd);
             const enriched = enrichFingerprint(fingerprint);
-            const adapterForRisk = getAdapterByName(opts.tool ?? "claude");
+            const adapterForRisk = await getAdapter(opts.tool ?? "claude");
             const irForRisk = await adapterForRisk.parse(cwd);
             const tier = irForRisk.risk?.risk_tier ?? enriched.risk_tier ?? "medium";
             console.log(chalk.bold(`Risk Tier: ${tier.toUpperCase()}`));
@@ -477,7 +468,7 @@ export function createDoctorCommand(): Command {
             name: "compliance-framework-mapping",
             run: async () => {
               try {
-                const adapter = getAdapterByName(backend as string);
+                const adapter = await getAdapter(backend as string);
                 const ir = await adapter.parse(cwd);
 
                 const report = generateComplianceReport(ir);
@@ -521,7 +512,7 @@ export function createDoctorCommand(): Command {
               try {
                 const fingerprint = await detect(cwd);
                 const enriched = enrichFingerprint(fingerprint);
-                const adapter = getAdapterByName(backend as string);
+                const adapter = await getAdapter(backend as string);
                 const ir = await adapter.parse(cwd);
 
                 const irHasRiskTier = !!ir.risk?.risk_tier;
@@ -553,31 +544,6 @@ export function createDoctorCommand(): Command {
             },
           },
         ];
-
-        function getAdapterByName(name: string) {
-          switch (name) {
-            case "claude":
-              return new ClaudeAdapter();
-            case "cursor":
-              return new CursorAdapter();
-            case "codex":
-              return new CodexAdapter();
-            case "pi":
-              return new PIAdapter();
-            case "copilot":
-              return new CopilotAdapter();
-            case "gemini":
-              return new GeminiAdapter();
-            case "kiro":
-              return new KiroAdapter();
-            case "antigravity":
-              return new AntigravityAdapter();
-            case "opendev":
-              return new OpenDevAdapter();
-            default:
-              return new GenericAdapter();
-          }
-        }
 
         // --- Cost report option ---
         if (opts.cost) {

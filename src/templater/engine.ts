@@ -1,4 +1,4 @@
-import * as fs from "node:fs";
+import * as fsPromises from "node:fs/promises";
 import * as path from "node:path";
 import Handlebars from "handlebars";
 
@@ -81,37 +81,42 @@ export function createEngine(): typeof Handlebars {
 
 const hbs = createEngine();
 
-export function registerPartials(partialsDir: string): void {
-  if (!fs.existsSync(partialsDir)) return;
-  const files = fs.readdirSync(partialsDir);
+export async function registerPartials(partialsDir: string): Promise<void> {
+  try {
+    await fsPromises.access(partialsDir);
+  } catch {
+    return;
+  }
+  const files = await fsPromises.readdir(partialsDir);
   for (const file of files) {
     if (!file.endsWith(".hbs")) continue;
     const name = path.basename(file, ".hbs");
-    const content = fs.readFileSync(path.join(partialsDir, file), "utf-8");
+    const content = await fsPromises.readFile(path.join(partialsDir, file), "utf-8");
     hbs.registerPartial(name, content);
   }
 }
 
-export function renderTemplate(templatePath: string, context: Record<string, unknown>): string {
+export async function renderTemplate(templatePath: string, context: Record<string, unknown>): Promise<string> {
   const cached = templateCache.get(templatePath);
   let compiled: HandlebarsTemplateDelegate;
 
   if (cached) {
     compiled = cached;
   } else {
-    const source = fs.readFileSync(templatePath, "utf-8");
+    const source = await fsPromises.readFile(templatePath, "utf-8");
+    // noEscape applies to the template source only; vars are pre-sanitized before reaching here
     compiled = hbs.compile(source, { noEscape: true, strict: false });
     templateCache.set(templatePath, compiled);
   }
 
-  // Deep-freeze context to prevent prototype pollution (Security: ADR-004)
-  const frozenCtx = deepFreeze(structuredClone(context));
+  // JSON round-trip strips prototype chain; deepFreeze prevents mutation
+  const frozenCtx = deepFreeze(JSON.parse(JSON.stringify(context)) as Record<string, unknown>);
   return compiled(frozenCtx);
 }
 
 export function renderString(template: string, context: Record<string, unknown>): string {
   const compiled = hbs.compile(template, { noEscape: true, strict: false });
-  const frozenCtx = deepFreeze(structuredClone(context));
+  const frozenCtx = deepFreeze(JSON.parse(JSON.stringify(context)) as Record<string, unknown>);
   return compiled(frozenCtx);
 }
 
@@ -134,7 +139,7 @@ export function renderCompiled(
   compiled: HandlebarsTemplateDelegate,
   context: Record<string, unknown>
 ): string {
-  const frozenCtx = deepFreeze(structuredClone(context));
+  const frozenCtx = deepFreeze(JSON.parse(JSON.stringify(context)) as Record<string, unknown>);
   return compiled(frozenCtx);
 }
 

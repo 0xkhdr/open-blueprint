@@ -18,14 +18,7 @@ import { detect, enrichFingerprint } from "../detector/index.js";
 import { resolveTemplatePack } from "../templater/selector.js";
 import { runValidator } from "../validator/index.js";
 
-// createConnection lives in node-specific entry; import via require to avoid
-// the low-level factory overload exported by the common typings entry.
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { createConnection } = require("vscode-languageserver/lib/node/main") as {
-  createConnection: () => ReturnType<
-    typeof import("vscode-languageserver/lib/node/main").createConnection
-  >;
-};
+import { createConnection } from "vscode-languageserver/lib/node/main.js";
 
 const connection = createConnection();
 const documents = new TextDocuments(TextDocument);

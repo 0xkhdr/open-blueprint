@@ -132,7 +132,7 @@ export function createRuleCommand(): Command {
         const pack = resolveTemplatePack(fingerprint, backend);
         const manifest = pack.manifest;
 
-        const structuralErrors = validateStructural(resolvedPath, manifest);
+        const structuralErrors = await validateStructural(resolvedPath, manifest);
         const semanticErrors = await validateSemantic([resolvedPath], {
           projectRoot: cwd,
           manifest,

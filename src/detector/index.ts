@@ -7,6 +7,7 @@ import {
   KNOWN_TEST_DIRS,
   KNOWN_UI_FRAMEWORKS,
 } from "../constants.js";
+import { logger } from "../logger.js";
 import { type FileSystem, RealFileSystem } from "../utils/fs.js";
 import { detectEnterpriseSignals, type EnterpriseSignals } from "./enterprise-signals.js";
 import type { Fingerprint } from "./fingerprint.js";
@@ -54,8 +55,8 @@ async function detectProjectName(root: string, fs: FileSystem): Promise<string> 
       const raw = await fs.readFile(pkgPath, "utf-8");
       const pkg = JSON.parse(raw) as { name?: string };
       if (pkg.name) return pkg.name.replace(/^@[^/]+\//, "");
-    } catch {
-      /* fall through */
+    } catch (err) {
+      logger.warn({ err }, "Failed to read package.json name");
     }
   }
   return path.basename(root);
@@ -100,8 +101,8 @@ async function detectProjectType(
       };
       if (pkg.bin) return "application";
       if (pkg.main || pkg.exports) return "library";
-    } catch {
-      /* fall through */
+    } catch (err) {
+      logger.warn({ err }, "Failed to read package.json for project type detection");
     }
   }
 
@@ -131,8 +132,8 @@ async function detectGitWorkflow(
       const content = await fs.readFile(gitHead, "utf-8");
       if (content.includes("develop")) return "gitflow";
       if (content.includes("main") || content.includes("master")) return "trunk-based";
-    } catch {
-      /* skip */
+    } catch (err) {
+      logger.warn({ err }, "Failed to read .git/HEAD for workflow detection");
     }
   }
   return "unknown";
@@ -160,13 +161,13 @@ async function scanDirectoryTopology(root: string, fs: FileSystem): Promise<Dire
           if (testNames.includes(name)) test_dirs.push(name);
           if (configNames.includes(name)) config_dirs.push(name);
           if (packageNames.includes(name)) package_dirs.push(name);
-        } catch {
-          /* skip */
+        } catch (err) {
+          logger.warn({ err, name }, "Failed to stat directory entry during topology scan");
         }
       })
     );
-  } catch {
-    /* skip */
+  } catch (err) {
+    logger.warn({ err }, "Failed to readdir root during topology scan");
   }
 
   return { src_dirs, test_dirs, config_dirs, package_dirs };
@@ -221,8 +222,8 @@ async function detectEntryPoints(
           entries.push({ path: binPath, type: "cli" });
         }
       }
-    } catch {
-      /* skip */
+    } catch (err) {
+      logger.warn({ err }, "Failed to read package.json bin entries");
     }
   }
 

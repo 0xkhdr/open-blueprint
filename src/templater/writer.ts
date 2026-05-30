@@ -1,6 +1,7 @@
-import * as fs from "node:fs";
+import * as fsPromises from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
+import { createPatch } from "diff";
 import { logger } from "../logger.js";
 import { hasMarkers, mergeContent, parseExistingFile } from "./merger.js";
 
@@ -27,20 +28,23 @@ export interface WriteResult {
 
 export type ConflictResolution = "prompt" | "skip" | "overwrite";
 
-function ensureDir(dirPath: string, dryRun: boolean): void {
+async function ensureDir(dirPath: string, dryRun: boolean): Promise<void> {
   if (!dryRun) {
-    fs.mkdirSync(dirPath, { recursive: true });
+    await fsPromises.mkdir(dirPath, { recursive: true });
   }
 }
 
-function readBlueprintIgnore(projectRoot: string): string[] {
+async function readBlueprintIgnore(projectRoot: string): Promise<string[]> {
   const ignorePath = path.join(projectRoot, ".blueprintignore");
-  if (!fs.existsSync(ignorePath)) return [];
-  return fs
-    .readFileSync(ignorePath, "utf-8")
-    .split("\n")
-    .map((l) => l.trim())
-    .filter((l) => l && !l.startsWith("#"));
+  try {
+    const content = await fsPromises.readFile(ignorePath, "utf-8");
+    return content
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l && !l.startsWith("#"));
+  } catch {
+    return [];
+  }
 }
 
 function isIgnored(filePath: string, patterns: string[], projectRoot: string): boolean {
@@ -53,32 +57,7 @@ function isIgnored(filePath: string, patterns: string[], projectRoot: string): b
 }
 
 function generateUnifiedDiff(filePath: string, oldContent: string, newContent: string): string {
-  const oldLines = oldContent.split("\n");
-  const newLines = newContent.split("\n");
-  const header = `--- ${filePath}\n+++ ${filePath} (new)\n`;
-
-  const hunks: string[] = [];
-  let i = 0;
-  let j = 0;
-
-  while (i < oldLines.length || j < newLines.length) {
-    const oldLine = oldLines[i];
-    const newLine = newLines[j];
-
-    if (oldLine === newLine) {
-      i++;
-      j++;
-    } else if (oldLine !== undefined && (newLine === undefined || oldLine !== newLine)) {
-      hunks.push(`-${oldLine}`);
-      i++;
-    } else if (newLine !== undefined) {
-      hunks.push(`+${newLine}`);
-      j++;
-    }
-  }
-
-  if (hunks.length === 0) return "";
-  return header + hunks.join("\n");
+  return createPatch(filePath, oldContent, newContent);
 }
 
 export async function writeFile(
@@ -99,20 +78,25 @@ export async function writeFile(
     );
   }
 
-  const ignorePatterns = readBlueprintIgnore(projectRoot);
+  const ignorePatterns = await readBlueprintIgnore(projectRoot);
 
   if (isIgnored(outputPath, ignorePatterns, projectRoot)) {
     return { path: outputPath, action: "skipped" };
   }
 
   const dirPath = path.dirname(outputPath);
-  ensureDir(dirPath, dryRun);
+  await ensureDir(dirPath, dryRun);
 
-  const exists = fs.existsSync(outputPath);
+  let existingContent: string | null = null;
+  try {
+    existingContent = await fsPromises.readFile(outputPath, "utf-8");
+  } catch {
+    // file does not exist
+  }
 
-  if (!exists) {
+  if (existingContent === null) {
     if (!dryRun) {
-      fs.writeFileSync(outputPath, content, "utf-8");
+      await fsPromises.writeFile(outputPath, content, "utf-8");
       emitFileWriteAudit(outputPath, "init");
     }
     return {
@@ -121,8 +105,6 @@ export async function writeFile(
       diff: dryRun ? generateUnifiedDiff(outputPath, "", content) : undefined,
     };
   }
-
-  const existingContent = fs.readFileSync(outputPath, "utf-8");
 
   if (existingContent === content) {
     return { path: outputPath, action: "skipped" };
@@ -135,7 +117,7 @@ export async function writeFile(
     const merged = mergeContent(existingContent, content);
     const diff = generateUnifiedDiff(outputPath, existingContent, merged);
     if (!dryRun) {
-      fs.writeFileSync(outputPath, merged, "utf-8");
+      await fsPromises.writeFile(outputPath, merged, "utf-8");
       emitFileWriteAudit(outputPath, "update");
     }
     return {
@@ -149,7 +131,7 @@ export async function writeFile(
   if (force || conflictResolution === "overwrite") {
     const diff = generateUnifiedDiff(outputPath, existingContent, content);
     if (!dryRun) {
-      fs.writeFileSync(outputPath, content, "utf-8");
+      await fsPromises.writeFile(outputPath, content, "utf-8");
       emitFileWriteAudit(outputPath, "overwrite");
     }
     return {

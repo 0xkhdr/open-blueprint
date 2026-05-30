@@ -104,3 +104,18 @@ When utilizing the `extends` property in `.bp.json`:
 3. **Local Overriding**:
    * If a file exists in the local repository topology (e.g. `.claude/rules/02-security.md`), it takes precedence over the template-derived rule.
    * Property overrides inside `.bp.json` will adjust validation rules. For example, setting `"severity_defaults": "soft"` will treat a template's `hard` constraints as optional warning signals rather than strict blocker exceptions.
+
+---
+
+## 🔐 Environment Variables
+
+The following environment variables control security, validation limits, and observability:
+
+| Variable | Default | Description |
+|---|---|---|
+| `BP_AUDIT_HMAC_KEY` | *(unset)* | HMAC-SHA256 key for audit log signing. When unset, entries are written with `sig: null` and a warning is emitted. |
+| `BP_REGISTRY_PUBLIC_KEY` | *(unset)* | PEM-encoded RSA public key for verifying registry package signatures. Falls back to `~/.bp/keys/*.pub`. When unset, signature verification is skipped with a warning. |
+| `BP_MAX_VALIDATION_FILES` | `1000` | Maximum number of blueprint files allowed before validation aborts with `ResourceLimitError`. |
+| `BP_MAX_VALIDATION_BYTES` | `52428800` (50 MB) | Maximum total file size in bytes allowed before validation aborts with `ResourceLimitError`. |
+| `BP_VALIDATION_TIMEOUT_MS` | `30000` (30 s) | Maximum milliseconds the validation pipeline is allowed to run before aborting with `ValidationTimeoutError`. |
+| `BP_LOG_LEVEL` | `info` | Pino log level (`trace`, `debug`, `info`, `warn`, `error`, `fatal`, `silent`). |

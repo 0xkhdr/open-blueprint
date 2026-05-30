@@ -1,6 +1,8 @@
+import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import matter from "gray-matter";
+import { logger } from "../logger.js";
 import type { Fingerprint } from "../detector/fingerprint.js";
 import type { ValidationError } from "./structural.js";
 
@@ -205,8 +207,8 @@ async function checkTopologyDrift(
         }
       }
       if (typeof fm.scope === "string") coveredScopes.push(fm.scope);
-    } catch {
-      /* skip */
+    } catch (err) {
+      logger.warn({ err, ruleFile }, "Failed to parse rule file frontmatter during topology drift");
     }
   }
 
@@ -274,8 +276,8 @@ function checkDependencyDrift(
       if (Array.isArray(tags)) knownTopics.push(...tags.map(String));
       const name = fm.name;
       if (typeof name === "string") knownTopics.push(name);
-    } catch {
-      /* skip */
+    } catch (err) {
+      logger.warn({ err }, "Failed to parse markdown file frontmatter during dependency drift");
     }
   }
 
@@ -311,15 +313,8 @@ export interface OutputSnapshot {
 }
 
 export function computeOutputHash(output: string): string {
-  // Simple hash for output similarity detection
   const normalized = output.toLowerCase().replace(/\s+/g, " ").trim();
-  let hash = 0;
-  for (let i = 0; i < normalized.length; i++) {
-    const char = normalized.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash = hash & hash; // Convert to 32bit integer
-  }
-  return Math.abs(hash).toString(16);
+  return crypto.createHash("sha256").update(normalized, "utf8").digest("hex");
 }
 
 export function computeSimilarity(hash1: string, hash2: string): number {
@@ -359,8 +354,8 @@ function checkRuleEffectivenessDrift(
         });
       }
     }
-  } catch {
-    // Metrics file corrupted or missing, skip check
+  } catch (err) {
+    logger.warn({ err }, "Rule metrics file corrupted or unreadable; skipping effectiveness drift check");
   }
 
   return errors;
@@ -403,8 +398,8 @@ function checkCostDrift(projectRoot: string): ValidationError[] {
         resolution: `Review rules for token wastage; check for new expensive operations or rule proliferation`,
       });
     }
-  } catch {
-    // Cost history file corrupted or missing, skip check
+  } catch (err) {
+    logger.warn({ err }, "Cost history file corrupted or unreadable; skipping cost drift check");
   }
 
   return errors;
@@ -441,8 +436,8 @@ function checkOutputDrift(_files: string[], projectRoot: string): ValidationErro
         });
       }
     }
-  } catch {
-    // Snapshot file corrupted or missing, skip check
+  } catch (err) {
+    logger.warn({ err }, "Output snapshot file corrupted or unreadable; skipping output drift check");
   }
 
   return errors;

@@ -1,8 +1,13 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { logger } from "../logger.js";
 import { PermissionError } from "../errors.js";
 import { normalizeError } from "../utils/errors.js";
-import { DEFAULT_PUBLIC_KEY, signData, verifySignature } from "./signer.js";
+import { loadPublicKey, signData, verifySignature } from "./signer.js";
+
+export interface RegistryAdapter {
+  list(): Promise<RegistryPackage[]>;
+}
 
 function assertHttpsUrl(url: string): void {
   if (!url.startsWith("https://")) {
@@ -22,16 +27,18 @@ export interface RegistryPackage {
 
 export class RegistryClient {
   private registryUrl: string;
+  private registryAdapter: RegistryAdapter | undefined;
 
   // Local mock store for offline testing
   private static mockRegistry: Map<string, RegistryPackage[]> = new Map();
 
   public token: string | undefined;
 
-  constructor(registryUrl = "https://registry.npmjs.org", token?: string) {
+  constructor(registryUrl = "https://registry.npmjs.org", token?: string, adapter?: RegistryAdapter) {
     assertHttpsUrl(registryUrl);
     this.registryUrl = registryUrl;
     this.token = token;
+    this.registryAdapter = adapter;
   }
 
   // Register mock packages for unit tests
@@ -46,12 +53,10 @@ export class RegistryClient {
   }
 
   async list(): Promise<RegistryPackage[]> {
-    // If we have mocks registered, or we are in a test environment, use mocks
-    if (
-      RegistryClient.mockRegistry.size > 0 ||
-      process.env.NODE_ENV === "test" ||
-      this.registryUrl.includes("mock")
-    ) {
+    if (this.registryAdapter) {
+      return this.registryAdapter.list();
+    }
+    if (RegistryClient.mockRegistry.size > 0) {
       const all: RegistryPackage[] = [];
       for (const pkgs of RegistryClient.mockRegistry.values()) {
         const latest = pkgs[pkgs.length - 1];
@@ -88,8 +93,12 @@ export class RegistryClient {
   async install(
     packageName: string,
     targetDir: string,
-    publicKey: string = DEFAULT_PUBLIC_KEY
+    publicKey?: string
   ): Promise<void> {
+    const resolvedPublicKey = publicKey ?? loadPublicKey();
+    if (!resolvedPublicKey) {
+      logger.warn("BP_REGISTRY_PUBLIC_KEY not configured; registry signature verification skipped");
+    }
     // Locate the package
     const pkgs = RegistryClient.mockRegistry.get(packageName);
     if (!pkgs || pkgs.length === 0) {
@@ -117,11 +126,11 @@ export class RegistryClient {
     if (latest.archiveData && latest.signature) {
       const buffer = Buffer.from(latest.archiveData, "base64");
 
-      const isValid =
-        (process.env.NODE_ENV === "test" && latest.signature === "validsig") ||
-        verifySignature(buffer, latest.signature, publicKey);
-      if (!isValid) {
-        throw new Error(`Signature verification failed for package ${packageName}.`);
+      if (resolvedPublicKey) {
+        const isValid = verifySignature(buffer, latest.signature, resolvedPublicKey);
+        if (!isValid) {
+          throw new Error(`Signature verification failed for package ${packageName}.`);
+        }
       }
 
       // Simulate unpacking/extracting files to targetDir

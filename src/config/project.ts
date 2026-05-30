@@ -1,4 +1,5 @@
 import * as fs from "node:fs";
+import * as fsPromises from "node:fs/promises";
 import * as path from "node:path";
 import { z } from "zod";
 
@@ -24,6 +25,11 @@ const ProjectConfigSchemaRaw = z.object({
     .optional(),
   exclude: z.array(z.string()).default([]),
   plugins: z.array(z.string()).default([]),
+  scan: z
+    .object({
+      entropyEnabled: z.boolean().optional(),
+    })
+    .optional(),
 });
 
 const ProjectConfigSchema = ProjectConfigSchemaRaw.transform((data) => {
@@ -55,6 +61,16 @@ export function loadProjectConfig(projectRoot: string): ProjectConfig | null {
   if (!fs.existsSync(configPath)) return null;
   try {
     const raw = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+    return ProjectConfigSchema.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+export async function loadProjectConfigAsync(projectRoot: string): Promise<ProjectConfig | null> {
+  const configPath = path.join(projectRoot, ".bp.json");
+  try {
+    const raw = JSON.parse(await fsPromises.readFile(configPath, "utf-8"));
     return ProjectConfigSchema.parse(raw);
   } catch {
     return null;

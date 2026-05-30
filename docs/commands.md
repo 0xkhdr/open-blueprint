@@ -62,7 +62,9 @@ Validates blueprint structural and semantic integrity.
   * `--fix`: Attempt auto-correction of structural anomalies
   * `--watch`: Watch files and re-validate on change
   * `--fail-on <level>`: Severity level to trigger non-zero exit code
+  * `--entropy-scan`: Enable entropy-based high-entropy string detection (opt-in; also configurable via `scan.entropyEnabled: true` in `.bp.json`)
 * **Example**: `bp verify --level all --watch`
+* **Example**: `bp verify --entropy-scan`
 * **Error codes**: [4](troubleshooting.md#code-4) Structural · [5](troubleshooting.md#code-5) Semantic · [6](troubleshooting.md#code-6) Drift · [1](troubleshooting.md#code-1) Unexpected error
 
 ### `bp sync`

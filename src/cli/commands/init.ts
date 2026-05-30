@@ -91,7 +91,8 @@ function resolveCodexCommandsPath(backend: string): string | null {
     if (!rawBase) return null;
     const base = path.resolve(path.normalize(rawBase));
     const resolved = path.resolve(path.normalize(path.join(base, "prompts")));
-    if (!resolved.startsWith(base + path.sep) && resolved !== base) {
+    const rel = path.relative(base, resolved);
+    if (rel.startsWith("..") || path.isAbsolute(rel)) {
       throw new SecurityError("Path traversal detected in environment variable");
     }
     return resolved;

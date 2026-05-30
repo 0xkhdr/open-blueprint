@@ -1,6 +1,8 @@
 import * as fs from "node:fs";
+import * as fsPromises from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
+import { z } from "zod";
 import { loadProjectConfig } from "../config/project.js";
 import type { Fingerprint } from "../detector/fingerprint.js";
 import { enrichFingerprint } from "../detector/index.js";
@@ -9,6 +11,7 @@ import { RegistryClient } from "../registry/client.js";
 import { normalizeError } from "../utils/errors.js";
 import { type RenderContext, shouldRenderTemplate } from "./conditional.js";
 import { registerPartials } from "./engine.js";
+import { TemplateVarsValidationError } from "./errors.js";
 import { hasTemplateMetadata, parseTemplateMetadata, stripMetadata } from "./metadata.js";
 import { renderFromRegistry } from "./registry.js";
 import { mergeRiskTemplates, resolveRiskTemplatePack } from "./risk-selector.js";
@@ -22,16 +25,69 @@ export interface TemplaterOptions {
   dryRun?: boolean | undefined;
   force?: boolean | undefined;
   verbose?: boolean | undefined;
-  vars?: Record<string, string> | undefined;
+  vars?: Record<string, unknown> | undefined;
 }
 
 // Shell metacharacters that could enable injection if not sanitized
 const SHELL_META_RE = /[;&|`$(){}[\]<>\\!#~]/g;
 
-export function sanitizeTemplateVars(vars: Record<string, string>): Record<string, string> {
-  const sanitized: Record<string, string> = {};
+const BLOCKED_HBS_KEYS = new Set(["if", "unless", "each", "with", "lookup", "log"]);
+const MAX_STRING_LENGTH = 10_000;
+const MAX_DEPTH = 5;
+
+function checkDepth(value: unknown, depth: number, path: string, issues: string[]): void {
+  if (depth > MAX_DEPTH) {
+    issues.push(`${path}: nesting depth exceeds limit of ${MAX_DEPTH}`);
+    return;
+  }
+  if (typeof value === "string" && value.length > MAX_STRING_LENGTH) {
+    issues.push(`${path}: string length ${value.length} exceeds limit of ${MAX_STRING_LENGTH}`);
+    return;
+  }
+  if (value !== null && typeof value === "object") {
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      checkDepth(v, depth + 1, `${path}.${k}`, issues);
+    }
+  }
+}
+
+const VarsSchema = z.record(z.string(), z.unknown()).superRefine((vars, ctx) => {
+  for (const key of Object.keys(vars)) {
+    if (BLOCKED_HBS_KEYS.has(key)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Key "${key}" is a reserved Handlebars helper name`,
+        path: [key],
+      });
+    }
+  }
+  const issues: string[] = [];
   for (const [key, value] of Object.entries(vars)) {
-    sanitized[key] = value.replace(SHELL_META_RE, "");
+    checkDepth(value, 1, key, issues);
+  }
+  for (const issue of issues) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: issue });
+  }
+});
+
+export function sanitizeTemplateVars(vars: Record<string, unknown>): Record<string, unknown> {
+  const result = VarsSchema.safeParse(vars);
+  if (!result.success) {
+    const fields = result.error.issues.map((i) => i.message);
+    throw new TemplateVarsValidationError(
+      `Template vars validation failed: ${fields.join("; ")}`,
+      fields
+    );
+  }
+  // Strip prototype chain before deepFreeze
+  const stripped = JSON.parse(JSON.stringify(result.data)) as Record<string, unknown>;
+  const sanitized: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(stripped)) {
+    if (typeof value === "string") {
+      sanitized[key] = value.replace(SHELL_META_RE, "");
+    } else {
+      sanitized[key] = value;
+    }
   }
   return sanitized;
 }
@@ -105,23 +161,27 @@ function buildContext(fingerprint: Fingerprint): TemplateContext {
   };
 }
 
-function findTemplateFiles(templateDir: string): string[] {
+async function findTemplateFiles(templateDir: string): Promise<string[]> {
   const files: string[] = [];
 
-  function walk(dir: string): void {
-    if (!fs.existsSync(dir)) return;
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
+  async function walk(dir: string): Promise<void> {
+    try {
+      await fsPromises.access(dir);
+    } catch {
+      return;
+    }
+    const entries = await fsPromises.readdir(dir, { withFileTypes: true });
     for (const entry of entries) {
       const fullPath = path.join(dir, entry.name);
       if (entry.isDirectory()) {
-        walk(fullPath);
+        await walk(fullPath);
       } else if (entry.name.endsWith(".hbs")) {
         files.push(fullPath);
       }
     }
   }
 
-  walk(templateDir);
+  await walk(templateDir);
   return files;
 }
 
@@ -149,7 +209,7 @@ export async function runTemplater(
 
   // Register base partials
   const basePartialsDir = path.join(getTemplatesRoot(), "_base", "partials");
-  registerPartials(basePartialsDir);
+  await registerPartials(basePartialsDir);
 
   const results: WriteResult[] = [];
   let basePackName = "";
@@ -183,12 +243,12 @@ export async function runTemplater(
   const pack = resolveTemplatePack(fingerprint, backend, templateOverride);
   const ctx = buildContext(fingerprint);
   const sanitizedVars = vars ? sanitizeTemplateVars(vars) : {};
-  const context = { ...(ctx as unknown as Record<string, unknown>), ...sanitizedVars };
+  const context = { ...(ctx as unknown as Record<string, unknown>), ...(sanitizedVars as Record<string, unknown>) };
 
-  const baseFiles = findTemplateFiles(pack.directory);
+  const baseFiles = await findTemplateFiles(pack.directory);
   const riskTier = ctx.risk_tier ?? "low";
   const riskDir = resolveRiskTemplatePack(pack.directory, riskTier);
-  const riskFiles = riskDir ? findTemplateFiles(riskDir) : [];
+  const riskFiles = riskDir ? await findTemplateFiles(riskDir) : [];
   const templateFiles = mergeRiskTemplates(baseFiles, riskFiles);
 
   const renderCtx: RenderContext = {
@@ -216,7 +276,7 @@ export async function runTemplater(
     }
 
     const templateName = path.relative(pack.directory, templateFile);
-    const raw = fs.readFileSync(templateFile, "utf-8");
+    const raw = await fsPromises.readFile(templateFile, "utf-8");
     const source = hasTemplateMetadata(meta) ? stripMetadata(raw) : raw;
     const rendered = renderFromRegistry(
       backend,
@@ -241,18 +301,22 @@ export async function runTemplater(
 
   // Write .blueprintignore if not exists
   const ignoreFile = path.join(projectRoot, ".blueprintignore");
-  if (!isExtendedRun && !fs.existsSync(ignoreFile) && !dryRun) {
-    fs.writeFileSync(
-      ignoreFile,
-      "# Files and directories bp will not overwrite\n# Add paths relative to project root\n",
-      "utf-8"
-    );
+  if (!isExtendedRun && !dryRun) {
+    try {
+      await fsPromises.access(ignoreFile);
+    } catch {
+      await fsPromises.writeFile(
+        ignoreFile,
+        "# Files and directories bp will not overwrite\n# Add paths relative to project root\n",
+        "utf-8"
+      );
+    }
   }
 
   // Write .bp-fingerprint.json
   const fingerprintFile = path.join(projectRoot, ".bp-fingerprint.json");
   if (!isExtendedRun && !dryRun) {
-    fs.writeFileSync(fingerprintFile, JSON.stringify(fingerprint, null, 2), "utf-8");
+    await fsPromises.writeFile(fingerprintFile, JSON.stringify(fingerprint, null, 2), "utf-8");
   }
 
   return {

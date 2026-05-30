@@ -165,7 +165,7 @@ export function createSyncCommand(): Command {
         });
 
         // Run structural check first (required for meaningful drift analysis)
-        const structuralErrors = validateStructuralBatch(files, pack.manifest);
+        const structuralErrors = await validateStructuralBatch(files, pack.manifest);
         const structuralHardFail = structuralErrors.some((e) => e.severity === "error");
 
         // Run drift analysis

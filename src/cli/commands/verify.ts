@@ -129,6 +129,7 @@ export function createVerifyCommand(): Command {
     .option("--fix", "Auto-correct unambiguous structural issues", false)
     .option("--watch", "Re-validate on file change (debounced 300ms)", false)
     .option("--fail-on <level>", "Exit non-zero only at this severity level", "logical")
+    .option("--entropy-scan", "Enable entropy-based secret detection", false)
     .action(
       async (
         pathsArg: string[] | undefined,
@@ -138,6 +139,7 @@ export function createVerifyCommand(): Command {
           fix: boolean;
           watch: boolean;
           failOn: string;
+          entropyScan: boolean;
         }
       ) => {
         const paths = pathsArg && pathsArg.length > 0 ? pathsArg : ["."];

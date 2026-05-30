@@ -1,4 +1,4 @@
-import * as fs from "node:fs";
+import * as fsPromises from "node:fs/promises";
 import matter from "gray-matter";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
@@ -39,8 +39,8 @@ function fileType(
   return null;
 }
 
-function checkEncoding(filePath: string): ValidationError | null {
-  const buf = fs.readFileSync(filePath);
+async function checkEncoding(filePath: string): Promise<ValidationError | null> {
+  const buf = await fsPromises.readFile(filePath);
   // Check for BOM (EF BB BF for UTF-8 BOM)
   if (buf.length >= 3 && buf[0] === 0xef && buf[1] === 0xbb && buf[2] === 0xbf) {
     return {
@@ -67,11 +67,11 @@ function checkEncoding(filePath: string): ValidationError | null {
   return null;
 }
 
-function checkFileSize(
+async function checkFileSize(
   filePath: string,
   ftype: "anchor" | "rules" | "skills" | "agents" | "hooks",
   manifest: BackendManifest
-): ValidationError | null {
+): Promise<ValidationError | null> {
   const limits = manifest.max_file_sizes;
   const limit: number | undefined =
     ftype === "anchor"
@@ -86,7 +86,12 @@ function checkFileSize(
 
   if (limit === undefined) return null;
 
-  const stat = fs.statSync(filePath);
+  let stat: Awaited<ReturnType<typeof fsPromises.stat>>;
+  try {
+    stat = await fsPromises.stat(filePath);
+  } catch {
+    return null;
+  }
   if (stat.size > limit) {
     return {
       file: filePath,
@@ -275,10 +280,12 @@ function checkMarkdownWellformedness(filePath: string, content: string): Validat
   return errors;
 }
 
-export function validateStructural(filePath: string, manifest: BackendManifest): ValidationError[] {
+export async function validateStructural(filePath: string, manifest: BackendManifest): Promise<ValidationError[]> {
   const errors: ValidationError[] = [];
 
-  if (!fs.existsSync(filePath)) {
+  try {
+    await fsPromises.access(filePath);
+  } catch {
     errors.push({
       file: filePath,
       type: "FILE_NOT_FOUND",
@@ -289,17 +296,17 @@ export function validateStructural(filePath: string, manifest: BackendManifest):
     return errors;
   }
 
-  const encodingError = checkEncoding(filePath);
+  const encodingError = await checkEncoding(filePath);
   if (encodingError) {
     errors.push(encodingError);
     return errors; // Can't proceed if encoding is invalid
   }
 
-  const content = fs.readFileSync(filePath, "utf-8");
+  const content = await fsPromises.readFile(filePath, "utf-8");
   const ftype = fileType(filePath, manifest);
 
   if (ftype !== null && ftype !== "hooks") {
-    const sizeError = checkFileSize(filePath, ftype, manifest);
+    const sizeError = await checkFileSize(filePath, ftype, manifest);
     if (sizeError) errors.push(sizeError);
 
     if (filePath.endsWith(".md")) {
@@ -313,14 +320,10 @@ export function validateStructural(filePath: string, manifest: BackendManifest):
   return errors;
 }
 
-export function validateStructuralBatch(
+export async function validateStructuralBatch(
   files: string[],
   manifest: BackendManifest
-): ValidationError[] {
-  const allErrors: ValidationError[] = [];
-  for (const file of files) {
-    const fileErrors = validateStructural(file, manifest);
-    allErrors.push(...fileErrors);
-  }
-  return allErrors;
+): Promise<ValidationError[]> {
+  const results = await Promise.all(files.map((file) => validateStructural(file, manifest)));
+  return results.flat();
 }
