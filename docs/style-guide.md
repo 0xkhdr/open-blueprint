@@ -66,7 +66,7 @@ bp verify --level semantic
 - Link to other docs using relative paths: `[Getting Started](getting-started.md)`.
 - Always link to the semantic filename, never the old numeric prefix form (`01-getting-started.md`).
 - Anchor links use the heading text lowercased with spaces replaced by hyphens: `#error-handling`.
-- External URLs must use HTTPS. Do not embed bare URLs — always wrap in link syntax: `[text](url)`.
+- External URLs must use HTTPS. Do not embed bare URLs — always wrap in link syntax: `[text](https://example.com)`.
 - Every cross-link is checked by the `docs-health` CI job; broken links block merge.
 
 ---

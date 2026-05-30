@@ -62,12 +62,44 @@ export function createCostCommand(): Command {
     });
 
   cmd
-    .command("budget")
-    .description("Show budget summary")
+    .command("budget [limit]")
+    .description("Show or set monthly cost budget limit")
     .option("--json", "Output as JSON")
     .argument("[project-root]", "Project root directory", process.cwd())
-    .action((projectRoot: string, opts: { json?: boolean }) => {
+    .action((limitArg: string | undefined, projectRoot: string, opts: { json?: boolean }) => {
       const ir = loadIR(projectRoot);
+      
+      if (limitArg !== undefined) {
+        const limit = parseFloat(limitArg);
+        if (Number.isNaN(limit) || limit < 0) {
+          throw new Error("Budget limit must be a positive number.");
+        }
+        if (!ir.cost) {
+          ir.cost = {
+            monthly_budget_usd: limit,
+            cost_tracking_enabled: true,
+            token_tracking_enabled: true,
+            cost_per_token_usd: 0.00001,
+            estimated_monthly_tokens: 1000000,
+            cost_attribution_level: "agent",
+            per_agent_budgets: [],
+          };
+        } else {
+          ir.cost.monthly_budget_usd = limit;
+        }
+
+        // Save back
+        const bpPath = path.join(projectRoot, ".claude", "blueprint.json");
+        fs.writeFileSync(bpPath, JSON.stringify(ir, null, 2), "utf-8");
+
+        if (opts.json) {
+          console.log(JSON.stringify({ monthly_budget_usd: limit, status: "updated" }));
+        } else {
+          console.log(`Monthly budget limit successfully updated to $${limit.toFixed(2)}`);
+        }
+        return;
+      }
+
       const cost = ir.cost;
 
       if (!cost) {
@@ -100,6 +132,53 @@ export function createCostCommand(): Command {
         for (const entry of cost.per_agent_budgets) {
           console.log(`  ${entry.agent_name}: $${entry.monthly_budget_usd.toFixed(2)}/mo`);
         }
+      }
+    });
+
+  cmd
+    .command("attribution [level]")
+    .description("Show or configure cost tracking attribution (agent|skill|rule)")
+    .option("--json", "Output as JSON")
+    .argument("[project-root]", "Project root directory", process.cwd())
+    .action((levelArg: string | undefined, projectRoot: string, opts: { json?: boolean }) => {
+      const ir = loadIR(projectRoot);
+
+      if (levelArg !== undefined) {
+        const level = levelArg.trim().toLowerCase();
+        if (level !== "agent" && level !== "skill" && level !== "rule") {
+          throw new Error("Attribution level must be one of: agent, skill, rule");
+        }
+        if (!ir.cost) {
+          ir.cost = {
+            monthly_budget_usd: 1000,
+            cost_tracking_enabled: true,
+            token_tracking_enabled: true,
+            cost_per_token_usd: 0.00001,
+            estimated_monthly_tokens: 1000000,
+            cost_attribution_level: level as "agent" | "skill" | "rule",
+            per_agent_budgets: [],
+          };
+        } else {
+          ir.cost.cost_attribution_level = level as "agent" | "skill" | "rule";
+        }
+
+        // Save back
+        const bpPath = path.join(projectRoot, ".claude", "blueprint.json");
+        fs.writeFileSync(bpPath, JSON.stringify(ir, null, 2), "utf-8");
+
+        if (opts.json) {
+          console.log(JSON.stringify({ cost_attribution_level: level, status: "updated" }));
+        } else {
+          console.log(`Cost tracking attribution level successfully configured to "${level}"`);
+        }
+        return;
+      }
+
+      const currentLevel = ir.cost?.cost_attribution_level ?? "agent";
+      if (opts.json) {
+        console.log(JSON.stringify({ cost_attribution_level: currentLevel }));
+      } else {
+        console.log(`Current cost tracking attribution level: "${currentLevel}"`);
       }
     });
 

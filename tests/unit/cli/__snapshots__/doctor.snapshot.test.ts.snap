@@ -38,5 +38,9 @@ exports[`bp doctor output format snapshots > doctor command options list matches
     "description": "Output results as JSON",
     "flags": "--json",
   },
+  {
+    "description": "Include cost estimation report",
+    "flags": "--cost",
+  },
 ]
 `;

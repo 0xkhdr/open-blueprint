@@ -56,7 +56,7 @@ Documentation follows a progressive-disclosure structure. Read only what you nee
 * **[Core Philosophy](docs/philosophy.md)** — The 5 core pillars of open-blueprint.
 * **[Workflows & Guides](docs/workflows.md)** — Integration workflows for solo devs, team patterns, and enterprise setups.
 * **[Diagnostics & Troubleshooting](docs/troubleshooting.md)** — Exit codes 0–10 decoder and agent troubleshooting guide.
-* **[Agent Reference](agents.md)** — Agent lifecycle, communication protocols, state management, error handling, and extension points.
+* **[Agent Reference](AGENTS.md)** — Agent lifecycle, communication protocols, state management, error handling, and extension points.
 
 ### Conceptual & Reference
 

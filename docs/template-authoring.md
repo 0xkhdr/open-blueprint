@@ -80,7 +80,7 @@ Iterate over topological directories or active languages to list boundaries:
 ```markdown
 # Monitored Directories
 {{#each src_dirs}}
-* Directory: [{{this}}](./{{this}}) must follow standard conventions.
+* Directory: `{{this}}` must follow standard conventions.
 {{/each}}
 ```
 

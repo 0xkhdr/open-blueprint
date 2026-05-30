@@ -154,7 +154,7 @@ bp doctor --cost --actual-usage
 ```bash
 curl -X POST -H 'Content-type: application/json' \
   --data '{"blocks":[{"type":"section","text":{"type":"plain_text","text":"Test"}}]}' \
-  YOUR_WEBHOOK_URL
+  <slack-webhook-url>
 ```
 
 ---
@@ -163,4 +163,4 @@ curl -X POST -H 'Content-type: application/json' \
 
 - [Observability & Cost Governance](observability.md) — telemetry, budgets, alerting
 - [CLI Reference](commands.md) — all `bp` commands with options
-- [Agent Reference](../agents.md) — error handling and recovery patterns
+- [Agent Reference](../AGENTS.md) — error handling and recovery patterns

@@ -115,6 +115,7 @@ export function createDoctorCommand(): Command {
     .option("--risk-audit", "Print risk tier classification and escalation runbook")
     .option("--env-template", "Generate .env.template from process.env references")
     .option("--json", "Output results as JSON")
+    .option("--cost", "Include cost estimation report")
     .action(
       async (opts: {
         tool?: string;
@@ -125,6 +126,7 @@ export function createDoctorCommand(): Command {
         riskAudit?: boolean;
         envTemplate?: boolean;
         json?: boolean;
+        cost?: boolean;
       }) => {
         const cwd = process.cwd();
         const startTime = performance.now();
@@ -573,6 +575,28 @@ export function createDoctorCommand(): Command {
               return new OpenDevAdapter();
             default:
               return new GenericAdapter();
+          }
+        }
+
+        // --- Cost report option ---
+        if (opts.cost) {
+          try {
+            const { generateCostDashboard } = await import("../../observability/dashboard.js");
+            const { BlueprintIRSchema } = await import("../../translator/ir.js");
+            const bpPath = path.join(cwd, ".claude", "blueprint.json");
+            if (fs.existsSync(bpPath)) {
+              const raw = JSON.parse(fs.readFileSync(bpPath, "utf-8")) as unknown;
+              const result = BlueprintIRSchema.safeParse(raw);
+              if (result.success) {
+                const dashboard = generateCostDashboard(result.data);
+                console.log(chalk.bold.cyan("\n💵 Cost Estimation Report:"));
+                console.log(dashboard);
+              }
+            } else {
+              console.log(chalk.yellow("\n⚠ Cost report skipped: No blueprint found at .claude/blueprint.json"));
+            }
+          } catch (e) {
+            console.log(chalk.yellow(`\n⚠ Cost report failed: ${normalizeError(e).message}`));
           }
         }
 

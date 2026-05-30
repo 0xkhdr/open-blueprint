@@ -32,6 +32,36 @@ const ALLOWED_HELPERS: Record<string, Handlebars.HelperDelegate> = {
     val !== undefined && val !== null && val !== "" ? val : fallback,
   year: () => new Date().getFullYear(),
   date: () => new Date().toISOString().split("T")[0],
+  hasFeature: function (this: any, feature: unknown, options: any) {
+    const ctx = options?.data?.root || this;
+    if (!ctx) return false;
+    const featStr = String(feature).toLowerCase();
+    if (ctx.security_signals && typeof ctx.security_signals === "object") {
+      const sigKey = `has_${featStr}`;
+      if (sigKey in ctx.security_signals) {
+        return !!(ctx.security_signals as any)[sigKey];
+      }
+    }
+    if (featStr === "docker") return !!ctx.security_signals?.has_docker;
+    if (featStr === "monorepo") return ctx.project?.type === "monorepo";
+    if (featStr === "cicd") return !!ctx.tooling?.ci_system;
+    return false;
+  },
+  riskGte: function (this: any, targetTier: unknown, options: any) {
+    const ctx = options?.data?.root || this;
+    if (!ctx) return false;
+    const currentTier = ctx.risk_tier || ctx.riskTier || "low";
+    const currentRank = RISK_RANKS[String(currentTier).toLowerCase()] ?? 0;
+    const targetRank = RISK_RANKS[String(targetTier).toLowerCase()] ?? 0;
+    return currentRank >= targetRank;
+  },
+};
+
+const RISK_RANKS: Record<string, number> = {
+  low: 0,
+  medium: 1,
+  high: 2,
+  critical: 3,
 };
 
 const templateCache = new Map<string, HandlebarsTemplateDelegate>();

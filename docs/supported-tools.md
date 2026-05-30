@@ -20,19 +20,19 @@
 | `auggie` | Auggie | `.auggie/skills` | `.auggie/commands` | `:` | `.md` | |
 | `bob` | Bob | `.bob/skills` | `.bob/commands` | `:` | `.md` | |
 | `cline` | Cline | `.cline/workflows/skills` | `.cline/workflows/commands` | `-` | `.md` | Workflows path |
-| `codebuddy` | CodeBuddy | `.codebuddy/skills` | `.codebuddy/commands` | `:` | `.md` | |
+| `codebuddy` | CodeBuddy | `.codebuddy/.opsx/skills` | `.codebuddy/.opsx/commands` | `:` | `.md` | Nested .opsx path |
 | `continue` | Continue | `.continue/skills` | `.continue/commands` | `-` | `.prompt` | |
-| `costrict` | Costrict | `.costrict/skills` | `.costrict/commands` | `bare` | `.md` | |
-| `crush` | Crush | `.crush/skills` | `.crush/commands` | `:` | `.md` | |
+| `costrict` | Costrict | `.costrict/config/opsx/skills` | `.costrict/config/opsx/commands` | `bare` | `.md` | Nested config path |
+| `crush` | Crush | `.crush/.opsx/skills` | `.crush/.opsx/commands` | `:` | `.md` | Nested .opsx path |
 | `factory` | Factory | `.factory/skills` | `.factory/commands` | `:` | `.md` | |
 | `forgecode` | Forge Code | `.forgecode/skills` | — | `skill` | — | Skill-only |
 | `iflow` | iFlow | `.iflow/skills` | `.iflow/commands` | `:` | `.md` | |
 | `junie` | Junie | `.junie/skills` | `.junie/commands` | `:` | `.md` | |
 | `kilocode` | Kilo Code | `.kilocode/workflows/skills` | `.kilocode/workflows/commands` | `-` | `.md` | Workflows path |
 | `kimi` | Kimi | `.kimi/skills` | — | `skill` | — | Skill-only |
-| `lingma` | Lingma | `.lingma/skills` | `.lingma/commands` | `:` | `.md` | |
+| `lingma` | Lingma | `.lingma/.opsx/skills` | `.lingma/.opsx/commands` | `:` | `.md` | Nested .opsx path |
 | `opencode` | OpenCode | `.opencode/skills` | `.opencode/commands` | `:` | `.md` | |
-| `qoder` | Qoder | `.qoder/skills` | `.qoder/commands` | `:` | `.md` | |
+| `qoder` | Qoder | `.qoder/.opsx/skills` | `.qoder/.opsx/commands` | `:` | `.md` | Nested .opsx path |
 | `qwen` | Qwen | `.qwen/skills` | `.qwen/commands` | `bare` | `.toml` | TOML format |
 | `roocode` | Roo Code | `.roocode/skills` | `.roocode/commands` | `:` | `.md` | |
 | `trae` | Trae | `.trae/skills` | — | `bare` | — | Skill-only |
