@@ -8,6 +8,7 @@ import {
   KNOWN_UI_FRAMEWORKS,
 } from "../constants.js";
 import { logger } from "../logger.js";
+import { startSpan } from "../telemetry/tracer.js";
 import { type FileSystem, RealFileSystem } from "../utils/fs.js";
 import { detectEnterpriseSignals, type EnterpriseSignals } from "./enterprise-signals.js";
 import type { Fingerprint } from "./fingerprint.js";
@@ -16,6 +17,7 @@ import { detectFrameworks } from "./frameworks.js";
 import { detectLanguages } from "./languages.js";
 import { detectSecurity } from "./security.js";
 import { detectTooling } from "./tooling.js";
+import { parseWorkspacePackages } from "./workspace-parser.js";
 
 export type RiskTier = "low" | "medium" | "high" | "critical";
 export type ApprovalMode = "auto" | "confirm" | "read-only";
@@ -278,50 +280,62 @@ export async function detect(
   projectRoot: string,
   fs: FileSystem = new RealFileSystem()
 ): Promise<Fingerprint> {
-  const absoluteRoot = path.resolve(projectRoot);
+  return startSpan("bp.detect", async () => {
+    const absoluteRoot = path.resolve(projectRoot);
 
-  if (!(await fileExists(absoluteRoot, fs))) {
-    throw new DetectorError(`Project root does not exist: ${absoluteRoot}`);
-  }
+    if (!(await fileExists(absoluteRoot, fs))) {
+      throw new DetectorError(`Project root does not exist: ${absoluteRoot}`);
+    }
 
-  const [languages, frameworks, tooling, security_signals, directory_topology] = await Promise.all([
-    Promise.resolve().then(() => detectLanguages(absoluteRoot)),
-    Promise.resolve().then(() => detectFrameworks(absoluteRoot)),
-    Promise.resolve().then(() => detectTooling(absoluteRoot)),
-    Promise.resolve().then(() => detectSecurity(absoluteRoot)),
-    scanDirectoryTopology(absoluteRoot, fs),
-  ]);
+    const [languages, frameworks, tooling, security_signals, directory_topology] = await Promise.all([
+      Promise.resolve().then(() => detectLanguages(absoluteRoot)),
+      Promise.resolve().then(() => detectFrameworks(absoluteRoot)),
+      Promise.resolve().then(() => detectTooling(absoluteRoot)),
+      Promise.resolve().then(() => detectSecurity(absoluteRoot)),
+      scanDirectoryTopology(absoluteRoot, fs),
+    ]);
 
-  const [name, type, git_workflow, entry_points] = await Promise.all([
-    detectProjectName(absoluteRoot, fs),
-    detectProjectType(absoluteRoot, fs),
-    detectGitWorkflow(absoluteRoot, fs),
-    detectEntryPoints(absoluteRoot, frameworks, fs),
-  ]);
+    const [name, type, git_workflow, entry_points] = await Promise.all([
+      detectProjectName(absoluteRoot, fs),
+      detectProjectType(absoluteRoot, fs),
+      detectGitWorkflow(absoluteRoot, fs),
+      detectEntryPoints(absoluteRoot, frameworks, fs),
+    ]);
 
-  const fingerprint = {
-    version: "1.0" as const,
-    detected_at: new Date().toISOString(),
-    project: {
-      name,
-      root: absoluteRoot,
-      type,
-      git_workflow,
-    },
-    languages,
-    frameworks,
-    entry_points,
-    tooling,
-    directory_topology,
-    security_signals,
-  };
+    let workspacePackages: string[] = [];
+    if (type === "monorepo") {
+      try {
+        workspacePackages = await parseWorkspacePackages(absoluteRoot, fs);
+      } catch (err) {
+        logger.warn({ err }, "Failed to parse workspace packages");
+      }
+    }
 
-  const result = FingerprintSchema.safeParse(fingerprint);
-  if (!result.success) {
-    throw new DetectorError(`Fingerprint validation failed: ${result.error.message}`, result.error);
-  }
+    const fingerprint = {
+      version: "1.0" as const,
+      detected_at: new Date().toISOString(),
+      project: {
+        name,
+        root: absoluteRoot,
+        type,
+        git_workflow,
+      },
+      languages,
+      frameworks,
+      entry_points,
+      tooling,
+      directory_topology,
+      security_signals,
+      workspacePackages,
+    };
 
-  return result.data;
+    const result = FingerprintSchema.safeParse(fingerprint);
+    if (!result.success) {
+      throw new DetectorError(`Fingerprint validation failed: ${result.error.message}`, result.error);
+    }
+
+    return result.data;
+  });
 }
 
 export function enrichFingerprint(fp: Fingerprint): EnhancedFingerprint {

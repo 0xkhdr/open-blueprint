@@ -1,5 +1,5 @@
 import * as crypto from "node:crypto";
-import * as fs from "node:fs";
+import * as fsPromises from "node:fs/promises";
 import * as path from "node:path";
 import matter from "gray-matter";
 import { logger } from "../logger.js";
@@ -12,19 +12,19 @@ export const FINGERPRINT_FILE = ".bp-fingerprint.json";
 // Fingerprint storage
 // ---------------------------------------------------------------------------
 
-export function loadStoredFingerprint(projectRoot: string): Fingerprint | null {
+export async function loadStoredFingerprint(projectRoot: string): Promise<Fingerprint | null> {
   const fp = path.join(projectRoot, FINGERPRINT_FILE);
   try {
-    const raw = fs.readFileSync(fp, "utf-8");
+    const raw = await fsPromises.readFile(fp, "utf-8");
     return JSON.parse(raw) as Fingerprint;
   } catch {
     return null;
   }
 }
 
-export function storeFingerprint(projectRoot: string, fingerprint: Fingerprint): void {
+export async function storeFingerprint(projectRoot: string, fingerprint: Fingerprint): Promise<void> {
   const fp = path.join(projectRoot, FINGERPRINT_FILE);
-  fs.writeFileSync(fp, JSON.stringify(fingerprint, null, 2), "utf-8");
+  await fsPromises.writeFile(fp, JSON.stringify(fingerprint, null, 2), "utf-8");
 }
 
 // ---------------------------------------------------------------------------
@@ -40,7 +40,6 @@ export interface DriftDelta {
 export function computeFingerprintDelta(stored: Fingerprint, current: Fingerprint): DriftDelta[] {
   const deltas: DriftDelta[] = [];
 
-  // Project type / workflow changes
   if (stored.project.type !== current.project.type) {
     deltas.push({ field: "project.type", old: stored.project.type, current: current.project.type });
   }
@@ -52,14 +51,12 @@ export function computeFingerprintDelta(stored: Fingerprint, current: Fingerprin
     });
   }
 
-  // Primary language change
   const storedPrimary = stored.languages.find((l) => l.primary)?.name;
   const currentPrimary = current.languages.find((l) => l.primary)?.name;
   if (storedPrimary !== currentPrimary) {
     deltas.push({ field: "primary_language", old: storedPrimary, current: currentPrimary });
   }
 
-  // Test command change
   if (stored.tooling.test_command !== current.tooling.test_command) {
     deltas.push({
       field: "tooling.test_command",
@@ -68,7 +65,6 @@ export function computeFingerprintDelta(stored: Fingerprint, current: Fingerprin
     });
   }
 
-  // Package manager change
   if (stored.tooling.package_manager !== current.tooling.package_manager) {
     deltas.push({
       field: "tooling.package_manager",
@@ -77,7 +73,6 @@ export function computeFingerprintDelta(stored: Fingerprint, current: Fingerprin
     });
   }
 
-  // New major frameworks
   const storedFrameworks = new Set(stored.frameworks.map((f) => f.name));
   for (const fw of current.frameworks) {
     if (!storedFrameworks.has(fw.name) && fw.confidence >= 0.8) {
@@ -92,32 +87,31 @@ export function computeFingerprintDelta(stored: Fingerprint, current: Fingerprin
 // Check 2: Entry point drift
 // ---------------------------------------------------------------------------
 
-function checkEntryPointDrift(files: string[], projectRoot: string): ValidationError[] {
+async function checkEntryPointDrift(files: string[], projectRoot: string): Promise<ValidationError[]> {
   const errors: ValidationError[] = [];
 
-  // Find the spatial anchor (CLAUDE.md)
   const anchorFile = files.find((f) => f.endsWith("CLAUDE.md") || f.endsWith("/CLAUDE.md"));
   if (!anchorFile) return errors;
 
-  const content = fs.existsSync(anchorFile)
-    ? (() => {
-        try {
-          return fs.readFileSync(anchorFile, "utf-8");
-        } catch {
-          return null;
-        }
-      })()
-    : null;
+  let content: string | null = null;
+  try {
+    content = await fsPromises.readFile(anchorFile, "utf-8");
+  } catch {
+    return errors;
+  }
   if (!content) return errors;
 
-  // Extract entry point paths from anchor (look for "Entry:" lines)
   const entryPattern = /[-*]\s*Entry(?:\s+point)?:\s*`?([^\s`\n]+)`?/gi;
   let match = entryPattern.exec(content);
   while (match !== null) {
     const entryPath = match[1];
     if (entryPath) {
       const absPath = path.join(projectRoot, entryPath);
-      if (!fs.existsSync(absPath)) {
+      const exists = await fsPromises
+        .access(absPath)
+        .then(() => true)
+        .catch(() => false);
+      if (!exists) {
         errors.push({
           file: anchorFile,
           type: "ENTRY_POINT_DRIFT",
@@ -137,28 +131,24 @@ function checkEntryPointDrift(files: string[], projectRoot: string): ValidationE
 // Check 3: Test command drift
 // ---------------------------------------------------------------------------
 
-function checkTestCommandDrift(
+async function checkTestCommandDrift(
   files: string[],
   _projectRoot: string,
   currentFingerprint: Fingerprint
-): ValidationError[] {
+): Promise<ValidationError[]> {
   const errors: ValidationError[] = [];
 
   const anchorFile = files.find((f) => f.endsWith("CLAUDE.md"));
   if (!anchorFile) return errors;
 
-  const content = fs.existsSync(anchorFile)
-    ? (() => {
-        try {
-          return fs.readFileSync(anchorFile, "utf-8");
-        } catch {
-          return null;
-        }
-      })()
-    : null;
+  let content: string | null = null;
+  try {
+    content = await fsPromises.readFile(anchorFile, "utf-8");
+  } catch {
+    return errors;
+  }
   if (!content) return errors;
 
-  // Extract test command from anchor
   const testCmdMatch = content.match(/[-*]\s*Test\s+command:\s*`([^`]+)`/i);
   if (!testCmdMatch) return errors;
 
@@ -179,7 +169,7 @@ function checkTestCommandDrift(
 }
 
 // ---------------------------------------------------------------------------
-// Check 4: Directory topology drift (new src/test dirs with no rule coverage)
+// Check 4: Directory topology drift
 // ---------------------------------------------------------------------------
 
 async function checkTopologyDrift(
@@ -189,13 +179,12 @@ async function checkTopologyDrift(
 ): Promise<ValidationError[]> {
   const errors: ValidationError[] = [];
 
-  // Collect all rule scopes
   const ruleFiles = files.filter((f) => f.includes("/rules/") && f.endsWith(".md"));
   const coveredScopes: string[] = [];
 
   for (const ruleFile of ruleFiles) {
     try {
-      const content = fs.readFileSync(ruleFile, "utf-8");
+      const content = await fsPromises.readFile(ruleFile, "utf-8");
       const parsed = matter(content);
       const data = parsed.data || {};
       const fm: Record<string, unknown> = Object.create(null);
@@ -212,7 +201,6 @@ async function checkTopologyDrift(
     }
   }
 
-  // Check each src/test dir for rule coverage
   const dirsToCheck = [
     ...currentFingerprint.directory_topology.src_dirs,
     ...currentFingerprint.directory_topology.test_dirs,
@@ -243,25 +231,24 @@ async function checkTopologyDrift(
 }
 
 // ---------------------------------------------------------------------------
-// Check 5: Dependency drift (new major deps, no corresponding skill or rule)
+// Check 5: Dependency drift
 // ---------------------------------------------------------------------------
 
-function checkDependencyDrift(
+async function checkDependencyDrift(
   files: string[],
   projectRoot: string,
   stored: Fingerprint | null,
   current: Fingerprint
-): ValidationError[] {
+): Promise<ValidationError[]> {
   const errors: ValidationError[] = [];
 
-  if (!stored) return errors; // No baseline to compare
+  if (!stored) return errors;
 
-  // Collect known rule/skill topics from frontmatter tags
   const knownTopics: string[] = [];
   for (const f of files) {
     if (!f.endsWith(".md")) continue;
     try {
-      const content = fs.readFileSync(f, "utf-8");
+      const content = await fsPromises.readFile(f, "utf-8");
       const parsed = matter(content);
       const data = parsed.data || {};
       const fm: Record<string, unknown> = Object.create(null);
@@ -281,7 +268,6 @@ function checkDependencyDrift(
     }
   }
 
-  // New frameworks = potential uncovered dependencies
   const storedFrameworks = new Set(stored.frameworks.map((f) => f.name));
   for (const fw of current.frameworks) {
     if (!storedFrameworks.has(fw.name) && fw.confidence >= 0.8) {
@@ -302,7 +288,7 @@ function checkDependencyDrift(
 }
 
 // ---------------------------------------------------------------------------
-// Check 6: Semantic/behavioral drift detection (Phase 4)
+// Check 6: Semantic/behavioral drift detection
 // ---------------------------------------------------------------------------
 
 export interface OutputSnapshot {
@@ -318,29 +304,29 @@ export function computeOutputHash(output: string): string {
 }
 
 export function computeSimilarity(hash1: string, hash2: string): number {
-  // Simple similarity based on hash distance (0-1, where 1 = identical)
-  if (hash1 === hash2) return 1.0;
-  return 0.5 + (Math.min(hash1.length, hash2.length) / Math.max(hash1.length, hash2.length)) * 0.5;
+  return hash1 === hash2 ? 1.0 : 0.0;
 }
 
-function checkRuleEffectivenessDrift(
+async function checkRuleEffectivenessDrift(
   _files: string[],
   projectRoot: string,
   _currentFingerprint: Fingerprint
-): ValidationError[] {
+): Promise<ValidationError[]> {
   const errors: ValidationError[] = [];
   const metricsFile = path.join(projectRoot, ".bp-rule-metrics.json");
 
-  // Load rule metrics if available
-  if (!fs.existsSync(metricsFile)) return errors;
+  try {
+    await fsPromises.access(metricsFile);
+  } catch {
+    return errors;
+  }
 
   try {
-    const metrics = JSON.parse(fs.readFileSync(metricsFile, "utf-8")) as Record<
+    const metrics = JSON.parse(await fsPromises.readFile(metricsFile, "utf-8")) as Record<
       string,
       { success_count: number; fail_count: number; last_executed: number }
     >;
 
-    // Check rules with zero success rate in last 30 days
     const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
     for (const [ruleId, stats] of Object.entries(metrics)) {
       const isRecent = stats.last_executed > thirtyDaysAgo;
@@ -361,21 +347,24 @@ function checkRuleEffectivenessDrift(
   return errors;
 }
 
-function checkCostDrift(projectRoot: string): ValidationError[] {
+async function checkCostDrift(projectRoot: string): Promise<ValidationError[]> {
   const errors: ValidationError[] = [];
   const costHistoryFile = path.join(projectRoot, ".bp-cost-history.json");
 
-  if (!fs.existsSync(costHistoryFile)) return errors;
+  try {
+    await fsPromises.access(costHistoryFile);
+  } catch {
+    return errors;
+  }
 
   try {
-    const history = JSON.parse(fs.readFileSync(costHistoryFile, "utf-8")) as Array<{
+    const history = JSON.parse(await fsPromises.readFile(costHistoryFile, "utf-8")) as Array<{
       timestamp: number;
       tokens_used: number;
     }>;
 
     if (history.length < 2) return errors;
 
-    // Compute baseline (first half) and current (second half)
     const midpoint = Math.floor(history.length / 2);
     const baselineTokens =
       history.slice(0, midpoint).reduce((sum, e) => sum + e.tokens_used, 0) / midpoint;
@@ -383,7 +372,6 @@ function checkCostDrift(projectRoot: string): ValidationError[] {
       history.slice(midpoint).reduce((sum, e) => sum + e.tokens_used, 0) /
       (history.length - midpoint);
 
-    // Flag if current usage > 2σ above baseline
     const stdDev = Math.sqrt(
       history
         .slice(0, midpoint)
@@ -405,19 +393,22 @@ function checkCostDrift(projectRoot: string): ValidationError[] {
   return errors;
 }
 
-function checkOutputDrift(_files: string[], projectRoot: string): ValidationError[] {
+async function checkOutputDrift(_files: string[], projectRoot: string): Promise<ValidationError[]> {
   const errors: ValidationError[] = [];
   const snapshotFile = path.join(projectRoot, ".bp-output-snapshots.json");
 
-  if (!fs.existsSync(snapshotFile)) return errors;
+  try {
+    await fsPromises.access(snapshotFile);
+  } catch {
+    return errors;
+  }
 
   try {
-    const snapshots = JSON.parse(fs.readFileSync(snapshotFile, "utf-8")) as Record<
+    const snapshots = JSON.parse(await fsPromises.readFile(snapshotFile, "utf-8")) as Record<
       string,
       OutputSnapshot[]
     >;
 
-    // For each rule with snapshots, check output similarity
     for (const [ruleId, history] of Object.entries(snapshots)) {
       if (history.length < 2) continue;
 
@@ -425,8 +416,7 @@ function checkOutputDrift(_files: string[], projectRoot: string): ValidationErro
       const previous = history.at(-2) as OutputSnapshot;
       const similarity = computeSimilarity(latest.output_hash, previous.output_hash);
 
-      // Flag significant output changes (similarity < 0.7)
-      if (similarity < 0.7) {
+      if (similarity !== 1.0) {
         errors.push({
           file: snapshotFile,
           type: "OUTPUT_DRIFT",
@@ -459,9 +449,8 @@ export async function validateDrift(
   const { projectRoot, currentFingerprint } = options;
   const allErrors: ValidationError[] = [];
 
-  const stored = loadStoredFingerprint(projectRoot);
+  const stored = await loadStoredFingerprint(projectRoot);
 
-  // Check 1: Fingerprint delta → report as warnings
   if (stored) {
     const deltas = computeFingerprintDelta(stored, currentFingerprint);
     for (const delta of deltas) {
@@ -475,21 +464,33 @@ export async function validateDrift(
     }
   }
 
-  // Checks 2–5 run regardless of stored fingerprint
-  allErrors.push(...checkEntryPointDrift(files, projectRoot));
-  allErrors.push(...checkTestCommandDrift(files, projectRoot, currentFingerprint));
-
-  // Phase 4: Semantic drift detection (Checks 6–9)
-  allErrors.push(...checkRuleEffectivenessDrift(files, projectRoot, currentFingerprint));
-  allErrors.push(...checkCostDrift(projectRoot));
-  allErrors.push(...checkOutputDrift(files, projectRoot));
-
-  const [topologyErrors, dependencyErrors] = await Promise.all([
+  const [
+    entryPointErrors,
+    testCommandErrors,
+    ruleEffectivenessErrors,
+    costErrors,
+    outputErrors,
+    topologyErrors,
+    dependencyErrors,
+  ] = await Promise.all([
+    checkEntryPointDrift(files, projectRoot),
+    checkTestCommandDrift(files, projectRoot, currentFingerprint),
+    checkRuleEffectivenessDrift(files, projectRoot, currentFingerprint),
+    checkCostDrift(projectRoot),
+    checkOutputDrift(files, projectRoot),
     checkTopologyDrift(files, projectRoot, currentFingerprint),
-    Promise.resolve(checkDependencyDrift(files, projectRoot, stored, currentFingerprint)),
+    checkDependencyDrift(files, projectRoot, stored, currentFingerprint),
   ]);
 
-  allErrors.push(...topologyErrors, ...dependencyErrors);
+  allErrors.push(
+    ...entryPointErrors,
+    ...testCommandErrors,
+    ...ruleEffectivenessErrors,
+    ...costErrors,
+    ...outputErrors,
+    ...topologyErrors,
+    ...dependencyErrors
+  );
 
   return allErrors;
 }

@@ -30,10 +30,10 @@ describe("audit-integrity", () => {
     vi.unstubAllEnvs();
   });
 
-  it("HMAC key set — entry sig matches HMAC-SHA256 over entry without sig field", () => {
+  it("HMAC key set — entry sig matches HMAC-SHA256 over entry without sig field", async () => {
     vi.stubEnv("BP_AUDIT_HMAC_KEY", "abc123");
     const al = new AuditLogger("req-hmac");
-    al.log({ command: "test", args: [], status: "success", log_level: "info" });
+    await al.log({ command: "test", args: [], status: "success", log_level: "info" });
 
     const raw = fs.readFileSync(auditFile, "utf-8").trim();
     const entry = JSON.parse(raw) as Record<string, unknown>;
@@ -43,37 +43,36 @@ describe("audit-integrity", () => {
     expect(sig).toBe(expected);
   });
 
-  it("HMAC key not set — sig is null and entry is written", () => {
+  it("HMAC key not set — sig is null and entry is written", async () => {
     vi.stubEnv("BP_AUDIT_HMAC_KEY", undefined);
     const al = new AuditLogger("req-nosig");
-    al.log({ command: "test", args: [], status: "success", log_level: "info" });
+    await al.log({ command: "test", args: [], status: "success", log_level: "info" });
 
     const raw = fs.readFileSync(auditFile, "utf-8").trim();
     const entry = JSON.parse(raw) as Record<string, unknown>;
     expect(entry.sig).toBeNull();
   });
 
-  it("tampered entry yields different HMAC than stored sig", () => {
+  it("tampered entry yields different HMAC than stored sig", async () => {
     vi.stubEnv("BP_AUDIT_HMAC_KEY", "abc123");
     const al = new AuditLogger("req-tamper");
-    al.log({ command: "verify", args: [], status: "success", log_level: "info" });
+    await al.log({ command: "verify", args: [], status: "success", log_level: "info" });
 
     const raw = fs.readFileSync(auditFile, "utf-8").trim();
     const entry = JSON.parse(raw) as Record<string, unknown>;
     const storedSig = entry.sig as string;
 
-    // Tamper with a field
     const tampered = { ...entry, command: "evil" };
     const { sig: _sig, ...rest } = tampered;
     const recomputed = createHmac("sha256", "abc123").update(JSON.stringify(rest)).digest("hex");
     expect(recomputed).not.toBe(storedSig);
   });
 
-  it("correlation ID propagates to all entries for a command", () => {
+  it("correlation ID propagates to all entries for a command", async () => {
     vi.stubEnv("BP_AUDIT_HMAC_KEY", undefined);
     const al = new AuditLogger("req-abc");
-    al.log({ command: "init", args: [], status: "success", log_level: "info" });
-    al.log({ command: "init", args: ["step2"], status: "success", log_level: "info" });
+    await al.log({ command: "init", args: [], status: "success", log_level: "info" });
+    await al.log({ command: "init", args: ["step2"], status: "success", log_level: "info" });
 
     const lines = fs.readFileSync(auditFile, "utf-8").trim().split("\n");
     for (const line of lines) {
@@ -82,37 +81,36 @@ describe("audit-integrity", () => {
     }
   });
 
-  it("AuditLogger without correlation ID falls back to session-scoped UUID", () => {
+  it("AuditLogger without correlation ID falls back to session-scoped UUID", async () => {
     vi.stubEnv("BP_AUDIT_HMAC_KEY", undefined);
     const al = new AuditLogger();
-    al.log({ command: "cmd1", args: [], status: "success", log_level: "info" });
-    al.log({ command: "cmd2", args: [], status: "success", log_level: "info" });
+    await al.log({ command: "cmd1", args: [], status: "success", log_level: "info" });
+    await al.log({ command: "cmd2", args: [], status: "success", log_level: "info" });
 
     const lines = fs.readFileSync(auditFile, "utf-8").trim().split("\n");
     const ids = lines.map((l) => (JSON.parse(l) as Record<string, unknown>).correlation_id);
-    // Both entries share the same session ID
     expect(ids[0]).toBe(ids[1]);
     expect(typeof ids[0]).toBe("string");
   });
 
-  it("setCorrelationId updates future entries", () => {
+  it("setCorrelationId updates future entries", async () => {
     vi.stubEnv("BP_AUDIT_HMAC_KEY", undefined);
     const al = new AuditLogger("original");
-    al.log({ command: "a", args: [], status: "success", log_level: "info" });
+    await al.log({ command: "a", args: [], status: "success", log_level: "info" });
     al.setCorrelationId("updated");
-    al.log({ command: "b", args: [], status: "success", log_level: "info" });
+    await al.log({ command: "b", args: [], status: "success", log_level: "info" });
 
     const lines = fs.readFileSync(auditFile, "utf-8").trim().split("\n");
     expect((JSON.parse(lines[0]!) as Record<string, unknown>).correlation_id).toBe("original");
     expect((JSON.parse(lines[1]!) as Record<string, unknown>).correlation_id).toBe("updated");
   });
 
-  it("correlation ID from runWithCorrelationId context takes precedence", () => {
+  it("correlation ID from runWithCorrelationId context takes precedence", async () => {
     vi.stubEnv("BP_AUDIT_HMAC_KEY", undefined);
     const al = new AuditLogger("fallback-id");
 
-    runWithCorrelationId("context-id", () => {
-      al.log({ command: "cmd", args: [], status: "success", log_level: "info" });
+    await runWithCorrelationId("context-id", async () => {
+      await al.log({ command: "cmd", args: [], status: "success", log_level: "info" });
     });
 
     const raw = fs.readFileSync(auditFile, "utf-8").trim();

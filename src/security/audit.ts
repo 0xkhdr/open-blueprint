@@ -1,5 +1,6 @@
 import { createHmac, randomUUID } from "node:crypto";
 import * as fs from "node:fs";
+import * as fsPromises from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 import { getCorrelationId, logger } from "../logger.js";
@@ -34,7 +35,7 @@ export class AuditLogger {
     this.correlationId = id;
   }
 
-  log(entry: Omit<AuditLogEntry, "timestamp" | "user" | "correlation_id" | "sig">): void {
+  async log(entry: Omit<AuditLogEntry, "timestamp" | "user" | "correlation_id" | "sig">): Promise<void> {
     const hmacKey = process.env.BP_AUDIT_HMAC_KEY ?? null;
     if (!hmacKey) {
       logger.warn("Audit HMAC key not configured; log integrity cannot be verified");
@@ -63,20 +64,24 @@ export class AuditLogger {
     const auditFile = path.join(auditDir, `audit-${dateStr}.log`);
 
     try {
-      if (!fs.existsSync(auditDir)) {
-        fs.mkdirSync(auditDir, { recursive: true });
-      }
-      fs.appendFileSync(auditFile, `${JSON.stringify(fullEntry)}\n`, "utf-8");
+      await fsPromises.mkdir(auditDir, { recursive: true });
+
+      await new Promise<void>((resolve, reject) => {
+        const stream = fs.createWriteStream(auditFile, { flags: "a" });
+        stream.write(`${JSON.stringify(fullEntry)}\n`, "utf-8", (err) => {
+          stream.end();
+          if (err) reject(err);
+          else resolve();
+        });
+      });
 
       const activeLink = path.join(auditDir, "audit.log");
       try {
-        if (fs.existsSync(activeLink) || fs.lstatSync(activeLink).isSymbolicLink()) {
-          fs.unlinkSync(activeLink);
-        }
+        await fsPromises.unlink(activeLink).catch(() => {});
+        await fsPromises.symlink(auditFile, activeLink);
       } catch {
-        // symlink absent — ignore
+        // symlink update non-critical
       }
-      fs.symlinkSync(auditFile, activeLink);
     } catch (err) {
       logger.warn({ err }, "Audit log write failed");
     }
@@ -87,6 +92,8 @@ const defaultAuditLogger = new AuditLogger();
 
 export function logAudit(
   entry: Omit<AuditLogEntry, "timestamp" | "user" | "correlation_id" | "sig">
-): void {
-  defaultAuditLogger.log(entry);
+): Promise<void> {
+  return defaultAuditLogger.log(entry).catch((err: unknown) => {
+    logger.warn({ err }, "Audit log write failed");
+  });
 }

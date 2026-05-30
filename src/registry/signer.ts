@@ -1,5 +1,5 @@
 import * as crypto from "node:crypto";
-import * as fs from "node:fs";
+import * as fsPromises from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 
@@ -36,15 +36,16 @@ export function verifySignature(data: Buffer, signature: string, publicKey: stri
   }
 }
 
-export function loadPublicKey(): string | null {
+export async function loadPublicKey(): Promise<string | null> {
   const envKey = process.env.BP_REGISTRY_PUBLIC_KEY;
   if (envKey) return envKey;
 
   const keyringDir = path.join(os.homedir(), ".bp", "keys");
   try {
-    const files = fs.readdirSync(keyringDir);
+    const files = await fsPromises.readdir(keyringDir);
     const keyFile = files.find((f) => f.endsWith(".pub") || f.endsWith(".pem"));
-    if (keyFile) return fs.readFileSync(path.join(keyringDir, keyFile), "utf-8").trim();
+    if (keyFile)
+      return (await fsPromises.readFile(path.join(keyringDir, keyFile), "utf-8")).trim();
   } catch {
     // keyring dir absent or unreadable
   }

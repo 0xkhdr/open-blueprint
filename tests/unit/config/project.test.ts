@@ -28,8 +28,8 @@ describe("project config", () => {
     expect(config).toBeNull();
   });
 
-  it("can initialize and save a valid v2 project configuration", () => {
-    const config = initProjectConfig(tmpDir, ["claude"]);
+  it("can initialize and save a valid v2 project configuration", async () => {
+    const config = await initProjectConfig(tmpDir, ["claude"]);
     expect(config.backends).toContain("claude");
     expect(config.primary_backend).toBe("claude");
     expect(config.exclude).toContain("dist/");
@@ -80,7 +80,7 @@ describe("project config", () => {
     expect(loaded).toBeNull();
   });
 
-  it("can round-trip arbitrary valid project config properties", () => {
+  it("can round-trip arbitrary valid project config properties", async () => {
     const original = {
       backends: ["cursor"],
       primary_backend: "cursor",
@@ -93,7 +93,7 @@ describe("project config", () => {
       exclude: ["tmp/", "coverage/"],
       plugins: ["plugin-1"],
     };
-    saveProjectConfig(tmpDir, original as Parameters<typeof saveProjectConfig>[1]);
+    await saveProjectConfig(tmpDir, original as Parameters<typeof saveProjectConfig>[1]);
 
     const loaded = loadProjectConfig(tmpDir);
     expect(loaded?.backends).toContain("cursor");

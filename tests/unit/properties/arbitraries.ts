@@ -80,6 +80,10 @@ export function fingerprintArbitrary(): fc.Arbitrary<Fingerprint> {
       has_pii: fc.option(fc.boolean(), { nil: undefined }),
       has_encryption: fc.option(fc.boolean(), { nil: undefined }),
     }),
+    workspacePackages: fc.array(
+      fc.string({ minLength: 1, maxLength: 60 }).filter((s) => /^[^\x00-\x1f\x7f]*$/.test(s)),
+      { minLength: 0, maxLength: 3 }
+    ),
   }) as fc.Arbitrary<Fingerprint>;
 }
 

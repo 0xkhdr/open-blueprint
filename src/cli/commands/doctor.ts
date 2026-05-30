@@ -1,4 +1,4 @@
-import * as fs from "node:fs";
+import * as fsPromises from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 import chalk from "chalk";
@@ -10,8 +10,8 @@ import { detect, enrichFingerprint } from "../../detector/index.js";
 import { formatGapReport, generateGapReport } from "../../enterprise/compliance-report.js";
 import { generateEnvTemplate } from "../../enterprise/env-template.js";
 import { generateEscalationRunbook } from "../../enterprise/runbooks.js";
-import { scanForSecrets } from "../../enterprise/secrets.js";
 import { BpError } from "../../errors.js";
+import { scanDirectory } from "../../security/scan.js";
 import { resolveTemplatePack } from "../../templater/selector.js";
 import { getAdapter } from "../../translator/index.js";
 import { normalizeError } from "../../utils/errors.js";
@@ -26,25 +26,20 @@ interface BackendHealthResult {
   warnings: string[];
 }
 
-function checkBackendHealth(
+async function checkBackendHealth(
   backendConfig: BackendConfig,
   projectRoot: string
-): BackendHealthResult {
+): Promise<BackendHealthResult> {
   const warnings: string[] = [];
   let skills = 0;
   let commands = 0;
 
   const skillsDir = path.join(projectRoot, backendConfig.skillsPath);
-  if (fs.existsSync(skillsDir)) {
-    try {
-      skills = fs
-        .readdirSync(skillsDir)
-        .filter((f) => !fs.statSync(path.join(skillsDir, f)).isDirectory()).length;
-    } catch {
-      warnings.push(`Cannot read skills directory: ${backendConfig.skillsPath}`);
-    }
-  } else {
-    warnings.push(`Skills directory missing: ${backendConfig.skillsPath}`);
+  try {
+    const entries = await fsPromises.readdir(skillsDir, { withFileTypes: true });
+    skills = entries.filter((e) => !e.isDirectory()).length;
+  } catch {
+    warnings.push(`Skills directory missing or unreadable: ${backendConfig.skillsPath}`);
   }
 
   if (backendConfig.supportsCommands && backendConfig.commandsPath) {
@@ -61,15 +56,10 @@ function checkBackendHealth(
       cmdDir = base;
     }
 
-    if (fs.existsSync(cmdDir)) {
-      try {
-        commands = fs
-          .readdirSync(cmdDir)
-          .filter((f) => !fs.statSync(path.join(cmdDir, f)).isDirectory()).length;
-      } catch {
-        warnings.push(`Cannot read commands directory: ${cmdDir}`);
-      }
-    } else {
+    try {
+      const entries = await fsPromises.readdir(cmdDir, { withFileTypes: true });
+      commands = entries.filter((e) => !e.isDirectory()).length;
+    } catch {
       if (backendConfig.globalHomeEnv) {
         warnings.push(
           `Global commands path missing: ${cmdDir} (set $${backendConfig.globalHomeEnv} or create the directory)`
@@ -93,6 +83,13 @@ function checkBackendHealth(
 interface DiagnosticCheck {
   name: string;
   run: () => Promise<{ status: "pass" | "warn" | "fail"; message: string; resolution?: string }>;
+}
+
+async function fileExists(p: string): Promise<boolean> {
+  return fsPromises
+    .access(p)
+    .then(() => true)
+    .catch(() => false);
 }
 
 export function createDoctorCommand(): Command {
@@ -135,20 +132,22 @@ export function createDoctorCommand(): Command {
             backendsToCheck = [opts.tool as string];
           }
 
-          const results: BackendHealthResult[] = backendsToCheck.map((id) => {
-            try {
-              const config = getBackend(id);
-              return checkBackendHealth(config, cwd);
-            } catch {
-              return {
-                id,
-                healthy: false,
-                skills: 0,
-                commands: 0,
-                warnings: [`Unknown backend: ${id}`],
-              };
-            }
-          });
+          const results = await Promise.all(
+            backendsToCheck.map(async (id) => {
+              try {
+                const config = getBackend(id);
+                return await checkBackendHealth(config, cwd);
+              } catch {
+                return {
+                  id,
+                  healthy: false,
+                  skills: 0,
+                  commands: 0,
+                  warnings: [`Unknown backend: ${id}`],
+                } as BackendHealthResult;
+              }
+            })
+          );
 
           if (opts.json) {
             console.log(JSON.stringify({ backends: results }, null, 2));
@@ -176,9 +175,9 @@ export function createDoctorCommand(): Command {
         // --- v1 config deprecation warning ---
         {
           const bpJsonPath = path.join(cwd, ".bp.json");
-          if (fs.existsSync(bpJsonPath)) {
+          if (await fileExists(bpJsonPath)) {
             try {
-              const raw = JSON.parse(fs.readFileSync(bpJsonPath, "utf-8")) as Record<
+              const raw = JSON.parse(await fsPromises.readFile(bpJsonPath, "utf-8")) as Record<
                 string,
                 unknown
               >;
@@ -198,7 +197,7 @@ export function createDoctorCommand(): Command {
         // --- Secret scan mode ---
         if (opts.secretScan) {
           console.log(chalk.bold.cyan("\n🔍 Scanning for secrets...\n"));
-          const findings = scanForSecrets(cwd);
+          const findings = await scanDirectory(cwd, { entropyEnabled: true });
           if (opts.json) {
             console.log(JSON.stringify(findings, null, 2));
           } else if (findings.length === 0) {
@@ -206,21 +205,21 @@ export function createDoctorCommand(): Command {
           } else {
             for (const f of findings) {
               const color =
-                f.severity === "critical"
+                f.severity === "error"
                   ? chalk.red
-                  : f.severity === "high"
+                  : f.severity === "warning"
                     ? chalk.yellow
                     : chalk.blue;
-              console.log(color(`[${f.severity.toUpperCase()}] ${f.pattern}`));
-              console.log(`  File: ${f.file}:${f.line}:${f.column}`);
-              console.log(`  Match: ${f.match.slice(0, 40)}...`);
+              console.log(color(`[${f.type}] ${f.file}:${f.line ?? 0}`));
+              console.log(`  ${f.message}`);
+              if (f.resolution) console.log(chalk.dim(`  → ${f.resolution}`));
               console.log();
             }
             console.log(
-              chalk.red(`Found ${findings.length} secret(s). Rotate or remove before committing.`)
+              chalk.red(`Found ${findings.length} finding(s). Rotate or remove before committing.`)
             );
           }
-          if (findings.length > 0)
+          if (findings.some((f) => f.severity === "error"))
             throw new BpError("Command failed", EXIT_CODES.GENERAL_ERROR, "CMD_ERROR", "");
         }
 
@@ -276,7 +275,7 @@ export function createDoctorCommand(): Command {
           console.log(chalk.bold.cyan("\n📄 Generating .env.template...\n"));
           const template = generateEnvTemplate(cwd);
           const outPath = path.join(cwd, ".env.template");
-          fs.writeFileSync(outPath, template, "utf-8");
+          await fsPromises.writeFile(outPath, template, "utf-8");
           if (opts.json) {
             console.log(JSON.stringify({ path: outPath, content: template }, null, 2));
           } else {
@@ -292,12 +291,11 @@ export function createDoctorCommand(): Command {
         let backend = opts.tool;
         if (!backend) {
           try {
-            const _fingerprint = await detect(cwd);
-            // Standard default or detect from existing files
-            if (fs.existsSync(path.join(cwd, ".claude"))) backend = "claude";
-            else if (fs.existsSync(path.join(cwd, ".cursor"))) backend = "cursor";
-            else if (fs.existsSync(path.join(cwd, "BLUEPRINT.md"))) backend = "generic";
-            else backend = "claude"; // default
+            await detect(cwd);
+            if (await fileExists(path.join(cwd, ".claude"))) backend = "claude";
+            else if (await fileExists(path.join(cwd, ".cursor"))) backend = "cursor";
+            else if (await fileExists(path.join(cwd, "BLUEPRINT.md"))) backend = "generic";
+            else backend = "claude";
           } catch {
             backend = "claude";
           }
@@ -318,15 +316,15 @@ export function createDoctorCommand(): Command {
             name: "spatial-anchor-presence",
             run: async () => {
               const anchorFiles = ["CLAUDE.md", "context.md", "BLUEPRINT.md"];
-              const found = anchorFiles.find((f) => fs.existsSync(path.join(cwd, f)));
+              const checks = await Promise.all(
+                anchorFiles.map((f) => fileExists(path.join(cwd, f)).then((ok) => (ok ? f : null)))
+              );
+              const found = checks.find((f) => f !== null);
               if (found) {
-                return {
-                  status: "pass",
-                  message: `Spatial anchor found: "${found}"`,
-                };
+                return { status: "pass" as const, message: `Spatial anchor found: "${found}"` };
               }
               return {
-                status: "warn",
+                status: "warn" as const,
                 message:
                   "No spatial anchor file (CLAUDE.md / context.md / BLUEPRINT.md) found at project root.",
                 resolution:
@@ -342,19 +340,19 @@ export function createDoctorCommand(): Command {
                 const resolved = resolveTemplatePack(fingerprint, backend as string);
                 if (resolved.manifest?.version) {
                   return {
-                    status: "pass",
+                    status: "pass" as const,
                     message: `Manifest version ${resolved.manifest.version} parsed successfully for backend "${backend}"`,
                   };
                 }
                 return {
-                  status: "fail",
+                  status: "fail" as const,
                   message: `Failed to retrieve version from manifest for backend "${backend}"`,
                   resolution:
                     "Verify that manifest.json is present and has a valid 'version' field.",
                 };
               } catch (e) {
                 return {
-                  status: "fail",
+                  status: "fail" as const,
                   message: `Manifest validation error: ${normalizeError(e).message}`,
                   resolution: "Check if the template backend has a valid manifest.json",
                 };
@@ -370,35 +368,26 @@ export function createDoctorCommand(): Command {
                 const manifest = resolved.manifest;
 
                 const anchorLimit = manifest.max_file_sizes.anchor;
-                const _rulesLimit = manifest.max_file_sizes.rules;
-                const _skillsLimit = manifest.max_file_sizes.skills;
-                const _agentsLimit = manifest.max_file_sizes.agents;
-
-                // Check actual file sizes
-                let _issuesCount = 0;
-                const checkSize = (filePath: string, limit: number, type: string) => {
-                  if (fs.existsSync(filePath)) {
-                    const stat = fs.statSync(filePath);
-                    if (stat.size > limit) {
-                      _issuesCount++;
-                      return `${type} file "${path.basename(filePath)}" size ${stat.size}B exceeds limit of ${limit}B.`;
-                    }
-                  }
-                  return null;
-                };
 
                 const errors: string[] = [];
 
-                // Anchor files
                 for (const pattern of manifest.file_patterns.anchor) {
                   const p = path.join(cwd, pattern);
-                  const issue = checkSize(p, anchorLimit, "Anchor");
-                  if (issue) errors.push(issue);
+                  try {
+                    const stat = await fsPromises.stat(p);
+                    if (stat.size > anchorLimit) {
+                      errors.push(
+                        `Anchor file "${path.basename(p)}" size ${stat.size}B exceeds limit of ${anchorLimit}B.`
+                      );
+                    }
+                  } catch {
+                    // file absent — skip
+                  }
                 }
 
                 if (errors.length > 0) {
                   return {
-                    status: "fail",
+                    status: "fail" as const,
                     message: errors.join("\n"),
                     resolution:
                       "Refactor or split the oversized files to keep under tool size limits.",
@@ -406,12 +395,12 @@ export function createDoctorCommand(): Command {
                 }
 
                 return {
-                  status: "pass",
+                  status: "pass" as const,
                   message: "All blueprint files are within maximum file size limits.",
                 };
               } catch (_e) {
                 return {
-                  status: "pass", // Skip check if template pack resolver fails
+                  status: "pass" as const,
                   message:
                     "Skipping file size checks (no active manifest/scaffolded backend found).",
                 };
@@ -426,7 +415,6 @@ export function createDoctorCommand(): Command {
                 const resolved = resolveTemplatePack(fingerprint, backend as string);
                 const manifest = resolved.manifest;
 
-                // Let's check a few rule files for YAML frontmatter
                 const rulesDir = path.join(
                   cwd,
                   backend === "claude"
@@ -435,16 +423,19 @@ export function createDoctorCommand(): Command {
                       ? ".cursor/rules"
                       : "rules"
                 );
-                if (fs.existsSync(rulesDir)) {
-                  const files = fs.readdirSync(rulesDir).filter((f) => f.endsWith(".md"));
+
+                if (await fileExists(rulesDir)) {
+                  const files = (await fsPromises.readdir(rulesDir)).filter((f) =>
+                    f.endsWith(".md")
+                  );
                   for (const f of files) {
-                    const content = fs.readFileSync(path.join(rulesDir, f), "utf-8");
+                    const content = await fsPromises.readFile(path.join(rulesDir, f), "utf-8");
                     const parsed = matter(content);
                     const data = parsed.data;
                     for (const req of manifest.frontmatter_schema.rules.required) {
                       if (data[req] === undefined) {
                         return {
-                          status: "fail",
+                          status: "fail" as const,
                           message: `Rule file "${f}" is missing required frontmatter field: "${req}"`,
                           resolution: `Add the missing frontmatter field "${req}" to "${f}".`,
                         };
@@ -453,12 +444,12 @@ export function createDoctorCommand(): Command {
                   }
                 }
                 return {
-                  status: "pass",
+                  status: "pass" as const,
                   message: "Frontmatter conformances verified successfully.",
                 };
               } catch (_e) {
                 return {
-                  status: "pass",
+                  status: "pass" as const,
                   message: "Skipping frontmatter conformance (no active rules folder).",
                 };
               }
@@ -476,7 +467,7 @@ export function createDoctorCommand(): Command {
 
                 if (score >= 70) {
                   return {
-                    status: "pass",
+                    status: "pass" as const,
                     message: `Compliance score: ${score}% across ${report.frameworks.length} framework(s)`,
                   };
                 } else if (score >= 40) {
@@ -486,20 +477,20 @@ export function createDoctorCommand(): Command {
                     .map((g) => g.description)
                     .join("; ");
                   return {
-                    status: "warn",
+                    status: "warn" as const,
                     message: `Compliance score: ${score}% (below 70% target). Top gaps: ${gaps}`,
                     resolution: `Review and remediate compliance gaps. Run 'bp verify --level governance' for details.`,
                   };
                 } else {
                   return {
-                    status: "fail",
+                    status: "fail" as const,
                     message: `Critical compliance score: ${score}% (below 40% minimum)`,
                     resolution: `Immediate action required. Run 'bp verify --level governance' and address all gaps.`,
                   };
                 }
               } catch (e) {
                 return {
-                  status: "warn",
+                  status: "warn" as const,
                   message: `Compliance check skipped: ${normalizeError(e).message}`,
                   resolution: "Ensure blueprint is valid and compliance.frameworks is configured.",
                 };
@@ -520,24 +511,24 @@ export function createDoctorCommand(): Command {
 
                 if (irHasRiskTier) {
                   return {
-                    status: "pass",
+                    status: "pass" as const,
                     message: `Risk tier explicitly classified: ${ir.risk?.risk_tier}`,
                   };
                 } else if (fpRiskTier === "high" || fpRiskTier === "critical") {
                   return {
-                    status: "warn",
+                    status: "warn" as const,
                     message: `Blueprint does not define risk tier, but fingerprint detected ${fpRiskTier} risk`,
                     resolution: `Set ir.risk.risk_tier to match detected risk level (${fpRiskTier})`,
                   };
                 } else {
                   return {
-                    status: "pass",
+                    status: "pass" as const,
                     message: `Risk tier not explicitly set; fingerprint indicates ${fpRiskTier} risk (acceptable)`,
                   };
                 }
               } catch (_e) {
                 return {
-                  status: "pass",
+                  status: "pass" as const,
                   message: "Risk tier classification check skipped (no risk signals detected).",
                 };
               }
@@ -551,8 +542,8 @@ export function createDoctorCommand(): Command {
             const { generateCostDashboard } = await import("../../observability/dashboard.js");
             const { BlueprintIRSchema } = await import("../../translator/ir.js");
             const bpPath = path.join(cwd, ".claude", "blueprint.json");
-            if (fs.existsSync(bpPath)) {
-              const raw = JSON.parse(fs.readFileSync(bpPath, "utf-8")) as unknown;
+            if (await fileExists(bpPath)) {
+              const raw = JSON.parse(await fsPromises.readFile(bpPath, "utf-8")) as unknown;
               const result = BlueprintIRSchema.safeParse(raw);
               if (result.success) {
                 const dashboard = generateCostDashboard(result.data);
@@ -571,10 +562,20 @@ export function createDoctorCommand(): Command {
           }
         }
 
+        // Run all checks concurrently
+        const checkResults = await Promise.all(
+          checks.map(async (check) => ({ check, result: await runCheckWithTiming(check) }))
+        );
+
+        // Sort: fail first, then warn, then pass
+        const statusOrder: Record<string, number> = { fail: 0, warn: 1, pass: 2 };
+        checkResults.sort(
+          (a, b) => (statusOrder[a.result.status] ?? 3) - (statusOrder[b.result.status] ?? 3)
+        );
+
         let allPassed = true;
 
-        for (const check of checks) {
-          const result = await runCheckWithTiming(check);
+        for (const { check, result } of checkResults) {
           const nameText = chalk.bold(check.name.toUpperCase().padEnd(30));
 
           if (result.status === "pass") {

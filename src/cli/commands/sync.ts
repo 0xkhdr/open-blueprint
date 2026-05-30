@@ -235,7 +235,7 @@ export function createSyncCommand(): Command {
 
         // Always update fingerprint after a successful sync session
         if (fixedCount > 0 || opts.autoApply) {
-          storeFingerprint(cwd, fingerprint);
+          await storeFingerprint(cwd, fingerprint);
         }
 
         if (fixedCount > 0) {

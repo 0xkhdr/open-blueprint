@@ -3,7 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 import { runValidator } from "../../../src/validator/index.js";
-import { getCachePath, loadCache, saveCache } from "../../../src/validator/cache.js";
+import { getCachePath, loadCacheAsync, saveCacheAsync } from "../../../src/validator/cache.js";
 import type { BackendManifest } from "../../../src/templater/selector.js";
 
 const MOCK_MANIFEST: BackendManifest = {
@@ -57,14 +57,14 @@ describe("Incremental validation cache", () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("loads default empty cache if cache file does not exist", () => {
-    const cache = loadCache(tmpDir, "2026.1");
+  it("loads default empty cache if cache file does not exist", async () => {
+    const cache = await loadCacheAsync(tmpDir, "2026.1");
     expect(cache.version).toBe("1.0");
     expect(cache.manifestVersion).toBe("2026.1");
     expect(cache.files).toEqual({});
   });
 
-  it("saves and loads validation cache successfully", () => {
+  it("saves and loads validation cache successfully", async () => {
     const cache = {
       version: "1.0",
       manifestVersion: "2026.1",
@@ -75,8 +75,8 @@ describe("Incremental validation cache", () => {
         },
       },
     };
-    saveCache(tmpDir, cache);
-    const loaded = loadCache(tmpDir, "2026.1");
+    await saveCacheAsync(tmpDir, cache);
+    const loaded = await loadCacheAsync(tmpDir, "2026.1");
     expect(loaded).toEqual(cache);
   });
 
@@ -102,7 +102,7 @@ describe("Incremental validation cache", () => {
     expect(fs.existsSync(cachePath)).toBe(true);
 
     // Read cache to check rule1.md is present
-    const cache1 = loadCache(tmpDir, "2026.1");
+    const cache1 = await loadCacheAsync(tmpDir, "2026.1");
     expect(cache1.files[rulePath]).toBeDefined();
     const oldMtime = cache1.files[rulePath]?.mtime;
 
@@ -115,7 +115,7 @@ describe("Incremental validation cache", () => {
       resolution: "None",
     };
     cache1.files[rulePath]!.errors = [fakeError];
-    saveCache(tmpDir, cache1);
+    await saveCacheAsync(tmpDir, cache1);
 
     // Run validation again. Because rule1.md mtime has NOT changed, it should reuse cache and fail!
     const result2 = await runValidator({

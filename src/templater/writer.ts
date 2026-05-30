@@ -3,6 +3,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { createPatch } from "diff";
 import { logger } from "../logger.js";
+import { startSpan } from "../telemetry/tracer.js";
 import { hasMarkers, mergeContent, parseExistingFile } from "./merger.js";
 
 function emitFileWriteAudit(filePath: string, operation: string): void {
@@ -61,6 +62,15 @@ function generateUnifiedDiff(filePath: string, oldContent: string, newContent: s
 }
 
 export async function writeFile(
+  outputPath: string,
+  content: string,
+  options: WriteOptions,
+  conflictResolution: ConflictResolution = "prompt"
+): Promise<WriteResult> {
+  return startSpan("bp.write", () => writeFileImpl(outputPath, content, options, conflictResolution));
+}
+
+async function writeFileImpl(
   outputPath: string,
   content: string,
   options: WriteOptions,

@@ -1,6 +1,8 @@
 import * as fsPromises from "node:fs/promises";
 import * as path from "node:path";
 import Handlebars from "handlebars";
+import { LRUCache } from "lru-cache";
+import { startSpan } from "../telemetry/tracer.js";
 
 // Allowlisted helpers only — no arbitrary JS execution
 const ALLOWED_HELPERS: Record<string, Handlebars.HelperDelegate> = {
@@ -67,7 +69,13 @@ const RISK_RANKS: Record<string, number> = {
   critical: 3,
 };
 
-const templateCache = new Map<string, HandlebarsTemplateDelegate>();
+const BP_TEMPLATE_CACHE_MAX = Number(process.env.BP_TEMPLATE_CACHE_MAX ?? 500);
+const BP_TEMPLATE_CACHE_TTL_MS = Number(process.env.BP_TEMPLATE_CACHE_TTL_MS ?? 300_000);
+
+const templateCache = new LRUCache<string, HandlebarsTemplateDelegate>({
+  max: BP_TEMPLATE_CACHE_MAX,
+  ttl: BP_TEMPLATE_CACHE_TTL_MS,
+});
 
 export function createEngine(): typeof Handlebars {
   const instance = Handlebars.create();
@@ -97,21 +105,23 @@ export async function registerPartials(partialsDir: string): Promise<void> {
 }
 
 export async function renderTemplate(templatePath: string, context: Record<string, unknown>): Promise<string> {
-  const cached = templateCache.get(templatePath);
-  let compiled: HandlebarsTemplateDelegate;
+  return startSpan("bp.template", async () => {
+    const cached = templateCache.get(templatePath);
+    let compiled: HandlebarsTemplateDelegate;
 
-  if (cached) {
-    compiled = cached;
-  } else {
-    const source = await fsPromises.readFile(templatePath, "utf-8");
-    // noEscape applies to the template source only; vars are pre-sanitized before reaching here
-    compiled = hbs.compile(source, { noEscape: true, strict: false });
-    templateCache.set(templatePath, compiled);
-  }
+    if (cached) {
+      compiled = cached;
+    } else {
+      const source = await fsPromises.readFile(templatePath, "utf-8");
+      // noEscape applies to the template source only; vars are pre-sanitized before reaching here
+      compiled = hbs.compile(source, { noEscape: true, strict: false });
+      templateCache.set(templatePath, compiled);
+    }
 
-  // JSON round-trip strips prototype chain; deepFreeze prevents mutation
-  const frozenCtx = deepFreeze(JSON.parse(JSON.stringify(context)) as Record<string, unknown>);
-  return compiled(frozenCtx);
+    // JSON round-trip strips prototype chain; deepFreeze prevents mutation
+    const frozenCtx = deepFreeze(JSON.parse(JSON.stringify(context)) as Record<string, unknown>);
+    return compiled(frozenCtx);
+  });
 }
 
 export function renderString(template: string, context: Record<string, unknown>): string {

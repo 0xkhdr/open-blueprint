@@ -1,4 +1,4 @@
-import * as fs from "node:fs";
+import * as fsPromises from "node:fs/promises";
 import * as path from "node:path";
 import { logger } from "../logger.js";
 import { PermissionError } from "../errors.js";
@@ -65,7 +65,6 @@ export class RegistryClient {
       return all;
     }
 
-    // In a real environment, we'd query the npm registry. Let's return standard official packs
     return [
       {
         name: "@bp-templates/fastapi",
@@ -95,14 +94,12 @@ export class RegistryClient {
     targetDir: string,
     publicKey?: string
   ): Promise<void> {
-    const resolvedPublicKey = publicKey ?? loadPublicKey();
+    const resolvedPublicKey = publicKey ?? (await loadPublicKey());
     if (!resolvedPublicKey) {
       logger.warn("BP_REGISTRY_PUBLIC_KEY not configured; registry signature verification skipped");
     }
-    // Locate the package
     const pkgs = RegistryClient.mockRegistry.get(packageName);
     if (!pkgs || pkgs.length === 0) {
-      // In real scenario, fetch from NPM registry. For this CLI, if not in mock, we simulate downloading a built-in template.
       const isOfficial = packageName.startsWith("@bp-templates/");
       const packName = isOfficial ? packageName.replace("@bp-templates/", "") : packageName;
 
@@ -111,9 +108,15 @@ export class RegistryClient {
         "../../templates",
         packName
       );
-      if (fs.existsSync(sourceTemplateDir)) {
-        fs.mkdirSync(targetDir, { recursive: true });
-        fs.cpSync(sourceTemplateDir, targetDir, { recursive: true });
+
+      const sourceExists = await fsPromises
+        .access(sourceTemplateDir)
+        .then(() => true)
+        .catch(() => false);
+
+      if (sourceExists) {
+        await fsPromises.mkdir(targetDir, { recursive: true });
+        await fsPromises.cp(sourceTemplateDir, targetDir, { recursive: true });
         return;
       }
       throw new Error(`Package "${packageName}" not found in registry.`);
@@ -122,7 +125,6 @@ export class RegistryClient {
     const latest = pkgs[pkgs.length - 1];
     if (!latest) throw new Error(`Package "${packageName}" has no versions.`);
 
-    // Extract archive data and verify signature
     if (latest.archiveData && latest.signature) {
       const buffer = Buffer.from(latest.archiveData, "base64");
 
@@ -133,15 +135,13 @@ export class RegistryClient {
         }
       }
 
-      // Simulate unpacking/extracting files to targetDir
-      fs.mkdirSync(targetDir, { recursive: true });
-      // In mock, archiveData is a simple JSON string representation of files to write
+      await fsPromises.mkdir(targetDir, { recursive: true });
       try {
         const files = JSON.parse(buffer.toString("utf-8")) as Record<string, string>;
         for (const [relPath, content] of Object.entries(files)) {
           const fullPath = path.join(targetDir, relPath);
-          fs.mkdirSync(path.dirname(fullPath), { recursive: true });
-          fs.writeFileSync(fullPath, content, "utf-8");
+          await fsPromises.mkdir(path.dirname(fullPath), { recursive: true });
+          await fsPromises.writeFile(fullPath, content, "utf-8");
         }
       } catch (err) {
         throw new Error(`Failed to extract package archive: ${normalizeError(err).message}`);
@@ -157,27 +157,30 @@ export class RegistryClient {
     packDir: string,
     privateKey: string
   ): Promise<void> {
-    if (!fs.existsSync(packDir)) {
+    const packExists = await fsPromises
+      .access(packDir)
+      .then(() => true)
+      .catch(() => false);
+    if (!packExists) {
       throw new Error(`Pack directory does not exist: ${packDir}`);
     }
 
-    // Build the package archive (in mock, we serialize files into a JSON string)
     const files: Record<string, string> = {};
 
-    function walk(dir: string, base: string) {
-      const entries = fs.readdirSync(dir, { withFileTypes: true });
+    async function walk(dir: string, base: string): Promise<void> {
+      const entries = await fsPromises.readdir(dir, { withFileTypes: true });
       for (const entry of entries) {
         const fullPath = path.join(dir, entry.name);
         const relPath = path.relative(base, fullPath);
         if (entry.isDirectory()) {
-          walk(fullPath, base);
+          await walk(fullPath, base);
         } else {
-          files[relPath] = fs.readFileSync(fullPath, "utf-8");
+          files[relPath] = await fsPromises.readFile(fullPath, "utf-8");
         }
       }
     }
 
-    walk(packDir, packDir);
+    await walk(packDir, packDir);
 
     const archiveBuffer = Buffer.from(JSON.stringify(files), "utf-8");
     const signature = signData(archiveBuffer, privateKey);
@@ -190,7 +193,6 @@ export class RegistryClient {
       archiveData: archiveBuffer.toString("base64"),
     };
 
-    // Store in mock registry
     const list = RegistryClient.mockRegistry.get(packageName) || [];
     list.push(newPkg);
     RegistryClient.mockRegistry.set(packageName, list);

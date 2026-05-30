@@ -5,6 +5,9 @@ import fg from "fast-glob";
 import { EXIT_CODES } from "../constants.js";
 import type { Fingerprint } from "../detector/fingerprint.js";
 import { logger } from "../logger.js";
+import { loadPlugins } from "../plugins/loader.js";
+import { PluginLoadError, PluginTimeoutError } from "../errors.js";
+import { startSpan } from "../telemetry/tracer.js";
 import { ResourceLimitError, ValidationTimeoutError } from "./errors.js";
 import type { BackendManifest } from "../templater/selector.js";
 import { getRegisteredAdapter } from "../translator/adapters/registry.js";
@@ -304,7 +307,9 @@ async function runValidationPipeline(options: ValidatorOptions): Promise<Validat
   const newErrors: ValidationError[] = [];
 
   // Layer 1: Structural (always run for modified/new files)
-  const structuralErrors = await validateStructuralBatch(filesToValidate, manifest);
+  const structuralErrors = await startSpan("bp.validate.structural", () =>
+    validateStructuralBatch(filesToValidate, manifest)
+  );
   newErrors.push(...structuralErrors);
 
   // Short-circuit: if structural hard failures exist, skip deeper layers
@@ -312,7 +317,9 @@ async function runValidationPipeline(options: ValidatorOptions): Promise<Validat
 
   // Layer 2: Semantic (run only for modified/new files)
   if (!structuralHardFail && (level === "semantic" || level === "all")) {
-    const semanticErrors = await validateSemantic(filesToValidate, { projectRoot, manifest });
+    const semanticErrors = await startSpan("bp.validate.semantic", () =>
+      validateSemantic(filesToValidate, { projectRoot, manifest })
+    );
     newErrors.push(...semanticErrors);
   }
 
@@ -342,24 +349,27 @@ async function runValidationPipeline(options: ValidatorOptions): Promise<Validat
 
   // Layer 3: Logical (always run since it is global across rules)
   if (!structuralHardFail && (level === "logical" || level === "all")) {
-    const logicalErrors = await validateLogical(files, { projectRoot });
+    const logicalErrors = await startSpan("bp.validate.logical", () =>
+      validateLogical(files, { projectRoot })
+    );
     allErrors.push(...logicalErrors);
   }
 
   // Layer 4: Drift (always run since it checks drift)
   if (level === "drift" || level === "all") {
     if (fingerprint) {
-      const driftErrors = await validateDrift(files, {
-        projectRoot,
-        currentFingerprint: fingerprint,
-      });
+      const driftErrors = await startSpan("bp.validate.drift", () =>
+        validateDrift(files, { projectRoot, currentFingerprint: fingerprint })
+      );
       allErrors.push(...driftErrors);
     }
   }
 
   // Layer 5: Governance (enterprise validation)
   if (level === "governance" || level === "all") {
-    const governanceErrors = await validateGovernance(projectRoot, manifest);
+    const governanceErrors = await startSpan("bp.validate.governance", () =>
+      validateGovernance(projectRoot, manifest)
+    );
     allErrors.push(...governanceErrors);
   }
 
@@ -373,6 +383,45 @@ async function runValidationPipeline(options: ValidatorOptions): Promise<Validat
       if (backends.length > 0) {
         const backendErrors = runBackendRules(projectRoot, backends);
         allErrors.push(...backendErrors);
+      }
+
+      // Plugin sandboxing: load and run custom validator plugins
+      if (projectConfig.plugins && projectConfig.plugins.length > 0) {
+        try {
+          const pluginResults = await loadPlugins(projectConfig.plugins);
+          for (const result of pluginResults) {
+            allErrors.push(...result.errors);
+          }
+        } catch (err) {
+          if (err instanceof PluginLoadError || err instanceof PluginTimeoutError) {
+            allErrors.push({
+              file: projectRoot,
+              type: err instanceof PluginTimeoutError ? "PLUGIN_TIMEOUT" : "PLUGIN_LOAD_ERROR",
+              severity: "error",
+              message: err.message,
+              resolution: err.resolution,
+            });
+          } else {
+            logger.warn({ err }, "Plugin loading failed unexpectedly");
+          }
+        }
+      }
+
+      // Workspace blueprint coverage check
+      if (fingerprint?.workspacePackages && fingerprint.workspacePackages.length > 0) {
+        for (const pkg of fingerprint.workspacePackages) {
+          const pkgDir = path.join(projectRoot, pkg.replace(/\*\*?$/, "").replace(/\*/g, ""));
+          const hasBlueprint = files.some((f) => f.startsWith(pkgDir));
+          if (!hasBlueprint) {
+            allErrors.push({
+              file: projectRoot,
+              type: "MISSING_WORKSPACE_BLUEPRINT",
+              severity: "warning",
+              message: `Workspace package "${pkg}" has no blueprint coverage`,
+              resolution: `Run \`bp init --backends ${backends[0] ?? "claude"}\` in ${pkg} to scaffold blueprint`,
+            });
+          }
+        }
       }
     }
   }
@@ -401,11 +450,13 @@ export async function runValidator(options: ValidatorOptions): Promise<Validatio
       logger.warn({ elapsedMs, timeoutMs: VALIDATION_TIMEOUT_MS }, "Validation timed out");
       reject(err);
     }, VALIDATION_TIMEOUT_MS);
-    // Avoid keeping the process alive if the pipeline finishes first
     if (typeof t === "object" && "unref" in t) t.unref();
   });
 
-  return Promise.race([runValidationPipeline(options), timeoutPromise]);
+  return startSpan("bp.validate", (span) => {
+    span.setAttribute("level", options.level);
+    return Promise.race([runValidationPipeline(options), timeoutPromise]);
+  });
 }
 
 export function exitCodeForResult(result: ValidationResult): number {

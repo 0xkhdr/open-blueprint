@@ -56,6 +56,8 @@ const ProjectConfigSchema = ProjectConfigSchemaRaw.transform((data) => {
 export type BackendConfigOverride = z.infer<typeof BackendConfigOverrideSchema>;
 export type ProjectConfig = z.infer<typeof ProjectConfigSchema>;
 
+// Sync variant kept for callers that execute during CLI option-parsing before
+// any async context is available. All new code should prefer loadProjectConfigAsync.
 export function loadProjectConfig(projectRoot: string): ProjectConfig | null {
   const configPath = path.join(projectRoot, ".bp.json");
   if (!fs.existsSync(configPath)) return null;
@@ -77,16 +79,19 @@ export async function loadProjectConfigAsync(projectRoot: string): Promise<Proje
   }
 }
 
-export function saveProjectConfig(projectRoot: string, config: Omit<ProjectConfig, never>): void {
+export async function saveProjectConfig(
+  projectRoot: string,
+  config: Omit<ProjectConfig, never>
+): Promise<void> {
   const configPath = path.join(projectRoot, ".bp.json");
-  fs.writeFileSync(configPath, JSON.stringify(config, null, 2), "utf-8");
+  await fsPromises.writeFile(configPath, JSON.stringify(config, null, 2), "utf-8");
 }
 
-export function initProjectConfig(
+export async function initProjectConfig(
   projectRoot: string,
   backends: string[],
   primaryBackend?: string
-): ProjectConfig {
+): Promise<ProjectConfig> {
   const primary = primaryBackend ?? backends[0];
   const raw = {
     backends,
@@ -94,7 +99,11 @@ export function initProjectConfig(
     exclude: ["legacy/", "vendor/", "dist/"],
     plugins: [],
   };
-  fs.writeFileSync(path.join(projectRoot, ".bp.json"), JSON.stringify(raw, null, 2), "utf-8");
+  await fsPromises.writeFile(
+    path.join(projectRoot, ".bp.json"),
+    JSON.stringify(raw, null, 2),
+    "utf-8"
+  );
   return ProjectConfigSchema.parse(raw);
 }
 

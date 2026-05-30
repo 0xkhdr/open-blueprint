@@ -108,7 +108,7 @@ export function createMigrateCommand(): Command {
         const cwd = process.cwd();
 
         if (!opts.from || !opts.to) {
-          const fingerprint = loadStoredFingerprint(cwd);
+          const fingerprint = await loadStoredFingerprint(cwd);
 
           if (!fingerprint) {
             console.log(
@@ -123,7 +123,7 @@ export function createMigrateCommand(): Command {
           if (fingerprint.version === "1.0") {
             fingerprint.version = "1.0";
             fingerprint.detected_at = new Date().toISOString();
-            storeFingerprint(cwd, fingerprint);
+            await storeFingerprint(cwd, fingerprint);
             spinner.succeed(chalk.green("Blueprint is up to date."));
           } else {
             spinner.succeed(chalk.green("Blueprint is already at latest schema version."));

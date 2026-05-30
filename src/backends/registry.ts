@@ -10,6 +10,8 @@ export interface BackendConfig {
   globalHomeEnv?: string;
   fallbackGlobalPath?: string;
   note?: string;
+  minVersion?: string;
+  testedVersions?: string[];
 }
 
 export const BACKENDS: BackendConfig[] = [

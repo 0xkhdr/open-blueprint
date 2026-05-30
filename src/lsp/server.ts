@@ -1,4 +1,4 @@
-import * as fs from "node:fs";
+import * as fsPromises from "node:fs/promises";
 import * as path from "node:path";
 import {
   type CodeAction,
@@ -36,7 +36,7 @@ connection.onInitialize((_params: InitializeParams): InitializeResult => {
 
 async function validateDocument(doc: TextDocument): Promise<Diagnostic[]> {
   const filePath = doc.uri.replace("file://", "");
-  const projectRoot = findProjectRoot(filePath);
+  const projectRoot = await findProjectRoot(filePath);
 
   try {
     const raw = await detect(projectRoot);
@@ -74,15 +74,14 @@ async function validateDocument(doc: TextDocument): Promise<Diagnostic[]> {
   }
 }
 
-function findProjectRoot(filePath: string): string {
+async function findProjectRoot(filePath: string): Promise<string> {
   let dir = path.dirname(filePath);
   while (dir !== path.dirname(dir)) {
-    if (
-      fs.existsSync(path.join(dir, "package.json")) ||
-      fs.existsSync(path.join(dir, ".bp.json"))
-    ) {
-      return dir;
-    }
+    const [hasPkg, hasBp] = await Promise.all([
+      fsPromises.access(path.join(dir, "package.json")).then(() => true).catch(() => false),
+      fsPromises.access(path.join(dir, ".bp.json")).then(() => true).catch(() => false),
+    ]);
+    if (hasPkg || hasBp) return dir;
     dir = path.dirname(dir);
   }
   return path.dirname(filePath);

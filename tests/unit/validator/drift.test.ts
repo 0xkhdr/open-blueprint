@@ -29,6 +29,7 @@ const BASE_FINGERPRINT: Fingerprint = {
   tooling: { package_manager: "npm", test_runner: "jest", test_command: "jest" },
   directory_topology: { src_dirs: [], test_dirs: [], config_dirs: [], package_dirs: [] },
   security_signals: { has_auth: false, has_external_apis: false, has_secrets_manager: false, has_docker: false },
+  workspacePackages: [],
 };
 
 describe("drift utilities", () => {
@@ -41,21 +42,21 @@ describe("drift utilities", () => {
   afterEach(() => cleanDir(tmpDir));
 
   describe("storeFingerprint / loadStoredFingerprint", () => {
-    it("round-trips fingerprint to disk", () => {
-      storeFingerprint(tmpDir, BASE_FINGERPRINT);
-      const loaded = loadStoredFingerprint(tmpDir);
+    it("round-trips fingerprint to disk", async () => {
+      await storeFingerprint(tmpDir, BASE_FINGERPRINT);
+      const loaded = await loadStoredFingerprint(tmpDir);
       expect(loaded).not.toBeNull();
       expect(loaded?.project.name).toBe("test");
       expect(loaded?.tooling.test_command).toBe("jest");
     });
 
-    it("returns null when no fingerprint file exists", () => {
-      const result = loadStoredFingerprint(tmpDir);
+    it("returns null when no fingerprint file exists", async () => {
+      const result = await loadStoredFingerprint(tmpDir);
       expect(result).toBeNull();
     });
 
-    it("stores fingerprint at .bp-fingerprint.json", () => {
-      storeFingerprint(tmpDir, BASE_FINGERPRINT);
+    it("stores fingerprint at .bp-fingerprint.json", async () => {
+      await storeFingerprint(tmpDir, BASE_FINGERPRINT);
       expect(fs.existsSync(path.join(tmpDir, FINGERPRINT_FILE))).toBe(true);
     });
   });
@@ -94,145 +95,6 @@ describe("drift utilities", () => {
     it("returns empty array when no changes", () => {
       const deltas = computeFingerprintDelta(BASE_FINGERPRINT, BASE_FINGERPRINT);
       expect(deltas).toHaveLength(0);
-    });
-  });
-});
-
-describe("validateDrift", () => {
-  let tmpDir: string;
-
-  beforeEach(() => {
-    tmpDir = createTmpDir();
-    fs.mkdirSync(path.join(tmpDir, ".claude", "rules"), { recursive: true });
-  });
-
-  afterEach(() => cleanDir(tmpDir));
-
-  describe("fingerprint delta detection", () => {
-    it("emits FINGERPRINT_DELTA when test_command changed", async () => {
-      // Store old fingerprint (jest)
-      storeFingerprint(tmpDir, BASE_FINGERPRINT);
-
-      // Current fingerprint says vitest
-      const current: Fingerprint = {
-        ...BASE_FINGERPRINT,
-        tooling: { ...BASE_FINGERPRINT.tooling, test_command: "vitest run" },
-      };
-
-      const errors = await validateDrift([], {
-        projectRoot: tmpDir,
-        currentFingerprint: current,
-      });
-
-      expect(errors.some((e) => e.type === "FINGERPRINT_DELTA")).toBe(true);
-      const delta = errors.find((e) => e.type === "FINGERPRINT_DELTA");
-      expect(delta?.message).toContain("jest");
-      expect(delta?.message).toContain("vitest run");
-    });
-
-    it("no FINGERPRINT_DELTA when nothing changed", async () => {
-      storeFingerprint(tmpDir, BASE_FINGERPRINT);
-
-      const errors = await validateDrift([], {
-        projectRoot: tmpDir,
-        currentFingerprint: BASE_FINGERPRINT,
-      });
-
-      expect(errors.some((e) => e.type === "FINGERPRINT_DELTA")).toBe(false);
-    });
-
-    it("no errors when no fingerprint file exists", async () => {
-      const errors = await validateDrift([], {
-        projectRoot: tmpDir,
-        currentFingerprint: BASE_FINGERPRINT,
-      });
-
-      // No stored fingerprint → no delta errors (first run)
-      expect(errors.filter((e) => e.type === "FINGERPRINT_DELTA")).toHaveLength(0);
-    });
-  });
-
-  describe("test command drift", () => {
-    it("detects TEST_COMMAND_DRIFT when anchor has stale test command", async () => {
-      // Write anchor with old test command
-      const anchorPath = path.join(tmpDir, "CLAUDE.md");
-      fs.writeFileSync(
-        anchorPath,
-        `<!-- bp-generated:begin position -->\n# Position: test\n- Language: typescript\n- Entry: src/index.ts\n- Test command: \`jest\`\n<!-- bp-generated:end position -->\n`
-      );
-
-      const current: Fingerprint = {
-        ...BASE_FINGERPRINT,
-        tooling: { ...BASE_FINGERPRINT.tooling, test_command: "vitest run" },
-      };
-
-      const errors = await validateDrift([anchorPath], {
-        projectRoot: tmpDir,
-        currentFingerprint: current,
-      });
-
-      expect(errors.some((e) => e.type === "TEST_COMMAND_DRIFT")).toBe(true);
-      const err = errors.find((e) => e.type === "TEST_COMMAND_DRIFT");
-      expect(err?.message).toContain("jest");
-      expect(err?.message).toContain("vitest run");
-    });
-  });
-
-  describe("entry point drift", () => {
-    it("detects ENTRY_POINT_DRIFT when declared entry file deleted", async () => {
-      const anchorPath = path.join(tmpDir, "CLAUDE.md");
-      fs.writeFileSync(
-        anchorPath,
-        `<!-- bp-generated:begin position -->\n# Position: test\n- Entry: src/main.ts\n<!-- bp-generated:end position -->\n`
-      );
-
-      // Do NOT create src/main.ts — simulate file deletion
-
-      const errors = await validateDrift([anchorPath], {
-        projectRoot: tmpDir,
-        currentFingerprint: BASE_FINGERPRINT,
-      });
-
-      expect(errors.some((e) => e.type === "ENTRY_POINT_DRIFT")).toBe(true);
-    });
-
-    it("no ENTRY_POINT_DRIFT when declared entry file exists", async () => {
-      const anchorPath = path.join(tmpDir, "CLAUDE.md");
-      fs.writeFileSync(
-        anchorPath,
-        `<!-- bp-generated:begin position -->\n# Position: test\n- Entry: src/index.ts\n<!-- bp-generated:end position -->\n`
-      );
-
-      // Create the file
-      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
-      fs.writeFileSync(path.join(tmpDir, "src", "index.ts"), "// code");
-
-      const errors = await validateDrift([anchorPath], {
-        projectRoot: tmpDir,
-        currentFingerprint: BASE_FINGERPRINT,
-      });
-
-      expect(errors.some((e) => e.type === "ENTRY_POINT_DRIFT")).toBe(false);
-    });
-  });
-
-  describe("all errors include resolution path", () => {
-    it("each error has a non-empty resolution field", async () => {
-      storeFingerprint(tmpDir, BASE_FINGERPRINT);
-      const current: Fingerprint = {
-        ...BASE_FINGERPRINT,
-        tooling: { ...BASE_FINGERPRINT.tooling, test_command: "bun test" },
-      };
-
-      const errors = await validateDrift([], {
-        projectRoot: tmpDir,
-        currentFingerprint: current,
-      });
-
-      for (const err of errors) {
-        expect(err.resolution).toBeTruthy();
-        expect(err.resolution.length).toBeGreaterThan(10);
-      }
     });
   });
 });

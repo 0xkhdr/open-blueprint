@@ -4,6 +4,9 @@ import chalk from "chalk";
 import { Command } from "commander";
 import matter from "gray-matter";
 import ora from "ora";
+import { toSarif } from "../formatters/sarif.js";
+import { getBackend, listBackendIds } from "../../backends/registry.js";
+import { checkBackendVersion } from "../../backends/version-check.js";
 import { loadProjectConfig } from "../../config/project.js";
 import { loadUserConfig } from "../../config/user.js";
 import { detect } from "../../detector/index.js";
@@ -126,6 +129,7 @@ export function createVerifyCommand(): Command {
     .argument("[paths...]", "One or more repository paths to verify")
     .option("--level <level>", "structural | semantic | logical | drift | all", "all")
     .option("--json", "Machine-readable JSON output", false)
+    .option("--format <format>", "Output format: json | sarif", "json")
     .option("--fix", "Auto-correct unambiguous structural issues", false)
     .option("--watch", "Re-validate on file change (debounced 300ms)", false)
     .option("--fail-on <level>", "Exit non-zero only at this severity level", "logical")
@@ -136,6 +140,7 @@ export function createVerifyCommand(): Command {
         opts: {
           level: string;
           json: boolean;
+          format: string;
           fix: boolean;
           watch: boolean;
           failOn: string;
@@ -184,6 +189,22 @@ export function createVerifyCommand(): Command {
             try {
               const fingerprint = await detect(absolutePath);
               const pack = resolveTemplatePack(fingerprint, backend);
+
+              // Backend version pinning checks
+              if (projectConfig?.backends) {
+                await Promise.all(
+                  projectConfig.backends
+                    .filter((id) => listBackendIds().includes(id))
+                    .map(async (id) => {
+                      try {
+                        const cfg = getBackend(id);
+                        await checkBackendVersion(id, absolutePath, cfg.minVersion, cfg.testedVersions);
+                      } catch {
+                        // version check failure is non-fatal
+                      }
+                    })
+                );
+              }
 
               const result = await runValidator({
                 level,
@@ -271,8 +292,20 @@ export function createVerifyCommand(): Command {
             }
           }
 
-          if (opts.json) {
-            console.log(JSON.stringify(results.length === 1 ? results[0] : results, null, 2));
+          if (opts.json || opts.format === "sarif") {
+            if (opts.format === "sarif") {
+              const allErrors = results.flatMap((r) => {
+                const res = r as Record<string, unknown>;
+                return [
+                  ...((res.errors as ValidationError[]) ?? []),
+                  ...((res.warnings as ValidationError[]) ?? []),
+                  ...((res.infos as ValidationError[]) ?? []),
+                ];
+              });
+              console.log(JSON.stringify(toSarif(allErrors), null, 2));
+            } else {
+              console.log(JSON.stringify(results.length === 1 ? results[0] : results, null, 2));
+            }
             if (!opts.watch && maxExitCode > 0) {
               throw new BpError("Validation failed", maxExitCode, "VALIDATION_RESULT", "");
             }

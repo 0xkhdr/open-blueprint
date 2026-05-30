@@ -1,3 +1,6 @@
+import * as fs from "node:fs";
+import * as fsPromises from "node:fs/promises";
+import * as path from "node:path";
 import type { ValidationError } from "../validator/structural.js";
 
 const SECRET_PATTERNS = [
@@ -204,4 +207,50 @@ export function scanForSecrets(
   options: ScanOptions = {}
 ): ValidationError[] {
   return scanContent(filePath, content, options);
+}
+
+const TEXT_EXTENSIONS = new Set([
+  ".md", ".json", ".yaml", ".yml", ".ts", ".js", ".py", ".go", ".rs", ".java",
+  ".rb", ".env", ".sh", ".toml", ".ini", ".cfg", ".pem", ".key", ".crt", ".cer",
+]);
+
+function collectTextFilesSync(root: string): string[] {
+  const files: string[] = [];
+  function walk(dir: string): void {
+    let entries: fs.Dirent[];
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (["node_modules", ".git", "dist", ".next", "build", "coverage"].includes(entry.name)) continue;
+        walk(fullPath);
+      } else if (TEXT_EXTENSIONS.has(path.extname(entry.name).toLowerCase())) {
+        files.push(fullPath);
+      }
+    }
+  }
+  walk(root);
+  return files;
+}
+
+export async function scanDirectory(
+  projectRoot: string,
+  options: ScanOptions = {}
+): Promise<ValidationError[]> {
+  const files = collectTextFilesSync(projectRoot);
+  const results: ValidationError[] = [];
+  for (const file of files) {
+    try {
+      const content = await fsPromises.readFile(file, "utf-8");
+      const relative = path.relative(projectRoot, file);
+      results.push(...scanContent(relative, content, options));
+    } catch {
+      // skip unreadable files
+    }
+  }
+  return results;
 }

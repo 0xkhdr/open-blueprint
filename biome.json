@@ -6,10 +6,14 @@
       "recommended": true,
       "suspicious": {
         "noExplicitAny": "error",
-        "noConsole": "error"
+        "noConsole": "error",
+        "noGlobalEval": "error"
       },
       "style": {
         "useConst": "error"
+      },
+      "security": {
+        "noGlobalEval": "error"
       }
     }
   },

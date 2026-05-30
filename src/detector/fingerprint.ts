@@ -75,6 +75,7 @@ export const FingerprintSchema = z.object({
     has_pii: z.boolean().optional(),
     has_encryption: z.boolean().optional(),
   }),
+  workspacePackages: z.array(z.string()).optional().default([]),
 });
 
 export type Fingerprint = z.infer<typeof FingerprintSchema>;

@@ -16,7 +16,7 @@ describe("CLI Migrate Command", () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("safely migrates an older fingerprint schema and stores it", () => {
+  it("safely migrates an older fingerprint schema and stores it", async () => {
     const originalFingerprint = {
       version: "1.0" as const,
       detected_at: "2026-05-27T23:00:27Z",
@@ -42,13 +42,14 @@ describe("CLI Migrate Command", () => {
         has_secrets_manager: false,
         has_docker: false,
       },
+      workspacePackages: [],
     };
 
     // Store original older schema
-    storeFingerprint(tmpDir, originalFingerprint);
+    await storeFingerprint(tmpDir, originalFingerprint);
 
     // Load and modify
-    const stored = loadStoredFingerprint(tmpDir);
+    const stored = await loadStoredFingerprint(tmpDir);
     expect(stored).toBeDefined();
     expect(stored?.version).toBe("1.0");
 
@@ -56,10 +57,10 @@ describe("CLI Migrate Command", () => {
     if (stored) {
       stored.version = "1.0"; // upgrading
       stored.detected_at = new Date().toISOString();
-      storeFingerprint(tmpDir, stored);
+      await storeFingerprint(tmpDir, stored);
     }
 
-    const migrated = loadStoredFingerprint(tmpDir);
+    const migrated = await loadStoredFingerprint(tmpDir);
     expect(migrated?.version).toBe("1.0");
     expect(migrated?.detected_at).not.toBe("2026-05-27T23:00:27Z");
   });

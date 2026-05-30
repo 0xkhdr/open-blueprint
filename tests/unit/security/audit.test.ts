@@ -34,8 +34,8 @@ describe("Security Audit Logger", () => {
     }
   });
 
-  it("writes valid JSON log entries to daily file and updates symlink", () => {
-    logAudit({
+  it("writes valid JSON log entries to daily file and updates symlink", async () => {
+    await logAudit({
       command: "verify",
       args: ["--level", "all"],
       status: "success",

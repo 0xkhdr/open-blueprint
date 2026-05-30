@@ -121,7 +121,7 @@ export class InitOrchestrator {
     }
 
     if (!options.dryRun && !loadProjectConfig(cwd)) {
-      initProjectConfig(cwd, options.backends);
+      await initProjectConfig(cwd, options.backends);
       messages.push({ level: "info", text: "Created: .bp.json" });
     }
 
