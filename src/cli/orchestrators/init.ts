@@ -1,14 +1,14 @@
 import * as path from "node:path";
 import type { Logger } from "pino";
+import { listBackendIds } from "../../backends/registry.js";
+import { initProjectConfig, loadProjectConfig } from "../../config/project.js";
+import { EXIT_CODES } from "../../constants.js";
 import type { Fingerprint } from "../../detector/fingerprint.js";
 import { detect } from "../../detector/index.js";
-import { initProjectConfig, loadProjectConfig } from "../../config/project.js";
 import { runTemplater } from "../../templater/index.js";
+import { normalizeError } from "../../utils/errors.js";
 import type { FileSystem } from "../../utils/fs.js";
 import { RealFileSystem } from "../../utils/fs.js";
-import { normalizeError } from "../../utils/errors.js";
-import { EXIT_CODES } from "../../constants.js";
-import { listBackendIds } from "../../backends/registry.js";
 
 export interface InitOptions {
   backends: string[];
@@ -55,7 +55,11 @@ export class InitOrchestrator {
     const { cwd, options } = this.ctx;
     const messages: OrchestratorMessage[] = [];
     const allWritten: string[] = [];
-    const backendResults: Array<{ backend: string; filesWritten: string[]; templatePack?: string }> = [];
+    const backendResults: Array<{
+      backend: string;
+      filesWritten: string[];
+      templatePack?: string;
+    }> = [];
 
     const unknown = options.backends.filter((b) => !listBackendIds().includes(b));
     if (unknown.length > 0) {
@@ -96,8 +100,10 @@ export class InitOrchestrator {
         });
 
         for (const f of result.files) {
-          if (f.action === "created") messages.push({ level: "info", text: `+ ${path.relative(cwd, f.path)}` });
-          else if (f.action === "updated") messages.push({ level: "info", text: `~ ${path.relative(cwd, f.path)}` });
+          if (f.action === "created")
+            messages.push({ level: "info", text: `+ ${path.relative(cwd, f.path)}` });
+          else if (f.action === "updated")
+            messages.push({ level: "info", text: `~ ${path.relative(cwd, f.path)}` });
         }
 
         allWritten.push(...result.files.map((f) => f.path));
@@ -120,7 +126,10 @@ export class InitOrchestrator {
     }
 
     if (options.dryRun) {
-      messages.push({ level: "warning", text: "[DRY RUN] No files written. Use without --dry-run to apply." });
+      messages.push({
+        level: "warning",
+        text: "[DRY RUN] No files written. Use without --dry-run to apply.",
+      });
     }
 
     return {

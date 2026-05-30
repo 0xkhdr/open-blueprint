@@ -7,12 +7,12 @@ import { loadProjectConfig } from "../../config/project.js";
 import { loadUserConfig } from "../../config/user.js";
 import { detect } from "../../detector/index.js";
 import { startDevServer } from "../../dx/dev-server.js";
+import { BpError } from "../../errors.js";
 import { resolveTemplatePack } from "../../templater/selector.js";
+import { normalizeError } from "../../utils/errors.js";
 import type { ValidationLevel } from "../../validator/index.js";
 import { EXIT_CODES, runValidator } from "../../validator/index.js";
 import type { ValidationError } from "../../validator/structural.js";
-import { normalizeError } from "../../utils/errors.js";
-import { BpError } from "../../errors.js";
 
 function formatError(err: ValidationError, cwd: string): string {
   const loc = err.line ? `:${err.line}` : "";

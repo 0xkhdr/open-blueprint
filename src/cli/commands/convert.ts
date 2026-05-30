@@ -8,8 +8,8 @@ import { loadProjectConfig } from "../../config/project.js";
 import { ConfigError, TranslationError } from "../../errors.js";
 import { parseBlueprint, renderBlueprint } from "../../translator/index.js";
 import { BlueprintIRSchema } from "../../translator/ir.js";
-import { resolveAndValidatePath } from "../../utils/paths.js";
 import { normalizeError } from "../../utils/errors.js";
+import { resolveAndValidatePath } from "../../utils/paths.js";
 
 export function createConvertCommand(): Command {
   return new Command("convert")

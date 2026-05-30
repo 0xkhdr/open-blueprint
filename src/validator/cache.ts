@@ -74,10 +74,7 @@ export async function loadCacheAsync(
   return defaultCache;
 }
 
-export async function saveCacheAsync(
-  projectRoot: string,
-  cache: ValidationCache
-): Promise<void> {
+export async function saveCacheAsync(projectRoot: string, cache: ValidationCache): Promise<void> {
   const cachePath = getCachePath(projectRoot);
   try {
     const dir = path.dirname(cachePath);

@@ -6,15 +6,15 @@ import type { Fingerprint } from "../detector/fingerprint.js";
 import { enrichFingerprint } from "../detector/index.js";
 import { logger } from "../logger.js";
 import { RegistryClient } from "../registry/client.js";
+import { normalizeError } from "../utils/errors.js";
 import { type RenderContext, shouldRenderTemplate } from "./conditional.js";
-import { registerPartials, renderString, renderTemplate } from "./engine.js";
+import { registerPartials } from "./engine.js";
 import { hasTemplateMetadata, parseTemplateMetadata, stripMetadata } from "./metadata.js";
+import { renderFromRegistry } from "./registry.js";
 import { mergeRiskTemplates, resolveRiskTemplatePack } from "./risk-selector.js";
 import { getTemplatesRoot, resolveTemplatePack } from "./selector.js";
 import type { WriteResult } from "./writer.js";
 import { writeFile } from "./writer.js";
-import { normalizeError } from "../utils/errors.js";
-import { renderFromRegistry } from "./registry.js";
 
 export interface TemplaterOptions {
   backend: string;
@@ -215,11 +215,16 @@ export async function runTemplater(
       continue;
     }
 
-    let rendered: string;
     const templateName = path.relative(pack.directory, templateFile);
     const raw = fs.readFileSync(templateFile, "utf-8");
     const source = hasTemplateMetadata(meta) ? stripMetadata(raw) : raw;
-    rendered = renderFromRegistry(backend, pack.name, templateName, source, context as Record<string, unknown>);
+    const rendered = renderFromRegistry(
+      backend,
+      pack.name,
+      templateName,
+      source,
+      context as Record<string, unknown>
+    );
 
     // Determine output base dir: risk files map to projectRoot directly
     const baseDir = riskFiles.includes(templateFile) && riskDir ? riskDir : pack.directory;

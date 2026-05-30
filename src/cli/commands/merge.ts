@@ -5,8 +5,8 @@ import { mergeBlueprints } from "../../blueprint-sync/merge.js";
 import type { MergeConflict, MergeOptions } from "../../blueprint-sync/types.js";
 import { BpError } from "../../errors.js";
 import { BlueprintIRSchema } from "../../translator/ir.js";
-import { resolveAndValidatePath } from "../../utils/paths.js";
 import { normalizeError } from "../../utils/errors.js";
+import { resolveAndValidatePath } from "../../utils/paths.js";
 
 export function createMergeCommand(): Command {
   return new Command("merge")

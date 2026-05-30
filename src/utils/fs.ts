@@ -1,6 +1,6 @@
+import type { Stats } from "node:fs";
 import * as fsPromises from "node:fs/promises";
 import * as path from "node:path";
-import type { Stats } from "node:fs";
 
 export interface FileSystem {
   readFile(filePath: string, encoding: BufferEncoding): Promise<string>;
@@ -27,7 +27,7 @@ export class RealFileSystem implements FileSystem {
   }
 }
 
-const ENOENT_ERROR = Object.assign(new Error("ENOENT: no such file or directory"), {
+const _ENOENT_ERROR = Object.assign(new Error("ENOENT: no such file or directory"), {
   code: "ENOENT",
 });
 
@@ -44,7 +44,12 @@ export class InMemoryFileSystem implements FileSystem {
 
   readFile(filePath: string, _encoding: BufferEncoding): Promise<string> {
     const content = this.files.get(filePath);
-    if (content === undefined) return Promise.reject(Object.assign(new Error(`ENOENT: no such file or directory, open '${filePath}'`), { code: "ENOENT" }));
+    if (content === undefined)
+      return Promise.reject(
+        Object.assign(new Error(`ENOENT: no such file or directory, open '${filePath}'`), {
+          code: "ENOENT",
+        })
+      );
     return Promise.resolve(content);
   }
 
@@ -84,7 +89,11 @@ export class InMemoryFileSystem implements FileSystem {
       } as unknown as Stats;
       return Promise.resolve(stub);
     }
-    return Promise.reject(Object.assign(new Error(`ENOENT: no such file or directory, stat '${filePath}'`), { code: "ENOENT" }));
+    return Promise.reject(
+      Object.assign(new Error(`ENOENT: no such file or directory, stat '${filePath}'`), {
+        code: "ENOENT",
+      })
+    );
   }
 
   access(filePath: string): Promise<void> {
@@ -92,6 +101,10 @@ export class InMemoryFileSystem implements FileSystem {
     const prefix = filePath.endsWith(path.sep) ? filePath : filePath + path.sep;
     const hasChildren = [...this.files.keys()].some((k) => k.startsWith(prefix));
     if (hasChildren) return Promise.resolve();
-    return Promise.reject(Object.assign(new Error(`ENOENT: no such file or directory, access '${filePath}'`), { code: "ENOENT" }));
+    return Promise.reject(
+      Object.assign(new Error(`ENOENT: no such file or directory, access '${filePath}'`), {
+        code: "ENOENT",
+      })
+    );
   }
 }

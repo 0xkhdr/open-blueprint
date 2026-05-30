@@ -32,6 +32,7 @@ const ALLOWED_HELPERS: Record<string, Handlebars.HelperDelegate> = {
     val !== undefined && val !== null && val !== "" ? val : fallback,
   year: () => new Date().getFullYear(),
   date: () => new Date().toISOString().split("T")[0],
+  // biome-ignore lint/suspicious/noExplicitAny: Handlebars helper — this/options are runtime context objects
   hasFeature: function (this: any, feature: unknown, options: any) {
     const ctx = options?.data?.root || this;
     if (!ctx) return false;
@@ -39,6 +40,7 @@ const ALLOWED_HELPERS: Record<string, Handlebars.HelperDelegate> = {
     if (ctx.security_signals && typeof ctx.security_signals === "object") {
       const sigKey = `has_${featStr}`;
       if (sigKey in ctx.security_signals) {
+        // biome-ignore lint/suspicious/noExplicitAny: dynamic property access on Handlebars context
         return !!(ctx.security_signals as any)[sigKey];
       }
     }
@@ -47,6 +49,7 @@ const ALLOWED_HELPERS: Record<string, Handlebars.HelperDelegate> = {
     if (featStr === "cicd") return !!ctx.tooling?.ci_system;
     return false;
   },
+  // biome-ignore lint/suspicious/noExplicitAny: Handlebars helper — this/options are runtime context objects
   riskGte: function (this: any, targetTier: unknown, options: any) {
     const ctx = options?.data?.root || this;
     if (!ctx) return false;

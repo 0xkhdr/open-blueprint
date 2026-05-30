@@ -4,11 +4,11 @@ import * as path from "node:path";
 import chalk from "chalk";
 import { Command } from "commander";
 import ora from "ora";
+import { BpError } from "../../errors.js";
 import { RegistryClient } from "../../registry/client.js";
 import { getTemplatesRoot } from "../../templater/selector.js";
-import { EXIT_CODES } from "../../validator/index.js";
 import { normalizeError } from "../../utils/errors.js";
-import { BpError } from "../../errors.js";
+import { EXIT_CODES } from "../../validator/index.js";
 
 export function createTemplateCommand(): Command {
   const cmd = new Command("template").description("Manage template packs");
@@ -81,9 +81,7 @@ export function createTemplateCommand(): Command {
         console.log(chalk.green(`  Location: ${path.relative(process.cwd(), finalTargetDir)}`));
         return;
       } catch (e) {
-        spinner.fail(
-          `Failed to install template pack: ${normalizeError(e).message}`
-        );
+        spinner.fail(`Failed to install template pack: ${normalizeError(e).message}`);
         throw new BpError("Command failed", EXIT_CODES.GENERAL_ERROR, "CMD_ERROR", "");
       }
     });
@@ -106,7 +104,12 @@ export function createTemplateCommand(): Command {
           const absolutePackDir = path.resolve(packPath);
           if (!fs.existsSync(absolutePackDir)) {
             spinner.fail(`Pack directory does not exist: ${absolutePackDir}`);
-            throw new BpError("Template not found", EXIT_CODES.TEMPLATE_NOT_FOUND, "TEMPLATE_NOT_FOUND", "");
+            throw new BpError(
+              "Template not found",
+              EXIT_CODES.TEMPLATE_NOT_FOUND,
+              "TEMPLATE_NOT_FOUND",
+              ""
+            );
           }
 
           const client = new RegistryClient(opts.registry, opts.token);
@@ -117,9 +120,7 @@ export function createTemplateCommand(): Command {
           );
           return;
         } catch (e) {
-          spinner.fail(
-            `Failed to publish template pack: ${normalizeError(e).message}`
-          );
+          spinner.fail(`Failed to publish template pack: ${normalizeError(e).message}`);
           throw new BpError("Command failed", EXIT_CODES.GENERAL_ERROR, "CMD_ERROR", "");
         }
       }

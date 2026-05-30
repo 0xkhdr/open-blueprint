@@ -5,8 +5,8 @@ import { Command } from "commander";
 import ora from "ora";
 import { generateDocs } from "../../dx/docs.js";
 import { BpError } from "../../errors.js";
-import { resolveAndValidatePath } from "../../utils/paths.js";
 import { normalizeError } from "../../utils/errors.js";
+import { resolveAndValidatePath } from "../../utils/paths.js";
 
 export function createDocsCommand(): Command {
   const cmd = new Command("docs");
@@ -58,11 +58,7 @@ export function createDocsCommand(): Command {
         console.log(chalk.cyan(`\n  ✔ ${path.relative(cwd, filePath)}`));
       } catch (e) {
         if (e instanceof BpError) throw e;
-        spinner.fail(
-          chalk.red(
-            `Documentation generation failed: ${normalizeError(e).message}`
-          )
-        );
+        spinner.fail(chalk.red(`Documentation generation failed: ${normalizeError(e).message}`));
         throw new BpError(
           `Documentation generation failed: ${normalizeError(e).message}. See: docs/errors.md#code-1`,
           1,
@@ -91,9 +87,7 @@ export function createDocsCommand(): Command {
       console.log(chalk.cyan(`\n  ✔ GOVERNANCE.md`));
       console.log(chalk.dim(`\nOutput: ${path.relative(cwd, outputDir)}`));
     } catch (e) {
-      spinner.fail(
-        chalk.red(`Documentation generation failed: ${normalizeError(e).message}`)
-      );
+      spinner.fail(chalk.red(`Documentation generation failed: ${normalizeError(e).message}`));
       throw new BpError(
         `Documentation generation failed: ${normalizeError(e).message}. See: docs/errors.md#code-1`,
         1,

@@ -7,12 +7,12 @@ import ora from "ora";
 import { loadProjectConfig } from "../../config/project.js";
 import { loadUserConfig } from "../../config/user.js";
 import { detect } from "../../detector/index.js";
+import { BpError } from "../../errors.js";
 import { resolveTemplatePack } from "../../templater/selector.js";
+import { normalizeError } from "../../utils/errors.js";
 import type { ValidationLevel } from "../../validator/index.js";
 import { EXIT_CODES, exitCodeForResult, runValidator } from "../../validator/index.js";
 import type { ValidationError } from "../../validator/structural.js";
-import { normalizeError } from "../../utils/errors.js";
-import { BpError } from "../../errors.js";
 
 const VALID_LEVELS = ["structural", "semantic", "logical", "drift", "governance", "all"] as const;
 
@@ -110,9 +110,7 @@ function startWatcher(
     );
     console.log(chalk.dim("Press Ctrl+C to stop.\n"));
   } catch (e) {
-    console.warn(
-      chalk.yellow(`Watch mode unavailable: ${normalizeError(e).message}`)
-    );
+    console.warn(chalk.yellow(`Watch mode unavailable: ${normalizeError(e).message}`));
   }
 }
 
@@ -260,9 +258,7 @@ export function createVerifyCommand(): Command {
                 }
               }
             } catch (e) {
-              spinner?.fail(
-                `[${targetPath}] Validation error: ${normalizeError(e).message}`
-              );
+              spinner?.fail(`[${targetPath}] Validation error: ${normalizeError(e).message}`);
               _overallPassed = false;
               maxExitCode = Math.max(maxExitCode, EXIT_CODES.GENERAL_ERROR);
               results.push({

@@ -15,7 +15,10 @@ export const LanguageNameSchema = z.enum([
   "php",
 ]);
 
-const identifierField = z.string().max(64).regex(/^[a-z0-9_-]+$/);
+const _identifierField = z
+  .string()
+  .max(64)
+  .regex(/^[a-z0-9_-]+$/);
 const freeStringField = z.string().max(512);
 const pathField = z.string().max(256);
 

@@ -1,8 +1,8 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { PermissionError } from "../errors.js";
-import { DEFAULT_PUBLIC_KEY, signData, verifySignature } from "./signer.js";
 import { normalizeError } from "../utils/errors.js";
+import { DEFAULT_PUBLIC_KEY, signData, verifySignature } from "./signer.js";
 
 function assertHttpsUrl(url: string): void {
   if (!url.startsWith("https://")) {
@@ -135,9 +135,7 @@ export class RegistryClient {
           fs.writeFileSync(fullPath, content, "utf-8");
         }
       } catch (err) {
-        throw new Error(
-          `Failed to extract package archive: ${normalizeError(err).message}`
-        );
+        throw new Error(`Failed to extract package archive: ${normalizeError(err).message}`);
       }
     } else {
       throw new Error(`Package "${packageName}" is missing signature or archive data.`);

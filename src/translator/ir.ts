@@ -1,14 +1,16 @@
 import { z } from "zod";
 
-const irIdentifier = z.string().max(64).regex(/^[a-z0-9_-]+$/i);
+const irIdentifier = z
+  .string()
+  .max(64)
+  .regex(/^[a-z0-9_-]+$/i);
 const irShortString = z.string().max(512);
-const irPathField = z.string().max(256);
+const _irPathField = z.string().max(256);
 const irContentField = z.string().max(2048);
 const noGlobOverrun = (s: string) => !/\*{4,}/.test(s);
-const irGlobField = z
-  .string()
-  .max(256)
-  .refine(noGlobOverrun, { message: "Glob pattern must not contain 4 or more consecutive '*' characters" });
+const irGlobField = z.string().max(256).refine(noGlobOverrun, {
+  message: "Glob pattern must not contain 4 or more consecutive '*' characters",
+});
 
 export const SpatialAnchorSchema = z.object({
   project_name: irShortString,

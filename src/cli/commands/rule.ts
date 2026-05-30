@@ -7,14 +7,14 @@ import matter from "gray-matter";
 import { loadProjectConfig } from "../../config/project.js";
 import { loadUserConfig } from "../../config/user.js";
 import { detect } from "../../detector/index.js";
+import { BpError } from "../../errors.js";
 import { resolveTemplatePack } from "../../templater/selector.js";
 import type { BlueprintIR } from "../../translator/ir.js";
+import { normalizeError } from "../../utils/errors.js";
 import { EXIT_CODES } from "../../validator/index.js";
 import { validateSemantic } from "../../validator/semantic.js";
 import type { ValidationError } from "../../validator/structural.js";
 import { validateStructural } from "../../validator/structural.js";
-import { normalizeError } from "../../utils/errors.js";
-import { BpError } from "../../errors.js";
 
 interface RuleMeta {
   filename: string;
@@ -153,7 +153,8 @@ export function createRuleCommand(): Command {
         }
 
         const hasErrors = allErrors.some((e) => e.severity === "error");
-        if (hasErrors) throw new BpError("Command failed", EXIT_CODES.STRUCTURAL_FAILURE, "CMD_ERROR", "");
+        if (hasErrors)
+          throw new BpError("Command failed", EXIT_CODES.STRUCTURAL_FAILURE, "CMD_ERROR", "");
       } catch (e) {
         console.error(chalk.red(`Lint error: ${normalizeError(e).message}`));
         throw new BpError("Command failed", 1, "CMD_ERROR", "");

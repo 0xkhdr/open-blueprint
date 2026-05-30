@@ -238,7 +238,7 @@ export async function runValidator(options: ValidatorOptions): Promise<Validatio
 
   await Promise.all(
     files.map(async (file) => {
-      let stat;
+      let stat: Awaited<ReturnType<typeof fsPromises.stat>> | undefined;
       try {
         stat = await fsPromises.stat(file);
       } catch {
@@ -283,7 +283,7 @@ export async function runValidator(options: ValidatorOptions): Promise<Validatio
   // Update cache for the validated files
   await Promise.all(
     filesToValidate.map(async (file) => {
-      let stat;
+      let stat: Awaited<ReturnType<typeof fsPromises.stat>> | undefined;
       try {
         stat = await fsPromises.stat(file);
       } catch {

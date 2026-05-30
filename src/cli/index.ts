@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import { Command } from "commander";
 import { BpError } from "../errors.js";
-import { normalizeError } from "../utils/errors.js";
 import { initCorrelationId, logger, runWithCorrelationId } from "../logger.js";
+import { normalizeError } from "../utils/errors.js";
 import { createAgentCommand } from "./commands/agent.js";
 import { createChainCommand } from "./commands/chain.js";
 import { createConfigCommand } from "./commands/config.js";
@@ -88,10 +88,12 @@ program.hook("preAction", (_thisCommand, actionCommand) => {
 // Graceful shutdown handlers
 process.on("SIGTERM", () => {
   logger.flush();
+  /* v8 ignore next */
   process.exit(0);
 });
 process.on("SIGINT", () => {
   logger.flush();
+  /* v8 ignore next */
   process.exit(0);
 });
 
@@ -118,6 +120,7 @@ runWithCorrelationId(correlationId, () => {
           { event: "command.complete", command, durationMs, exitCode: e.exitCode, code: e.code },
           e.message
         );
+        /* v8 ignore next */
         process.exit(e.exitCode);
       } else {
         logger.error(
@@ -130,6 +133,7 @@ runWithCorrelationId(correlationId, () => {
           },
           "Unexpected error"
         );
+        /* v8 ignore next */
         process.exit(1);
       }
     });

@@ -68,7 +68,7 @@ export function createCostCommand(): Command {
     .argument("[project-root]", "Project root directory", process.cwd())
     .action((limitArg: string | undefined, projectRoot: string, opts: { json?: boolean }) => {
       const ir = loadIR(projectRoot);
-      
+
       if (limitArg !== undefined) {
         const limit = parseFloat(limitArg);
         if (Number.isNaN(limit) || limit < 0) {

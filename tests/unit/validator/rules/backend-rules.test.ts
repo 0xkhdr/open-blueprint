@@ -34,6 +34,121 @@ describe("backend validation rules", () => {
       expect(errors.length).toBeGreaterThan(0);
       expect(errors[0].type).toBe("SKILL_ONLY_BACKEND_HAS_COMMANDS");
     });
+
+    it("errors when commands dir exists for trae", () => {
+      fs.mkdirSync(path.join(tmpDir, ".trae", "commands"), { recursive: true });
+      const rule = BACKEND_RULES.find((r) => r.id === "skill-only-no-commands")!;
+      const errors = rule.check(tmpDir, ["trae"]);
+      expect(errors.length).toBeGreaterThan(0);
+      expect(errors[0].type).toBe("SKILL_ONLY_BACKEND_HAS_COMMANDS");
+    });
+
+    it("errors when commands dir exists for forgecode", () => {
+      fs.mkdirSync(path.join(tmpDir, ".forgecode", "commands"), { recursive: true });
+      const rule = BACKEND_RULES.find((r) => r.id === "skill-only-no-commands")!;
+      const errors = rule.check(tmpDir, ["forgecode"]);
+      expect(errors.length).toBeGreaterThan(0);
+      expect(errors[0].type).toBe("SKILL_ONLY_BACKEND_HAS_COMMANDS");
+    });
+
+    it("passes when commands dir absent for trae and forgecode", () => {
+      fs.mkdirSync(path.join(tmpDir, ".trae", "skills"), { recursive: true });
+      fs.mkdirSync(path.join(tmpDir, ".forgecode", "skills"), { recursive: true });
+      const rule = BACKEND_RULES.find((r) => r.id === "skill-only-no-commands")!;
+      const errors = rule.check(tmpDir, ["trae", "forgecode"]);
+      expect(errors).toHaveLength(0);
+    });
+
+    it("skips unknown backend id without throwing", () => {
+      const rule = BACKEND_RULES.find((r) => r.id === "skill-only-no-commands")!;
+      expect(() => rule.check(tmpDir, ["unknown-backend-xyz"])).not.toThrow();
+      const errors = rule.check(tmpDir, ["unknown-backend-xyz"]);
+      expect(errors).toHaveLength(0);
+    });
+  });
+
+  describe("toml-command-format", () => {
+    it("passes when no toml commands dir exists for gemini", () => {
+      const rule = BACKEND_RULES.find((r) => r.id === "toml-command-format")!;
+      const errors = rule.check(tmpDir, ["gemini"]);
+      expect(errors).toHaveLength(0);
+    });
+
+    it("passes for valid toml files (no unclosed brackets)", () => {
+      fs.mkdirSync(path.join(tmpDir, ".gemini", "commands"), { recursive: true });
+      fs.writeFileSync(
+        path.join(tmpDir, ".gemini", "commands", "test.toml"),
+        '[section]\nkey = "value"\n'
+      );
+      const rule = BACKEND_RULES.find((r) => r.id === "toml-command-format")!;
+      const errors = rule.check(tmpDir, ["gemini"]);
+      expect(errors).toHaveLength(0);
+    });
+
+    it("errors for toml files with unclosed bracket", () => {
+      fs.mkdirSync(path.join(tmpDir, ".gemini", "commands"), { recursive: true });
+      fs.writeFileSync(
+        path.join(tmpDir, ".gemini", "commands", "bad.toml"),
+        "[unclosed\nkey = value\n"
+      );
+      const rule = BACKEND_RULES.find((r) => r.id === "toml-command-format")!;
+      const errors = rule.check(tmpDir, ["gemini"]);
+      expect(errors.length).toBeGreaterThan(0);
+      expect(errors[0].type).toBe("INVALID_TOML_SYNTAX");
+    });
+
+    it("skips unknown backend id without throwing", () => {
+      const rule = BACKEND_RULES.find((r) => r.id === "toml-command-format")!;
+      expect(() => rule.check(tmpDir, ["unknown-backend-xyz"])).not.toThrow();
+    });
+  });
+
+  describe("codex-global-path", () => {
+    it("passes when codex not in backends list", () => {
+      const rule = BACKEND_RULES.find((r) => r.id === "codex-global-path")!;
+      const errors = rule.check(tmpDir, ["claude"]);
+      expect(errors).toHaveLength(0);
+    });
+
+    it("warns when codex global path does not exist", () => {
+      const rule = BACKEND_RULES.find((r) => r.id === "codex-global-path")!;
+      const fakeHome = path.join(tmpDir, "fakehome");
+      const origEnv = process.env.CODEX_HOME;
+      process.env.CODEX_HOME = fakeHome;
+      try {
+        const errors = rule.check(tmpDir, ["codex"]);
+        expect(errors.length).toBeGreaterThan(0);
+        expect(errors[0].type).toBe("CODEX_GLOBAL_PATH_MISSING");
+      } finally {
+        if (origEnv === undefined) delete process.env.CODEX_HOME;
+        else process.env.CODEX_HOME = origEnv;
+      }
+    });
+  });
+
+  describe("multi-backend-no-conflicts", () => {
+    it("returns empty for backends with no rules dirs", () => {
+      const rule = BACKEND_RULES.find((r) => r.id === "multi-backend-no-conflicts")!;
+      const errors = rule.check(tmpDir, ["claude", "cursor"]);
+      expect(errors).toHaveLength(0);
+    });
+
+    it("detects conflicting severity for same rule across backends", () => {
+      fs.mkdirSync(path.join(tmpDir, ".claude", "rules"), { recursive: true });
+      fs.mkdirSync(path.join(tmpDir, ".cursor", "rules"), { recursive: true });
+      fs.writeFileSync(
+        path.join(tmpDir, ".claude", "rules", "my-rule.md"),
+        "---\nseverity: error\n---\nContent\n"
+      );
+      fs.writeFileSync(
+        path.join(tmpDir, ".cursor", "rules", "my-rule.md"),
+        "---\nseverity: warning\n---\nContent\n"
+      );
+      const rule = BACKEND_RULES.find((r) => r.id === "multi-backend-no-conflicts")!;
+      const errors = rule.check(tmpDir, ["claude", "cursor"]);
+      expect(errors.length).toBeGreaterThan(0);
+      expect(errors[0].type).toBe("MULTI_BACKEND_RULE_CONFLICT");
+    });
   });
 
   describe("github-copilot-ide-only", () => {

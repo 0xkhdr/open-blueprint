@@ -6,11 +6,10 @@ import ora from "ora";
 import { listBackendIds } from "../../backends/registry.js";
 import { isV1Config } from "../../config/project.js";
 import { generateMigrationPlan, generateMigrationReport } from "../../dx/migrate.js";
-import { ConfigError, TranslationError } from "../../errors.js";
+import { BpError, ConfigError, TranslationError } from "../../errors.js";
+import { normalizeError } from "../../utils/errors.js";
 import { resolveAndValidatePath } from "../../utils/paths.js";
 import { loadStoredFingerprint, storeFingerprint } from "../../validator/drift.js";
-import { normalizeError } from "../../utils/errors.js";
-import { BpError } from "../../errors.js";
 
 export function createMigrateCommand(): Command {
   const cmd = new Command("migrate");
@@ -192,9 +191,7 @@ export function createMigrateCommand(): Command {
           }
         } catch (e) {
           if (e instanceof ConfigError || e instanceof TranslationError) throw e;
-          spinner.fail(
-            chalk.red(`Migration failed: ${normalizeError(e).message}`)
-          );
+          spinner.fail(chalk.red(`Migration failed: ${normalizeError(e).message}`));
           throw new TranslationError(
             `Migration failed: ${normalizeError(e).message}. See: docs/errors.md#code-7`
           );

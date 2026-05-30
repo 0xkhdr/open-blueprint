@@ -7,7 +7,7 @@ import {
   KNOWN_TEST_DIRS,
   KNOWN_UI_FRAMEWORKS,
 } from "../constants.js";
-import { RealFileSystem, type FileSystem } from "../utils/fs.js";
+import { type FileSystem, RealFileSystem } from "../utils/fs.js";
 import { detectEnterpriseSignals, type EnterpriseSignals } from "./enterprise-signals.js";
 import type { Fingerprint } from "./fingerprint.js";
 import { FingerprintSchema } from "./fingerprint.js";
@@ -138,10 +138,7 @@ async function detectGitWorkflow(
   return "unknown";
 }
 
-async function scanDirectoryTopology(
-  root: string,
-  fs: FileSystem
-): Promise<DirectoryTopology> {
+async function scanDirectoryTopology(root: string, fs: FileSystem): Promise<DirectoryTopology> {
   const srcNames: string[] = [...KNOWN_SOURCE_DIRS];
   const testNames: string[] = [...KNOWN_TEST_DIRS];
   const configNames: string[] = [...KNOWN_CONFIG_DIRS];
@@ -276,7 +273,10 @@ function estimateMonthlyTokens(fp: Fingerprint): number {
   return Math.round((baseCost + codefileMultiplier + frameworkMultiplier) * complexityFactor);
 }
 
-export async function detect(projectRoot: string, fs: FileSystem = new RealFileSystem()): Promise<Fingerprint> {
+export async function detect(
+  projectRoot: string,
+  fs: FileSystem = new RealFileSystem()
+): Promise<Fingerprint> {
   const absoluteRoot = path.resolve(projectRoot);
 
   if (!(await fileExists(absoluteRoot, fs))) {

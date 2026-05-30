@@ -3,8 +3,8 @@ import * as path from "node:path";
 import fg from "fast-glob";
 import matter from "gray-matter";
 import type { BackendManifest } from "../templater/selector.js";
-import type { ValidationError } from "./structural.js";
 import { normalizeError } from "../utils/errors.js";
+import type { ValidationError } from "./structural.js";
 
 // ---------------------------------------------------------------------------
 // Known agentic tool names (Claude Code tool surface)

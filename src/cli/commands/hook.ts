@@ -3,9 +3,9 @@ import * as path from "node:path";
 import * as readline from "node:readline";
 import chalk from "chalk";
 import { Command } from "commander";
-import { detectHookCycles, validateHookSafety } from "../../validator/hook.js";
-import { normalizeError } from "../../utils/errors.js";
 import { BpError } from "../../errors.js";
+import { normalizeError } from "../../utils/errors.js";
+import { detectHookCycles, validateHookSafety } from "../../validator/hook.js";
 
 function findHookDirs(cwd: string): string[] {
   const candidates = [
@@ -110,9 +110,7 @@ export default async function hook(context) {
 
         console.log(chalk.green("  ✔ Generated stubs inside .claude/hooks/"));
       } catch (e) {
-        console.error(
-          chalk.red(`Failed to generate hooks: ${normalizeError(e).message}`)
-        );
+        console.error(chalk.red(`Failed to generate hooks: ${normalizeError(e).message}`));
       }
     });
 
@@ -173,9 +171,7 @@ export default async function hook(context) {
         fs.unlinkSync(target.filePath);
         console.log(chalk.green(`  ✔ Removed ${target.filePath}`));
       } catch (e) {
-        console.error(
-          chalk.red(`  ✗ Failed to remove: ${normalizeError(e).message}`)
-        );
+        console.error(chalk.red(`  ✗ Failed to remove: ${normalizeError(e).message}`));
         throw new BpError("Command failed", 1, "CMD_ERROR", "");
       }
     });

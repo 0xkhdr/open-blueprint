@@ -7,13 +7,13 @@ import ora from "ora";
 import { loadProjectConfig } from "../../config/project.js";
 import { loadUserConfig } from "../../config/user.js";
 import { detect } from "../../detector/index.js";
+import { BpError } from "../../errors.js";
 import { resolveTemplatePack } from "../../templater/selector.js";
+import { normalizeError } from "../../utils/errors.js";
 import { FINGERPRINT_FILE, storeFingerprint, validateDrift } from "../../validator/drift.js";
 import { EXIT_CODES } from "../../validator/index.js";
 import type { ValidationError } from "../../validator/structural.js";
 import { validateStructuralBatch } from "../../validator/structural.js";
-import { normalizeError } from "../../utils/errors.js";
-import { BpError } from "../../errors.js";
 
 // ---------------------------------------------------------------------------
 // Safe auto-apply fixes for drift issues
@@ -188,7 +188,8 @@ export function createSyncCommand(): Command {
               2
             )
           );
-          if (driftErrors.length > 0) throw new BpError("Command failed", EXIT_CODES.DRIFT_DETECTED, "CMD_ERROR", "");
+          if (driftErrors.length > 0)
+            throw new BpError("Command failed", EXIT_CODES.DRIFT_DETECTED, "CMD_ERROR", "");
         }
 
         if (structuralHardFail) {

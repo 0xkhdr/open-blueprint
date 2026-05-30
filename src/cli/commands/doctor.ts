@@ -11,6 +11,7 @@ import { formatGapReport, generateGapReport } from "../../enterprise/compliance-
 import { generateEnvTemplate } from "../../enterprise/env-template.js";
 import { generateEscalationRunbook } from "../../enterprise/runbooks.js";
 import { scanForSecrets } from "../../enterprise/secrets.js";
+import { BpError } from "../../errors.js";
 import { resolveTemplatePack } from "../../templater/selector.js";
 import { AntigravityAdapter } from "../../translator/adapters/antigravity.js";
 import { ClaudeAdapter } from "../../translator/adapters/claude.js";
@@ -22,10 +23,9 @@ import { GenericAdapter } from "../../translator/adapters/generic.js";
 import { KiroAdapter } from "../../translator/adapters/kiro.js";
 import { OpenDevAdapter } from "../../translator/adapters/opendev.js";
 import { PIAdapter } from "../../translator/adapters/pi.js";
+import { normalizeError } from "../../utils/errors.js";
 import { generateComplianceReport } from "../../validator/compliance.js";
 import { EXIT_CODES } from "../../validator/index.js";
-import { normalizeError } from "../../utils/errors.js";
-import { BpError } from "../../errors.js";
 
 interface BackendHealthResult {
   id: string;
@@ -229,7 +229,8 @@ export function createDoctorCommand(): Command {
               chalk.red(`Found ${findings.length} secret(s). Rotate or remove before committing.`)
             );
           }
-          if (findings.length > 0) throw new BpError("Command failed", EXIT_CODES.GENERAL_ERROR, "CMD_ERROR", "");
+          if (findings.length > 0)
+            throw new BpError("Command failed", EXIT_CODES.GENERAL_ERROR, "CMD_ERROR", "");
         }
 
         // --- Compliance report mode ---
@@ -593,7 +594,11 @@ export function createDoctorCommand(): Command {
                 console.log(dashboard);
               }
             } else {
-              console.log(chalk.yellow("\n⚠ Cost report skipped: No blueprint found at .claude/blueprint.json"));
+              console.log(
+                chalk.yellow(
+                  "\n⚠ Cost report skipped: No blueprint found at .claude/blueprint.json"
+                )
+              );
             }
           } catch (e) {
             console.log(chalk.yellow(`\n⚠ Cost report failed: ${normalizeError(e).message}`));

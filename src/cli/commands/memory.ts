@@ -2,13 +2,13 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import chalk from "chalk";
 import { Command } from "commander";
+import { BpError } from "../../errors.js";
 import {
   cleanupExpiredMemory,
   enforceMemoryGovernance,
   type MemoryGovernanceConfig,
 } from "../../multiagent/memory.js";
 import { BlueprintIRSchema } from "../../translator/ir.js";
-import { BpError } from "../../errors.js";
 
 function loadIR(cwd: string) {
   const blueprintPath = path.join(cwd, ".claude", "blueprint.json");

@@ -1,9 +1,9 @@
 import { Command } from "commander";
+import { BpError } from "../../errors.js";
 import {
   detectTelemetryPlatform,
   getTelemetryInitConfig,
 } from "../../observability/telemetry-detect.js";
-import { BpError } from "../../errors.js";
 
 export function createTelemetryCommand(): Command {
   const cmd = new Command("telemetry").description("Telemetry configuration commands");
