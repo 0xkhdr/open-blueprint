@@ -103,23 +103,23 @@ Documentation follows a progressive-disclosure structure. Read only what you nee
 
 | Backend ID | Tool | Type | Command Syntax |
 |---|---|---|---|
-| `claude` | Claude Code | Standard | `/opsx:<workflow>` |
-| `cursor` | Cursor | Standard | `/opsx-<workflow>` |
-| `codex` | OpenAI Codex CLI | Global path | `/opsx:<workflow>` |
-| `github-copilot` | GitHub Copilot | IDE-only | `/opsx-<workflow>` |
-| `kiro` | Kiro | Standard | `/opsx-<workflow>` |
-| `gemini` | Gemini CLI | TOML | `/openspec-<workflow>` |
-| `windsurf` | Windsurf | Standard | `/opsx-<workflow>` |
-| `cline` | Cline | Standard | `/opsx-<workflow>` |
-| `kilocode` | Kilo Code | Standard | `/opsx-<workflow>` |
-| `roocode` | Roo Code | Standard | `/opsx:<workflow>` |
-| `kimi` | Kimi | Skill-only | `/skill:openspec-<workflow>` |
-| `trae` | Trae | Skill-only | `/openspec-<workflow>` |
-| `forgecode` | Forge Code | Skill-only | `/skill:openspec-<workflow>` |
-| `qwen` | Qwen | TOML | `/openspec-<workflow>` |
-| `amazon-q` | Amazon Q | Standard | `/opsx:<workflow>` |
-| `continue` | Continue | Standard | `/opsx-<workflow>` |
-| `opencode` | OpenCode | Standard | `/opsx:<workflow>` |
+| `claude` | Claude Code | Standard | `/bp:<workflow>` |
+| `cursor` | Cursor | Standard | `/bp-<workflow>` |
+| `codex` | OpenAI Codex CLI | Global path | `/bp:<workflow>` |
+| `github-copilot` | GitHub Copilot | IDE-only | `/bp-<workflow>` |
+| `kiro` | Kiro | Standard | `/bp-<workflow>` |
+| `gemini` | Gemini CLI | TOML | `bp-<workflow>` |
+| `windsurf` | Windsurf | Standard | `/bp-<workflow>` |
+| `cline` | Cline | Standard | `/bp-<workflow>` |
+| `kilocode` | Kilo Code | Standard | `/bp-<workflow>` |
+| `roocode` | Roo Code | Standard | `/bp:<workflow>` |
+| `kimi` | Kimi | Skill-only | `/skill:bp-<workflow>` |
+| `trae` | Trae | Skill-only | `bp-<workflow>` |
+| `forgecode` | Forge Code | Skill-only | `/skill:bp-<workflow>` |
+| `qwen` | Qwen | TOML | `bp-<workflow>` |
+| `amazon-q` | Amazon Q | Standard | `/bp:<workflow>` |
+| `continue` | Continue | Standard | `/bp-<workflow>` |
+| `opencode` | OpenCode | Standard | `/bp:<workflow>` |
 | ... | [+14 more](docs/supported-tools.md) | | |
 
 ### Multi-Backend Setup

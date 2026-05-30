@@ -20,19 +20,19 @@
 | `auggie` | Auggie | `.auggie/skills` | `.auggie/commands` | `:` | `.md` | |
 | `bob` | Bob | `.bob/skills` | `.bob/commands` | `:` | `.md` | |
 | `cline` | Cline | `.cline/workflows/skills` | `.cline/workflows/commands` | `-` | `.md` | Workflows path |
-| `codebuddy` | CodeBuddy | `.codebuddy/.opsx/skills` | `.codebuddy/.opsx/commands` | `:` | `.md` | Nested opsx |
+| `codebuddy` | CodeBuddy | `.codebuddy/skills` | `.codebuddy/commands` | `:` | `.md` | |
 | `continue` | Continue | `.continue/skills` | `.continue/commands` | `-` | `.prompt` | |
-| `costrict` | Costrict | `.costrict/config/opsx/skills` | `.costrict/config/opsx/commands` | `bare` | `.md` | Deep nested |
-| `crush` | Crush | `.crush/.opsx/skills` | `.crush/.opsx/commands` | `:` | `.md` | Nested opsx |
+| `costrict` | Costrict | `.costrict/skills` | `.costrict/commands` | `bare` | `.md` | |
+| `crush` | Crush | `.crush/skills` | `.crush/commands` | `:` | `.md` | |
 | `factory` | Factory | `.factory/skills` | `.factory/commands` | `:` | `.md` | |
 | `forgecode` | Forge Code | `.forgecode/skills` | — | `skill` | — | Skill-only |
 | `iflow` | iFlow | `.iflow/skills` | `.iflow/commands` | `:` | `.md` | |
 | `junie` | Junie | `.junie/skills` | `.junie/commands` | `:` | `.md` | |
 | `kilocode` | Kilo Code | `.kilocode/workflows/skills` | `.kilocode/workflows/commands` | `-` | `.md` | Workflows path |
 | `kimi` | Kimi | `.kimi/skills` | — | `skill` | — | Skill-only |
-| `lingma` | Lingma | `.lingma/.opsx/skills` | `.lingma/.opsx/commands` | `:` | `.md` | Nested opsx |
+| `lingma` | Lingma | `.lingma/skills` | `.lingma/commands` | `:` | `.md` | |
 | `opencode` | OpenCode | `.opencode/skills` | `.opencode/commands` | `:` | `.md` | |
-| `qoder` | Qoder | `.qoder/.opsx/skills` | `.qoder/.opsx/commands` | `:` | `.md` | Nested opsx |
+| `qoder` | Qoder | `.qoder/skills` | `.qoder/commands` | `:` | `.md` | |
 | `qwen` | Qwen | `.qwen/skills` | `.qwen/commands` | `bare` | `.toml` | TOML format |
 | `roocode` | Roo Code | `.roocode/skills` | `.roocode/commands` | `:` | `.md` | |
 | `trae` | Trae | `.trae/skills` | — | `bare` | — | Skill-only |
@@ -44,10 +44,10 @@ Each backend uses one of four command invocation syntaxes:
 
 | Syntax | Pattern | Example | Backends |
 |---|---|---|---|
-| `colon` | `/opsx:<workflow>` | `/opsx:propose` | claude, codex, amazon-q, auggie, bob, codebuddy, crush, factory, iflow, junie, lingma, opencode, qoder, roocode, opendev, generic, pi, antigravity |
-| `hyphen` | `/opsx-<workflow>` | `/opsx-propose` | cursor, cline, continue, github-copilot, kiro, kilocode, windsurf |
-| `bare` | `/openspec-<workflow>` | `/openspec-propose` | gemini, qwen, costrict, trae |
-| `skill` | `/skill:openspec-<workflow>` | `/skill:openspec-propose` | kimi, forgecode |
+| `colon` | `/bp:<workflow>` | `/bp:verify` | claude, codex, amazon-q, auggie, bob, codebuddy, crush, factory, iflow, junie, lingma, opencode, qoder, roocode, opendev, generic, pi, antigravity |
+| `hyphen` | `/bp-<workflow>` | `/bp-verify` | cursor, cline, continue, github-copilot, kiro, kilocode, windsurf |
+| `bare` | `bp-<workflow>` | `bp-verify` | gemini, qwen, costrict, trae |
+| `skill` | `/skill:bp-<workflow>` | `/skill:bp-verify` | kimi, forgecode |
 
 ## Multi-Backend Setup Guide
 
@@ -109,9 +109,9 @@ The resulting `.bp.json` uses the v1 schema:
 
 The following backends **do not support command files** — only skill files are generated:
 
-- **Kimi** (`kimi`): Skill invocation syntax `/skill:openspec-<workflow>`
-- **Trae** (`trae`): Bare invocation syntax `/openspec-<workflow>`
-- **Forge Code** (`forgecode`): Skill invocation syntax `/skill:openspec-<workflow>`
+- **Kimi** (`kimi`): Skill invocation syntax `/skill:bp-<workflow>`
+- **Trae** (`trae`): Bare invocation syntax `bp-<workflow>`
+- **Forge Code** (`forgecode`): Skill invocation syntax `/skill:bp-<workflow>`
 
 Running `bp verify` will report an error if command directories are found for these backends.
 
