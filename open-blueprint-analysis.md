@@ -1,354 +1,306 @@
-# Open-Blueprint (`bp`) Repository Analysis
+# Open-Blueprint (`bp`) Post-Improvement Gap Analysis
 
 ## Executive Summary
 
-**open-blueprint** (`bp`) is a zero-runtime-overhead CLI utility that scaffolds and verifies governance structures for agentic AI coding tools (Claude Code, Cursor, Codex, etc.). It supports 31 backends, runs 4-layer validation (structural → semantic → logical → drift), and uses Handlebars templating with a fingerprint-based detector.
-
-This analysis identifies **critical gaps** in code quality, security posture, and architectural maintainability that should be addressed before the tool is used in production CI/CD pipelines or enterprise environments.
+This analysis evaluates the **open-blueprint** repository after the previous round of improvements was implemented. Significant progress has been made across templater async migration, security hardening, adapter registry refactoring, audit logging, resource limits, and diff generation. However, **critical gaps remain** in the architecture, particularly around incomplete migrations, lingering sync I/O, test coverage, CI security posture, and enterprise-grade operational concerns.
 
 ---
 
-## 1. Package Domain Analysis
+## 1. Improvements Successfully Implemented (Verified)
 
-### 1.1 Architecture Overview
-```
-┌──────────────┐    ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
-│   DETECTOR   │───▶│  TEMPLATER   │───▶│  VALIDATOR   │───▶│  TRANSLATOR  │
-│  (Repo MRI)  │    │ (Handlebars) │    │ (4-Layer QA) │    │(Backend Sync)│
-└──────────────┘    └──────────────┘    └──────────────┘    └──────────────┘
-```
-
-- **Detector**: Scans repo topology, languages, frameworks, security signals
-- **Templater**: Handlebars-based scaffolding with risk-tier template merging
-- **Validator**: 4-layer gate (structural, semantic, logical, drift) + governance
-- **Translator**: 31 backend adapters converting BlueprintIR to target formats
-
-### 1.2 Strengths
-- **Comprehensive backend coverage**: 31 AI tools supported with manifest-driven configuration
-- **Strong type safety**: TypeScript strict mode, Zod schemas for IR validation
-- **Good CI hygiene**: Biome linting, Vitest coverage, multi-node CI matrix
-- **Documentation maturity**: ADRs, progressive-disclosure docs, NFRs, glossary
-- **Observability**: Pino structured logging with correlation IDs and redaction
-- **LSP integration**: VS Code language server for real-time validation
-
-### 1.3 Domain Gaps
-| Gap | Impact | Severity |
-|-----|--------|----------|
-| No plugin sandboxing | Custom validators run in same process | High |
-| No remote registry auth | Registry client lacks token-based auth flows | Medium |
-| Missing backend version pinning | Adapters don't declare compatible backend versions | Medium |
-| No monorepo workspace detection | Detector sees packages/ but doesn't parse workspace configs | Low |
+| # | Improvement | Status | Evidence |
+|---|------------|--------|----------|
+| 1 | **Templater async migration** | ✅ Done | `templater/index.ts` now uses `fsPromises`, `findTemplateFiles()` is async |
+| 2 | **Writer async migration** | ✅ Done | `writer.ts` fully async with `fsPromises`, `createPatch` from `diff` package |
+| 3 | **Engine async partials** | ✅ Done | `registerPartials()` is async, uses `fsPromises` |
+| 4 | **Template vars Zod validation** | ✅ Done | `VarsSchema` with depth limits, blocked HBS keys, string length caps |
+| 5 | **Audit log HMAC signing** | ✅ Done | `AuditLogger` class with `createHmac('sha256')`, correlation ID reuse |
+| 6 | **Audit log structured warnings** | ✅ Done | `logger.warn()` on missing HMAC key and write failures |
+| 7 | **Adapter registry refactor** | ✅ Done | `ADAPTER_LOADERS` map in `translator/index.ts`, `getAdapter()` exported; `doctor.ts` uses it |
+| 8 | **Proper unified diff** | ✅ Done | `createPatch` from `diff` package replaces naive line diff |
+| 9 | **Resource limits** | ✅ Done | `MAX_VALIDATION_FILES`, `MAX_VALIDATION_BYTES`, `VALIDATION_TIMEOUT_MS` with env overrides |
+| 10 | **Validation timeout** | ✅ Done | `Promise.race()` with `ValidationTimeoutError` in `validator/index.ts` |
+| 11 | **Silent catch → logger** | ✅ Partial | `drift.ts` and `cache.ts` now use `logger.warn()` on errors |
+| 12 | **SHA-256 output hash** | ✅ Done | `computeOutputHash()` uses `crypto.createHash('sha256')` |
+| 13 | **Registry public key loading** | ✅ Done | `loadPublicKey()` loads from `BP_REGISTRY_PUBLIC_KEY` env or `~/.bp/keys/` |
+| 14 | **Registry DI for tests** | ✅ Done | `RegistryAdapter` interface, injectable via constructor |
+| 15 | **Path traversal fix** | ✅ Done | `resolveCodexCommandsPath()` uses `path.relative()` + `startsWith('..')` check |
+| 16 | **LSP `require()` removal** | ✅ Done | `import { createConnection }` from ESM entry |
+| 17 | **Config async loader** | ✅ Done | `loadProjectConfigAsync()` added |
+| 18 | **Structural validator async** | ✅ Done | `validateStructural()` and `validateStructuralBatch()` are async |
+| 19 | **Entropy-based secret scanning** | ✅ Done | `scanContent()` with Shannon entropy, base64 detection, common word filtering |
+| 20 | **Custom error classes** | ✅ Done | `ResourceLimitError`, `ValidationTimeoutError`, `TemplateVarsValidationError` |
 
 ---
 
-## 2. Code Quality Gaps
+## 2. Critical Gaps Remaining
 
-### 2.1 Synchronous I/O in Async Codepaths
-**Files**: `src/templater/index.ts`, `src/templater/writer.ts`, `src/templater/engine.ts`, `src/security/audit.ts`, `src/config/project.ts`, `src/validator/structural.ts`, `src/validator/drift.ts`, `src/validator/cache.ts`
+### 2.1 Incomplete Async Migration (Sync I/O Still Lingers)
 
-The project has a custom lint rule (`lint:no-sync-fs`) that bans sync fs in detector and validator, but the ban is **incomplete**:
-- `templater/index.ts` uses `fs.existsSync`, `fs.readFileSync`, `fs.readdirSync`, `fs.writeFileSync`
-- `writer.ts` uses `fs.existsSync`, `fs.readFileSync`, `fs.writeFileSync`, `fs.mkdirSync`
-- `engine.ts` uses `fs.existsSync`, `fs.readdirSync`, `fs.readFileSync`
-- `security/audit.ts` uses `fs.existsSync`, `fs.mkdirSync`, `fs.appendFileSync`, `fs.unlinkSync`, `fs.lstatSync`, `fs.symlinkSync`
-- `config/project.ts` uses `fs.existsSync`, `fs.readFileSync`, `fs.writeFileSync`
-- `structural.ts` uses `fs.existsSync`, `fs.readFileSync`, `fs.statSync`
+While the templater, writer, engine, and structural validator were migrated, **several modules still use synchronous `node:fs`**:
 
-**Impact**: Blocks the event loop during template rendering and validation, degrading performance on large repos.
+| File | Sync Calls | Impact |
+|------|-----------|--------|
+| `src/security/audit.ts` | `fs.existsSync`, `fs.mkdirSync`, `fs.appendFileSync`, `fs.lstatSync`, `fs.unlinkSync`, `fs.symlinkSync` | Audit logging blocks event loop; high-frequency commands degrade |
+| `src/config/project.ts` | `fs.existsSync`, `fs.readFileSync`, `fs.writeFileSync` | Config loading blocks; `initProjectConfig` and `saveProjectConfig` are sync |
+| `src/validator/drift.ts` | `fs.readFileSync`, `fs.writeFileSync`, `fs.existsSync` | Drift detection blocks on fingerprint I/O |
+| `src/validator/cache.ts` | `fs.existsSync`, `fs.readFileSync`, `fs.writeFileSync`, `fs.mkdirSync` | Cache operations block; sync variants still exposed |
+| `src/registry/client.ts` | `fs.existsSync`, `fs.mkdirSync`, `fs.cpSync`, `fs.readFileSync`, `fs.writeFileSync`, `fs.readdirSync` | Registry install/publish blocks on file I/O |
+| `src/registry/signer.ts` | `fs.readdirSync`, `fs.readFileSync` | Key loading blocks |
+| `src/lsp/server.ts` | `fs.existsSync` | LSP document validation blocks on project root detection |
+| `src/cli/commands/doctor.ts` | `fs.existsSync`, `fs.readdirSync`, `fs.statSync`, `fs.readFileSync`, `fs.writeFileSync` | Doctor command is entirely sync I/O |
+| `src/cli/commands/init.ts` | `fs` (via `InitOrchestrator` — not inspected) | Likely sync |
+| `src/enterprise/secrets.ts` | `fs` (file truncated in fetch, but likely sync) | Enterprise secret scan likely sync |
 
-**Fix**: Migrate all sync fs calls to the `FileSystem` abstraction (`src/utils/fs.ts`) which already supports async and in-memory implementations.
+**The `lint:no-sync-fs` script was expanded** to cover more files, but it only checks `src/detector/index.ts`, `src/validator/index.ts`, `src/validator/structural.ts`, `src/templater/index.ts`, `src/templater/writer.ts`, `src/templater/engine.ts`. It **does not** cover `audit.ts`, `config/project.ts`, `drift.ts`, `cache.ts`, `registry/client.ts`, `lsp/server.ts`, `doctor.ts`, or `enterprise/secrets.ts`.
 
-### 2.2 Hardcoded Adapter Registry
-**File**: `src/translator/index.ts` (lines ~10-80)
+**Fix**: Expand the lint rule to cover all source files, or migrate all remaining sync I/O to async.
 
+### 2.2 No Plugin Sandboxing
+
+Custom validators (plugins) are referenced in `ProjectConfigSchema` via `plugins: z.array(z.string()).default([])`, but there is **no evidence** of:
+- Plugin loading mechanism
+- VM/worker thread isolation
+- Permission boundary enforcement
+
+**Impact**: A malicious or compromised plugin can execute arbitrary code with the same privileges as `bp`.
+
+**Fix**: Implement plugin loading in a `vm.Script` context or `Worker` thread with restricted globals.
+
+### 2.3 Missing OpenTelemetry Instrumentation
+
+The `BlueprintIRSchema` defines a rich `TelemetrySchema` with OpenTelemetry, Datadog, New Relic, and Prometheus configurations. However, **the `bp` CLI itself has zero telemetry instrumentation**:
+- No spans around validation layers
+- No metrics for file count, validation time, error rates
+- No distributed tracing for `init` → `detect` → `template` → `validate` pipeline
+
+**Impact**: The tool can configure telemetry for *other* projects but cannot observe its own performance.
+
+**Fix**: Add `@opentelemetry/api` and instrument the 4 validation layers, templater, and detector.
+
+### 2.4 No SARIF Output Format
+
+Despite the security scanning improvements, `bp verify` does **not** output SARIF (Static Analysis Results Interchange Format). This means:
+- Cannot integrate with GitHub Advanced Security code scanning
+- Cannot upload results to GitHub Security tab
+- CI security gates must parse custom JSON
+
+**Fix**: Add `--format sarif` option to `verify` command.
+
+### 2.5 CI Security Scanning Still Minimal
+
+The `ci.yml` workflow has **not changed** from the previous analysis:
+- Still only runs `npm audit --audit-level=high`
+- No CodeQL analysis
+- No secret scanning (GitHub Advanced Security)
+- No Snyk or OWASP dependency check
+- No SARIF upload
+
+**Fix**: Add GitHub Advanced Security steps, CodeQL, and `github/codeql-action`.
+
+### 2.6 Template Cache Has No TTL / Expiration
+
+`src/templater/engine.ts`:
 ```typescript
-async function buildAdapterMap() {
-  const [{ ClaudeAdapter }, { CursorAdapter }, ...] = await Promise.all([
-    import("./adapters/claude.js"),
-    import("./adapters/cursor.js"),
-    // ... 31 imports
-  ]);
+const templateCache = new Map();
+```
+
+The cache is a plain `Map` with:
+- No maximum size limit
+- No TTL / expiration
+- No LRU eviction
+- `clearTemplateCache()` exists but is never called automatically
+
+**Impact**: Long-running processes (LSP server, watch mode) will accumulate unbounded memory.
+
+**Fix**: Implement an LRU cache with TTL (e.g., `lru-cache` package or a simple wrapper).
+
+### 2.7 No Backend Version Pinning
+
+`BackendConfig` in `src/backends/registry.ts` has no `minBackendVersion` or `supportedVersions` field. The adapters don't declare what versions of Claude Code, Cursor, etc. they are compatible with.
+
+**Impact**: Breaking changes in backend tools (e.g., Cursor changing `.cursor/rules` format) will silently produce invalid output.
+
+**Fix**: Add version constraints to `BackendConfig` and validate against detected backend versions.
+
+### 2.8 Monorepo Detection is Surface-Level
+
+`src/detector/index.ts` detects monorepos by checking for file existence:
+```typescript
+fileExists(path.join(root, "pnpm-workspace.yaml"), fs),
+fileExists(path.join(root, "lerna.json"), fs),
+fileExists(path.join(root, "nx.json"), fs),
+```
+
+But it **does not parse** these files to:
+- Identify workspace packages
+- Detect inter-package dependencies
+- Validate that all packages have blueprints
+
+**Impact**: Monorepo governance is incomplete — `bp` knows it's a monorepo but not what's in it.
+
+**Fix**: Parse `pnpm-workspace.yaml`, `package.json#workspaces`, `nx.json#projects`, etc.
+
+### 2.9 `computeSimilarity` is Still Flawed
+
+`src/validator/drift.ts`:
+```typescript
+export function computeSimilarity(hash1: string, hash2: string): number {
+  if (hash1 === hash2) return 1.0;
+  return 0.5 + (Math.min(hash1.length, hash2.length) / Math.max(hash1.length, hash2.length)) * 0.5;
 }
 ```
 
-**Impact**: Adding a new backend requires editing this file. The `doctor.ts` command duplicates this logic with its own `getAdapterByName()` switch statement.
+This function compares **SHA-256 hex strings** by length ratio. Since all SHA-256 hashes are 64 characters, `hash1.length === hash2.length` always, so this always returns `1.0` when hashes differ. The similarity threshold of `< 0.7` will **never trigger**.
 
-**Fix**: Use a dynamic registry pattern:
+**Impact**: Output drift detection is completely non-functional.
+
+**Fix**: Compare hashes directly (`hash1 !== hash2`) or use a proper string similarity algorithm (Levenshtein, cosine similarity on tokenized output).
+
+### 2.10 `doctor.ts` Still Uses Sync I/O Extensively
+
+The `doctor` command is a diagnostic tool that runs multiple checks. Every check uses `fs.existsSync`, `fs.readdirSync`, `fs.statSync`, `fs.readFileSync`. In a large repo, this serially blocks the event loop for each check.
+
+**Impact**: `bp doctor` is slow and unresponsive on large repositories.
+
+**Fix**: Migrate doctor checks to async I/O and run independent checks in parallel with `Promise.all`.
+
+### 2.11 `Ink` Dependency is Unused
+
+`package.json` includes `"ink": "^7.0.4"` (React for CLI), but there is **no evidence** of Ink components anywhere in the source. This is a large dependency (~200KB+) that bloats the install.
+
+**Fix**: Remove `ink` from dependencies if unused, or implement Ink-based TUI components.
+
+### 2.12 No Test Files Visible
+
+The `tests/unit/` directory exists but test files could not be retrieved. The `fast-check` dependency is installed but there is **no visible property-based test** configuration. E2E tests are excluded from coverage.
+
+**Impact**: Cannot verify that improvements are actually tested.
+
+**Fix**: Ensure unit tests are committed and run in CI. Add property-based tests for `VarsSchema`, `computeOutputHash`, and validation layers.
+
+### 2.13 `enterprise/secrets.ts` is Truncated / Incomplete
+
+The file fetch returned truncated content. The patterns appear to only cover AWS credentials. Compared to `security/scan.ts` which has 9 patterns + entropy, `enterprise/secrets.ts` seems to be a **duplicate, less-capable version**.
+
+**Impact**: `doctor --secret-scan` may use `enterprise/secrets.ts` instead of the improved `security/scan.ts`, giving weaker detection.
+
+**Fix**: Consolidate secret scanning into a single module, or ensure `enterprise/secrets.ts` uses the same entropy + regex engine as `security/scan.ts`.
+
+### 2.14 No Cost Anomaly Statistical Rigor
+
+`checkCostDrift()` in `drift.ts` uses a naive split-half baseline comparison:
 ```typescript
-const adapterModules = await import(`./adapters/${backend}.js`);
-```
-Or implement a proper dependency-injection container.
-
-### 2.3 Inconsistent Error Handling
-**Pattern**: Many files catch errors and silently ignore them:
-- `detector/index.ts`: `try { ... } catch { /* fall through */ }` (6 instances)
-- `validator/drift.ts`: `try { ... } catch { /* skip */ }` (4 instances)
-- `security/audit.ts`: `try { ... } catch { /* Fail silently */ }`
-- `cache.ts`: `try { ... } catch { /* Ignore write failures */ }`
-
-**Impact**: Silent failures make debugging impossible. The audit log explicitly states it "fails silently to avoid breaking main process" — this is a security anti-pattern.
-
-**Fix**: Use the `logger` to emit structured error events even when swallowing exceptions.
-
-### 2.4 Weak Unified Diff Implementation
-**File**: `src/templater/writer.ts` — `generateUnifiedDiff()`
-
-The diff algorithm is a naive line-by-line comparison that doesn't produce valid unified diff format (no hunk headers, no context lines, no `@@` markers).
-
-**Impact**: `--dry-run` output is not machine-parseable by standard diff tools.
-
-**Fix**: Use a proper diff library (e.g., `diff` npm package) or invoke `git diff --no-index`.
-
-### 2.5 No Input Validation on Template Variables
-**File**: `src/templater/index.ts` — `sanitizeTemplateVars()`
-
-Only strips shell metacharacters. It does **not**:
-- Validate object depth (prototype pollution risk)
-- Validate key names (could inject Handlebars helpers)
-- Validate string length (DoS via massive strings)
-
-**Fix**: Add Zod schema validation for `vars` before merging into context.
-
-### 2.6 Test Coverage Gaps
-- The `tests/unit/` directory exists but test files could not be retrieved for inspection
-- No visible property-based testing configuration despite `fast-check` being in devDependencies
-- E2E tests are excluded from coverage runs (`--exclude 'tests/e2e/**'`)
-
----
-
-## 3. Security Gaps
-
-### 3.1 Secret Scanning is Regex-Based and Bypassable
-**Files**: `src/security/scan.ts`, `src/enterprise/secrets.ts`
-
-Current patterns use simple regexes like:
-```typescript
-/\beyJhbGciOi[a-zA-Z0-9-_]+\.[a-zA-Z0-9-_]+\.[a-zA-Z0-9-_]+\b/i  // JWT
-/\bAKIA[0-9A-Z]{16}\b/i  // AWS
+const midpoint = Math.floor(history.length / 2);
+const baselineTokens = history.slice(0, midpoint).reduce(...) / midpoint;
 ```
 
-**Bypass vectors**:
-1. **String splitting**: `"eyJhbGci" + "Oi..."` defeats regex
-2. **Base64 encoding**: Secrets encoded in comments or strings
-3. **Variable interpolation**: `process.env.KEY` where KEY is defined elsewhere
-4. **No entropy detection**: High-entropy strings that don't match patterns are missed
+This is **not** a proper statistical anomaly detection:
+- No seasonality handling
+- No trend detection
+- No outlier rejection
+- Assumes stationary distribution
 
-**Fix**: Integrate `gitleaks` or `trufflehog` patterns, add entropy scoring, and implement AST-aware scanning for JS/TS.
+**Impact**: False positives on normal usage spikes, false negatives on gradual cost creep.
 
-### 3.2 Handlebars `noEscape: true` is Dangerous
-**File**: `src/templater/engine.ts`
+**Fix**: Implement proper time-series anomaly detection (e.g., EWMA, Holt-Winters, or simple rolling z-score).
 
-```typescript
-hbs.compile(source, { noEscape: true, strict: false })
-```
+### 2.15 `Biome` Linter Rules are Minimal
 
-`noEscape: true` disables HTML escaping. While this is intentional for markdown output, if user-supplied content (from `vars`) contains malicious payloads, it can corrupt generated files or inject markdown/HTML payloads.
-
-**Fix**: Only disable escaping for trusted template sources, never for user `vars`.
-
-### 3.3 Prototype Pollution in Context Handling
-**File**: `src/templater/engine.ts` — `deepFreeze()`
-
-```typescript
-function deepFreeze(obj: T): T {
-  Object.getOwnPropertyNames(obj).forEach((name) => {
-    const value = (obj as Record<string, unknown>)[name];
-    if (value && typeof value === "object") deepFreeze(value);
-  });
-  return Object.freeze(obj);
-}
-```
-
-This only freezes own properties. It does **not**:
-- Freeze prototype chain (`Object.getPrototypeOf`)
-- Handle `__proto__` or `constructor` keys in the input `vars`
-
-**Impact**: Malicious `vars` could pollute the Handlebars context prototype.
-
-**Fix**: Use `Object.setPrototypeOf(obj, null)` before freezing, or validate `vars` with Zod.
-
-### 3.4 Audit Log Integrity Missing
-**File**: `src/security/audit.ts`
-
-Audit logs are written as plaintext JSON lines to `~/.bp/audit-YYYY-MM-DD.log`:
-- No cryptographic signing
-- No append-only protection
-- No tamper detection
-- Each log entry generates a **new** correlation ID instead of reusing the command's correlation ID
-
-**Impact**: Audit logs cannot be used as compliance evidence.
-
-**Fix**: 
-1. Reuse the command's correlation ID from `logger.ts`
-2. Sign each log entry with HMAC
-3. Write to an append-only stream with integrity checks
-
-### 3.5 Path Traversal in `resolveCodexCommandsPath`
-**File**: `src/cli/commands/init.ts`
-
-```typescript
-const resolved = path.resolve(path.normalize(path.join(base, "prompts")));
-if (!resolved.startsWith(base + path.sep) && resolved !== base) {
-  throw new SecurityError("Path traversal detected");
-}
-```
-
-This check is vulnerable on Windows (`path.sep` is `\` but `startsWith` may fail with mixed separators). Also, `path.normalize` doesn't resolve symlinks.
-
-**Fix**: Use `path.resolve(base, "prompts")` and compare with `path.relative(base, resolved)` ensuring no `..` prefix.
-
-### 3.6 Hardcoded Mock Cryptographic Key
-**File**: `src/registry/signer.ts`
-
-```typescript
-export const DEFAULT_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA01v6jJqN1wP8R6+27/Zc
-...
------END PUBLIC KEY-----`;
-```
-
-This is a **fake/hardcoded** RSA public key. The `verifySignature` function will always fail against real signatures, but the presence of a hardcoded key suggests the signing system is not production-ready.
-
-**Impact**: Template package integrity verification is effectively non-functional.
-
-**Fix**: Load public keys from a configurable keyring or environment variable. Remove the hardcoded mock.
-
-### 3.7 Registry Client Test Code in Production Path
-**File**: `src/registry/client.ts`
-
-```typescript
-if (RegistryClient.mockRegistry.size > 0 || process.env.NODE_ENV === "test" || this.registryUrl.includes("mock")) {
-  // use mock registry
-}
-```
-
-`NODE_ENV` check in production code is an anti-pattern. An attacker can set `NODE_ENV=test` to bypass real registry validation.
-
-**Fix**: Remove all `NODE_ENV` branches from production code. Use dependency injection for test doubles.
-
-### 3.8 No Rate Limiting / Resource Limits
-**File**: `src/validator/index.ts`
-
-The validator reads all blueprint files into memory and runs 4 layers of validation. There is no:
-- Maximum file count limit
-- Maximum file size limit (beyond manifest config)
-- Timeout for validation
-- Memory usage cap
-
-**Impact**: A malicious repo with thousands of large `.md` files can cause OOM or CPU exhaustion.
-
-**Fix**: Add resource guards:
-```typescript
-const MAX_FILES = 1000;
-const MAX_TOTAL_SIZE = 50 * 1024 * 1024; // 50MB
-const VALIDATION_TIMEOUT = 30000; // 30s
-```
-
-### 3.9 Weak Output Hash for Drift Detection
-**File**: `src/validator/drift.ts`
-
-```typescript
-export function computeOutputHash(output: string): string {
-  const normalized = output.toLowerCase().replace(/\s+/g, " ").trim();
-  let hash = 0;
-  for (let i = 0; i < normalized.length; i++) {
-    const char = normalized.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash = hash & hash;
+`biome.json`:
+```json
+"linter": {
+  "rules": {
+    "recommended": true,
+    "suspicious": { "noExplicitAny": "error", "noConsole": "error" },
+    "style": { "useConst": "error" }
   }
-  return Math.abs(hash).toString(16);
 }
 ```
 
-This is a 32-bit non-cyclic string hash (similar to Java's `String.hashCode()`). It has:
-- High collision probability
-- No cryptographic properties
-- Easy to craft collisions
+Missing security-focused rules:
+- No `noDangerouslySetInnerHtml` equivalent for template output
+- No `noSyncScripts` for sync I/O
+- No `noGlobalEval` for dynamic code execution
 
-**Impact**: Drift detection can be bypassed or falsely triggered.
-
-**Fix**: Use `crypto.createHash('sha256')`.
-
-### 3.10 LSP Server Uses `require()`
-**File**: `src/lsp/server.ts`
-
-```typescript
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { createConnection } = require("vscode-languageserver/lib/node/main");
-```
-
-This bypasses TypeScript type checking and ESM module resolution. It also creates a runtime dependency on CommonJS internals that may break with future `vscode-languageserver` updates.
-
-**Fix**: Use proper ESM imports or add a typed wrapper.
-
-### 3.11 Missing Security Headers / CI Scans
-The CI pipeline (`ci.yml`) runs `npm audit --audit-level=high` but lacks:
-- Snyk or OWASP dependency check
-- CodeQL analysis
-- Secret scanning (GitHub Advanced Security)
-- SARIF output generation
+**Fix**: Add Biome security rules or integrate `eslint-plugin-security`.
 
 ---
 
-## 4. Suggested Improvements (Claude Code Work Items)
+## 3. Architectural Debt
 
-### Priority 1: Security Hardening
-1. **Replace regex secret scanning** with entropy-based detection + `gitleaks` pattern integration
-2. **Add SARIF output** to `verify` command for GitHub Advanced Security integration
-3. **Implement audit log integrity**: HMAC-sign each entry, reuse correlation IDs
-4. **Remove `NODE_ENV` checks** from production code; use DI for testing
-5. **Replace hardcoded `DEFAULT_PUBLIC_KEY`** with configurable keyring
-6. **Add resource limits** to validator (max files, max size, timeout)
-7. **Fix `computeOutputHash`** to use SHA-256
+### 3.1 Circular Dependency Risk
 
-### Priority 2: Code Quality
-8. **Migrate all sync fs calls** to async `FileSystem` abstraction (complete the `lint:no-sync-fs` enforcement)
-9. **Refactor adapter registry** to dynamic imports or DI container; remove duplication in `doctor.ts`
-10. **Add proper unified diff** using a standard library
-11. **Validate `vars` input** with Zod before template rendering
-12. **Fix silent catch blocks** to log structured errors via Pino
+`detector/index.ts` imports `enrichFingerprint` which may call back into detector logic. `templater/index.ts` imports `enrichFingerprint` from detector. `validator/index.ts` imports from templater, detector, and translator. The dependency graph is dense and may have hidden cycles.
 
-### Priority 3: Architecture
-13. **Plugin sandboxing**: Run custom validators in a VM or worker thread
-14. **Template cache TTL**: Add expiration to `templateCache` in `engine.ts`
-15. **Backend version pinning**: Add `minBackendVersion` to `BackendConfig`
-16. **Monorepo workspace parsing**: Detect `pnpm-workspace.yaml`, `turbo.json`, `nx.json` contents, not just presence
-17. **Add property-based tests** with `fast-check` for validation layers
+**Fix**: Run `madge --circular src/` to detect and break cycles.
 
-### Priority 4: Observability & Ops
-18. **Add OpenTelemetry tracing** to validation layers (currently only telemetry schema exists, no instrumentation)
-19. **Implement cost anomaly alerts** with proper statistical baseline (current std-dev math is naive)
-20. **Add structured metrics export** for CI dashboards (Prometheus/Datadog)
+### 3.2 No Dependency Injection Container
+
+Despite the `FileSystem` abstraction and `RegistryAdapter` interface, there is no unified DI container. Services are instantiated inline or via static methods.
+
+**Fix**: Consider a lightweight DI container (e.g., `tsyringe`, `inversify`, or a simple registry pattern).
+
+### 3.3 Error Hierarchy is Flat
+
+All errors extend `BpError` with manual `exitCode` assignment. There is no `BpError.from(err)` factory for wrapping unknown errors, and no error code registry.
+
+**Fix**: Add an error code registry (enum or const object) and a factory method.
 
 ---
 
-## 5. Quick Wins for Claude Code
+## 4. Suggested Next Steps (Claude Code Work Items)
 
-When working with this repo in Claude Code, focus on these high-impact, low-effort fixes:
+### Priority 1: Fix Broken Logic
+1. **Fix `computeSimilarity`** — it's mathematically broken for SHA-256 hashes
+2. **Consolidate `enterprise/secrets.ts`** with `security/scan.ts` or remove the weaker one
+3. **Remove unused `ink` dependency**
 
-1. **Run `bp verify --level all` on itself** — dogfood the tool to find its own structural issues
-2. **Add `fs/promises` migration** to `templater/index.ts` and `writer.ts` — the `FileSystem` interface already exists
-3. **Replace `computeOutputHash`** with `crypto.createHash('sha256')` — 5-line change
-4. **Add Zod validation for `vars`** in `templater/index.ts` — prevents injection
-5. **Fix `doctor.ts` `getAdapterByName`** to use `translator/index.ts` registry — removes 50 lines of duplication
-6. **Add `fast-check` property tests** for `validateStructuralBatch` — the dependency is already installed
+### Priority 2: Complete Async Migration
+4. **Migrate `audit.ts`** to async I/O (or use a write stream)
+5. **Migrate `config/project.ts`** sync functions to async
+6. **Migrate `drift.ts`** fingerprint I/O to async
+7. **Migrate `cache.ts`** sync functions to async (or deprecate sync variants)
+8. **Migrate `registry/client.ts`** to async I/O
+9. **Migrate `doctor.ts`** checks to async with `Promise.all`
+10. **Expand `lint:no-sync-fs`** to cover ALL `src/**/*.ts` files
+
+### Priority 3: Add Missing Features
+11. **Implement plugin sandboxing** with `vm.Script` or `Worker`
+12. **Add OpenTelemetry self-instrumentation**
+13. **Add SARIF output format** to `verify`
+14. **Add template cache LRU + TTL**
+15. **Add backend version pinning** to `BackendConfig`
+16. **Parse monorepo workspace configs** (not just detect presence)
+17. **Improve cost anomaly detection** with rolling statistics
+
+### Priority 4: CI & Quality
+18. **Add CodeQL, secret scanning, and SARIF upload** to `ci.yml`
+19. **Ensure unit tests are visible and run in CI**
+20. **Add property-based tests** with `fast-check`
+21. **Run `madge --circular`** and resolve cycles
+22. **Add Biome security lint rules**
 
 ---
 
-## 6. Risk Assessment
+## 5. Risk Assessment (Post-Improvement)
 
-| Risk | Likelihood | Impact | Mitigation Priority |
-|------|-----------|--------|---------------------|
-| Secret leakage undetected | High | Critical | P1 |
-| Audit log tampering | Medium | High | P1 |
-| Template injection via vars | Medium | High | P1 |
-| DoS via large repo validation | Medium | Medium | P2 |
-| Registry signature bypass | Low | High | P1 |
-| Path traversal on Windows | Low | Medium | P2 |
-| Prototype pollution | Low | Medium | P2 |
-| Backend adapter maintenance burden | High | Low | P3 |
+| Risk | Before | After | Remaining Gap |
+|------|--------|-------|---------------|
+| Secret leakage undetected | High | Medium | `enterprise/secrets.ts` may be weaker; no AST-aware scanning |
+| Audit log tampering | High | Low | HMAC signing added, but still sync I/O |
+| Template injection via vars | High | Low | Zod validation + JSON round-trip + deepFreeze |
+| DoS via large repo validation | Medium | Low | Resource limits + timeout added |
+| Registry signature bypass | High | Medium | DI for tests added, but mock registry still in production path |
+| Path traversal on Windows | Medium | Low | Fixed with `path.relative()` check |
+| Prototype pollution | Medium | Low | JSON round-trip strips prototype |
+| Output drift detection non-functional | — | **Critical** | `computeSimilarity` is broken |
+| Unbounded template cache | — | Medium | No TTL/LRU on `templateCache` |
+| Plugin arbitrary code execution | — | **High** | No sandboxing implemented |
+| No self-observability | — | Medium | Schema exists but no instrumentation |
+| CI security posture | Low | Low | No change to CI security scanning |
 
 ---
 
-*Analysis generated for open-blueprint v1.0.0 (commit: main)*
+*Analysis generated for open-blueprint v1.0.0 (commit: main, post-improvement)*
 *Date: 2026-05-30*
