@@ -3,12 +3,10 @@ import * as path from "node:path";
 import * as readline from "node:readline";
 import chalk from "chalk";
 import { Command } from "commander";
-import ora from "ora";
 import { getBackend, listBackendIds } from "../../backends/registry.js";
 import { loadUserConfig } from "../../config/user.js";
 import { EXIT_CODES } from "../../constants.js";
-import { SecurityError } from "../../errors.js";
-import { normalizeError } from "../../utils/errors.js";
+import { BpError, SecurityError } from "../../errors.js";
 import { validateUserInput } from "../../utils/input.js";
 import { InitOrchestrator } from "../orchestrators/init.js";
 
@@ -88,7 +86,8 @@ function resolveCodexCommandsPath(backend: string): string | null {
     const config = getBackend(backend);
     if (!config.globalHomeEnv) return null;
     const envVal = process.env[config.globalHomeEnv];
-    const rawBase = envVal ?? (config.fallbackGlobalPath ?? `~/.${backend}`).replace(/^~/, os.homedir());
+    const rawBase =
+      envVal ?? (config.fallbackGlobalPath ?? `~/.${backend}`).replace(/^~/, os.homedir());
     if (!rawBase) return null;
     const base = path.resolve(path.normalize(rawBase));
     const resolved = path.resolve(path.normalize(path.join(base, "prompts")));
@@ -135,8 +134,7 @@ export function createInitCommand(): Command {
           confirmGlobal: boolean;
           json: boolean;
         }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ): Promise<any> => {
+      ): Promise<void> => {
         const cwd = process.cwd();
         const userConfig = loadUserConfig();
 
@@ -163,14 +161,26 @@ export function createInitCommand(): Command {
                 })
               );
             }
-            return EXIT_CODES.UNSUPPORTED_BACKEND;
+            throw new BpError(
+              `Unknown backend ID(s): ${unknown.join(", ")}`,
+              EXIT_CODES.UNSUPPORTED_BACKEND,
+              "UNSUPPORTED_BACKEND",
+              "Run bp --help to see valid backends"
+            );
           }
         } else {
           const backendRaw = toolArg ?? opts.tool ?? userConfig.default_backend;
           const ids = listBackendIds();
           if (!ids.includes(backendRaw)) {
-            console.error(chalk.red(`Unsupported backend: "${backendRaw}". Valid: ${ids.join(", ")}`));
-            return EXIT_CODES.UNSUPPORTED_BACKEND;
+            console.error(
+              chalk.red(`Unsupported backend: "${backendRaw}". Valid: ${ids.join(", ")}`)
+            );
+            throw new BpError(
+              `Unsupported backend: "${backendRaw}"`,
+              EXIT_CODES.UNSUPPORTED_BACKEND,
+              "UNSUPPORTED_BACKEND",
+              "Run bp --help to see valid backends"
+            );
           }
           backends = [backendRaw];
         }
@@ -214,9 +224,21 @@ export function createInitCommand(): Command {
 
         if (opts.json) {
           console.log(
-            JSON.stringify({ status: result.exitCode === 0 ? "ok" : "error", backends: result.backends }, null, 2)
+            JSON.stringify(
+              { status: result.exitCode === 0 ? "ok" : "error", backends: result.backends },
+              null,
+              2
+            )
           );
-          return result.exitCode;
+          if (result.exitCode !== EXIT_CODES.SUCCESS) {
+            throw new BpError(
+              "Init failed",
+              result.exitCode,
+              "INIT_ERROR",
+              "Check error messages above"
+            );
+          }
+          return;
         }
 
         for (const msg of result.messages) {
@@ -237,9 +259,14 @@ export function createInitCommand(): Command {
 
         if (result.exitCode === EXIT_CODES.SUCCESS) {
           console.log(chalk.green("\nBlueprint ready."));
+        } else {
+          throw new BpError(
+            "Init failed",
+            result.exitCode,
+            "INIT_ERROR",
+            "Check error messages above"
+          );
         }
-
-        return result.exitCode;
       }
     );
 

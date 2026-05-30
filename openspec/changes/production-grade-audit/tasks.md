@@ -24,46 +24,46 @@
 
 ## 4. Schema Hardening
 
-- [ ] 4.1 Add `.maxLength(64)` and `.regex(/^[a-z0-9_-]+$/)` guards to identifier fields in `FingerprintSchema`
-- [ ] 4.2 Add `.maxLength(512)` to free-form string fields in `FingerprintSchema`
-- [ ] 4.3 Add `.maxLength(256)` to path fields and `.maxLength(2048)` to content fields in `BlueprintIR`
-- [ ] 4.4 Add `.refine()` guards on glob pattern fields in `BlueprintIR` to reject patterns with 4+ consecutive `*` characters
-- [ ] 4.5 Replace any manually-declared `Fingerprint` and `BlueprintIR` TypeScript interfaces with `z.infer<typeof Schema>`; eliminate `as unknown as T` casts for these types
+- [x] 4.1 Add `.maxLength(64)` and `.regex(/^[a-z0-9_-]+$/)` guards to identifier fields in `FingerprintSchema`
+- [x] 4.2 Add `.maxLength(512)` to free-form string fields in `FingerprintSchema`
+- [x] 4.3 Add `.maxLength(256)` to path fields and `.maxLength(2048)` to content fields in `BlueprintIR`
+- [x] 4.4 Add `.refine()` guards on glob pattern fields in `BlueprintIR` to reject patterns with 4+ consecutive `*` characters
+- [x] 4.5 Replace any manually-declared `Fingerprint` and `BlueprintIR` TypeScript interfaces with `z.infer<typeof Schema>`; eliminate `as unknown as T` casts for these types
 
 ## 5. Handlebars Registry
 
-- [ ] 5.1 Create `src/templater/registry.ts` — implement `HandlebarsRegistry` as a module-level `Map<string, HandlebarsTemplateDelegate>`; key format `${backend}::${templatePack}::${templateName}`
-- [ ] 5.2 Implement lazy compile-on-first-access in `HandlebarsRegistry`
-- [ ] 5.3 Export `clearForTesting()` from registry — no-op unless `NODE_ENV === 'test'`
-- [ ] 5.4 Integrate `HandlebarsRegistry` into `runTemplater` in `src/templater/index.ts`
+- [x] 5.1 Create `src/templater/registry.ts` — implement `HandlebarsRegistry` as a module-level `Map<string, HandlebarsTemplateDelegate>`; key format `${backend}::${templatePack}::${templateName}`
+- [x] 5.2 Implement lazy compile-on-first-access in `HandlebarsRegistry`
+- [x] 5.3 Export `clearForTesting()` from registry — no-op unless `NODE_ENV === 'test'`
+- [x] 5.4 Integrate `HandlebarsRegistry` into `runTemplater` in `src/templater/index.ts`
 
 ## 6. Security Fixes
 
-- [ ] 6.1 Fix `resolveCodexCommandsPath` — apply `path.resolve(path.normalize(...))` and add boundary check; throw `SecurityError` on traversal (CWE-22 / OWASP A01)
-- [ ] 6.2 Add `validateUserInput(s: string): string` in `src/utils/input.ts` — enforce max 256 chars, reject null bytes and Unicode control characters (U+0000–U+001F, U+007F)
-- [ ] 6.3 Pipe `promptUser` return values through `validateUserInput` before any file path or config usage
-- [ ] 6.4 Fix audit-log failure handling in `cli/index.ts` `preAction` hook — replace `catch(() => {})` with `catch((e) => { process.stderr.write(...) })` using `normalizeError`
+- [x] 6.1 Fix `resolveCodexCommandsPath` — apply `path.resolve(path.normalize(...))` and add boundary check; throw `SecurityError` on traversal (CWE-22 / OWASP A01)
+- [x] 6.2 Add `validateUserInput(s: string): string` in `src/utils/input.ts` — enforce max 256 chars, reject null bytes and Unicode control characters (U+0000–U+001F, U+007F)
+- [x] 6.3 Pipe `promptUser` return values through `validateUserInput` before any file path or config usage
+- [x] 6.4 Fix audit-log failure handling in `cli/index.ts` `preAction` hook — replace `catch(() => {})` with `catch((e) => { process.stderr.write(...) })` using `normalizeError`
 
 ## 7. InitOrchestrator & Exit Code Discipline
 
-- [ ] 7.1 Create `src/cli/orchestrators/init.ts` — implement `InitOrchestrator` class accepting `InitContext`; move all business logic from `init.ts` action handler here; no chalk/ora/readline imports
-- [ ] 7.2 Reduce `src/cli/commands/init.ts` to a thin adapter — construct `InitContext`, call `InitOrchestrator.run()`, render messages, return exit code
-- [ ] 7.3 Ensure `detect()` is called exactly once per init invocation; pass cached fingerprint to all downstream operations
-- [ ] 7.4 Convert all command action handlers in `src/cli/commands/` to return `Promise<number>` (exit code)
-- [ ] 7.5 Remove all `process.exit()` calls from `src/` except the single call-site in `src/cli/index.ts` `parseAsync` boundary
-- [ ] 7.6 Replace `require("../security/audit.js")` with `await import('../security/audit.js')` in `src/cli/index.ts`; add descriptive error handling
+- [x] 7.1 Create `src/cli/orchestrators/init.ts` — implement `InitOrchestrator` class accepting `InitContext`; move all business logic from `init.ts` action handler here; no chalk/ora/readline imports
+- [x] 7.2 Reduce `src/cli/commands/init.ts` to a thin adapter — construct `InitContext`, call `InitOrchestrator.run()`, render messages, return exit code
+- [x] 7.3 Ensure `detect()` is called exactly once per init invocation; pass cached fingerprint to all downstream operations
+- [x] 7.4 Convert all command action handlers in `src/cli/commands/` to return `Promise<number>` (exit code)
+- [x] 7.5 Remove all `process.exit()` calls from `src/` except the single call-site in `src/cli/index.ts` `parseAsync` boundary
+- [x] 7.6 Replace `require("../security/audit.js")` with `await import('../security/audit.js')` in `src/cli/index.ts`; add descriptive error handling
 
 ## 8. Property-Based Tests
 
-- [ ] 8.1 Create `tests/unit/properties/arbitraries.ts` — export `fast-check` arbitraries for `Fingerprint` and `BlueprintIR` that generate schema-valid instances
-- [ ] 8.2 Create `tests/unit/properties/exit-codes.property.test.ts` — property test asserting all exit codes are integers in `[0, 10]`
-- [ ] 8.3 Create `tests/unit/properties/fingerprint-schema.property.test.ts` — property test for JSON round-trip and invalid-input `ZodError` invariant
-- [ ] 8.4 Call `HandlebarsRegistry.clearForTesting()` in vitest `afterEach` hooks for templater tests
-- [ ] 8.5 Add unit tests for `detect()` using `InMemoryFileSystem` covering: missing `package.json`, TypeScript project detection, monorepo topology detection
+- [x] 8.1 Create `tests/unit/properties/arbitraries.ts` — export `fast-check` arbitraries for `Fingerprint` and `BlueprintIR` that generate schema-valid instances
+- [x] 8.2 Create `tests/unit/properties/exit-codes.property.test.ts` — property test asserting all exit codes are integers in `[0, 10]`
+- [x] 8.3 Create `tests/unit/properties/fingerprint-schema.property.test.ts` — property test for JSON round-trip and invalid-input `ZodError` invariant
+- [x] 8.4 Call `HandlebarsRegistry.clearForTesting()` in vitest `afterEach` hooks for templater tests
+- [x] 8.5 Add unit tests for `detect()` using `InMemoryFileSystem` covering: missing `package.json`, TypeScript project detection, monorepo topology detection
 
 ## 9. CI Lint Guards
 
-- [ ] 9.1 Add Biome or custom lint rule asserting no `fs.*Sync` calls in `src/detector/` or validator cache paths
-- [ ] 9.2 Add lint rule asserting no `process.exit(` in `src/` except `src/cli/index.ts`
-- [ ] 9.3 Add lint rule asserting no `require(` in any `src/` file
-- [ ] 9.4 Verify `npm audit` shows zero high/critical CVEs; document any accepted low/medium findings in `SECURITY.md`
+- [x] 9.1 Add Biome or custom lint rule asserting no `fs.*Sync` calls in `src/detector/` or validator cache paths
+- [x] 9.2 Add lint rule asserting no `process.exit(` in `src/` except `src/cli/index.ts`
+- [x] 9.3 Add lint rule asserting no `require(` in any `src/` file
+- [x] 9.4 Verify `npm audit` shows zero high/critical CVEs; document any accepted low/medium findings in `SECURITY.md`

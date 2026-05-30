@@ -1,6 +1,7 @@
 import chalk from "chalk";
 import { Command } from "commander";
 import { loadProjectConfig } from "../../config/project.js";
+import { BpError } from "../../errors.js";
 import {
   type BehaviorBaseline,
   detectSemanticDrift,
@@ -8,7 +9,6 @@ import {
   type RuntimeMetrics,
 } from "../../observability/semantic-drift.js";
 import { detectMultiBackendDrift, saveDriftBaseline } from "../../validator/multi-backend-drift.js";
-import { BpError } from "../../errors.js";
 
 function makeSyntheticBaseline(): BehaviorBaseline {
   return {
@@ -109,7 +109,7 @@ export function createDriftCommand(): Command {
     .option("--metrics <file>", "Path to NDJSON metrics file")
     .option("--window <days>", "Window in days for baseline calculation", "7")
     .option("--json", "Output as JSON")
-    .action((opts: { metrics?: string; window?: string; json?: boolean }) => {
+    .action(async (opts: { metrics?: string; window?: string; json?: boolean }) => {
       let metrics: RuntimeMetrics[] = [];
 
       if (opts.metrics) {

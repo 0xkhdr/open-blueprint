@@ -23,3 +23,13 @@ To report a vulnerability, use GitHub's private security advisory feature:
 You will receive a response within **7 business days**. If the issue is confirmed, we will work with you to understand the scope and release a patch as soon as possible.
 
 Please do not disclose the vulnerability publicly until a fix has been released.
+
+## Dependency Audit
+
+`npm audit` is run as part of CI. Last verified: 2026-05-30.
+
+```
+found 0 vulnerabilities
+```
+
+No high or critical CVEs. No accepted low/medium findings.
