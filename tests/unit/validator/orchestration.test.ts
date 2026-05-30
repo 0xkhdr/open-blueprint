@@ -25,7 +25,7 @@ function createBasicIR(): BlueprintIR {
 }
 
 describe("Agent Registry Validation", () => {
-  it("should pass with valid agent registry", () => {
+  it("passes with valid agent registry", () => {
     const ir = createBasicIR();
     ir.agent_registry = {
       agents: [
@@ -41,7 +41,7 @@ describe("Agent Registry Validation", () => {
     expect(errors).toHaveLength(0);
   });
 
-  it("should flag duplicate agent names", () => {
+  it("flags duplicate agent names", () => {
     const ir = createBasicIR();
     ir.agent_registry = {
       agents: [
@@ -53,7 +53,7 @@ describe("Agent Registry Validation", () => {
     expect(errors.some((e) => e.type === "DUPLICATE_AGENT")).toBe(true);
   });
 
-  it("should warn when certified agent has no version", () => {
+  it("warns when certified agent has no version", () => {
     const ir = createBasicIR();
     ir.agent_registry = {
       agents: [
@@ -70,7 +70,7 @@ describe("Agent Registry Validation", () => {
     expect(errors.some((e) => e.severity === "warning")).toBe(true);
   });
 
-  it("should pass when certified agent has version", () => {
+  it("passes when certified agent has version", () => {
     const ir = createBasicIR();
     ir.agent_registry = {
       agents: [
@@ -89,7 +89,7 @@ describe("Agent Registry Validation", () => {
 });
 
 describe("Tool Registry Validation", () => {
-  it("should pass with valid tool registry", () => {
+  it("passes with valid tool registry", () => {
     const ir = createBasicIR();
     ir.mcp_servers = [
       {
@@ -102,7 +102,7 @@ describe("Tool Registry Validation", () => {
     expect(errors.filter((e) => e.type === "DUPLICATE_TOOL")).toHaveLength(0);
   });
 
-  it("should flag duplicate tool names within server", () => {
+  it("flags duplicate tool names within server", () => {
     const ir = createBasicIR();
     ir.mcp_servers = [
       {
@@ -118,7 +118,7 @@ describe("Tool Registry Validation", () => {
     expect(errors.some((e) => e.type === "DUPLICATE_TOOL")).toBe(true);
   });
 
-  it("should require auth_scopes for admin tools", () => {
+  it("requires auth_scopes for admin tools", () => {
     const ir = createBasicIR();
     ir.mcp_servers = [
       {
@@ -132,7 +132,7 @@ describe("Tool Registry Validation", () => {
     expect(errors.some((e) => e.severity === "error")).toBe(true);
   });
 
-  it("should pass when admin tool has auth_scopes", () => {
+  it("passes when admin tool has auth_scopes", () => {
     const ir = createBasicIR();
     ir.mcp_servers = [
       {
@@ -154,7 +154,7 @@ describe("Tool Registry Validation", () => {
 });
 
 describe("MCP Governance Validation", () => {
-  it("should warn when high-risk server lacks permission_validation", () => {
+  it("warns when high-risk server lacks permission_validation", () => {
     const ir = createBasicIR();
     ir.mcp_servers = [
       {
@@ -168,7 +168,7 @@ describe("MCP Governance Validation", () => {
     expect(errors.some((e) => e.type === "HIGH_RISK_NO_GOVERNANCE")).toBe(true);
   });
 
-  it("should pass when high-risk server has permission_validation", () => {
+  it("passes when high-risk server has permission_validation", () => {
     const ir = createBasicIR();
     ir.mcp_servers = [
       {
@@ -184,7 +184,7 @@ describe("MCP Governance Validation", () => {
 });
 
 describe("Teams Validation", () => {
-  it("should warn when team has empty agents list", () => {
+  it("warns when team has empty agents list", () => {
     const ir = createBasicIR();
     ir.orchestration = {
       agent_teams: [{ team_name: "empty_team", agents: [] }],
@@ -193,7 +193,7 @@ describe("Teams Validation", () => {
     expect(errors.some((e) => e.type === "EMPTY_TEAM")).toBe(true);
   });
 
-  it("should info-warn when team lacks owner or purpose", () => {
+  it("info-warns when team lacks owner or purpose", () => {
     const ir = createBasicIR();
     ir.orchestration = {
       agent_teams: [
@@ -205,7 +205,7 @@ describe("Teams Validation", () => {
     expect(errors.some((e) => e.severity === "info")).toBe(true);
   });
 
-  it("should pass with well-formed teams", () => {
+  it("passes with well-formed teams", () => {
     const ir = createBasicIR();
     ir.orchestration = {
       agent_teams: [
@@ -223,7 +223,7 @@ describe("Teams Validation", () => {
 });
 
 describe("Chains Validation", () => {
-  it("should warn when chain sequence references unknown agent", () => {
+  it("warns when chain sequence references unknown agent", () => {
     const ir = createBasicIR();
     ir.orchestration = {
       agent_chains: [
@@ -237,7 +237,7 @@ describe("Chains Validation", () => {
     expect(errors.some((e) => e.type === "UNKNOWN_CHAIN_AGENT")).toBe(true);
   });
 
-  it("should pass when all agents in chain are known", () => {
+  it("passes when all agents in chain are known", () => {
     const ir = createBasicIR();
     ir.orchestration = {
       agent_chains: [
@@ -251,7 +251,7 @@ describe("Chains Validation", () => {
     expect(errors.filter((e) => e.type === "UNKNOWN_CHAIN_AGENT")).toHaveLength(0);
   });
 
-  it("should warn when error_handler is unknown", () => {
+  it("warns when error_handler is unknown", () => {
     const ir = createBasicIR();
     ir.orchestration = {
       agent_chains: [
@@ -266,7 +266,7 @@ describe("Chains Validation", () => {
     expect(errors.some((e) => e.type === "UNKNOWN_ERROR_HANDLER")).toBe(true);
   });
 
-  it("should pass with valid error_handler", () => {
+  it("passes with valid error_handler", () => {
     const ir = createBasicIR();
     ir.personas.push({ name: "ErrorHandler", role: "Handler", reasoning_style: "defensive", constraints: [] });
     ir.orchestration = {
@@ -284,7 +284,7 @@ describe("Chains Validation", () => {
 });
 
 describe("Memory Validation", () => {
-  it("should warn when memory access_control references unknown agent", () => {
+  it("warns when memory access_control references unknown agent", () => {
     const ir = createBasicIR();
     ir.orchestration = {
       persistent_memory: {
@@ -296,7 +296,7 @@ describe("Memory Validation", () => {
     expect(errors.some((e) => e.type === "UNKNOWN_MEMORY_AGENT")).toBe(true);
   });
 
-  it("should pass when all memory agents are known", () => {
+  it("passes when all memory agents are known", () => {
     const ir = createBasicIR();
     ir.orchestration = {
       persistent_memory: {
@@ -310,7 +310,7 @@ describe("Memory Validation", () => {
 });
 
 describe("Cross-Agent Communication Validation", () => {
-  it("should warn when validation enabled but no schemas", () => {
+  it("warns when validation enabled but no schemas", () => {
     const ir = createBasicIR();
     ir.orchestration = {
       cross_agent_communication: {
@@ -321,7 +321,7 @@ describe("Cross-Agent Communication Validation", () => {
     expect(errors.some((e) => e.type === "VALIDATION_NO_SCHEMAS")).toBe(true);
   });
 
-  it("should pass when validation enabled with schemas", () => {
+  it("passes when validation enabled with schemas", () => {
     const ir = createBasicIR();
     ir.orchestration = {
       cross_agent_communication: {
@@ -333,7 +333,7 @@ describe("Cross-Agent Communication Validation", () => {
     expect(errors.filter((e) => e.type === "VALIDATION_NO_SCHEMAS")).toHaveLength(0);
   });
 
-  it("should pass when validation disabled", () => {
+  it("passes when validation disabled", () => {
     const ir = createBasicIR();
     ir.orchestration = {
       cross_agent_communication: {

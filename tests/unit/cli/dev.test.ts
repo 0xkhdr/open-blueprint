@@ -15,18 +15,18 @@ describe("Dev Command - Live Reload", () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("should create dev command", () => {
+  it("creates dev command", () => {
     const cmd = createDevCommand();
     expect(cmd.name()).toBe("dev");
   });
 
-  it("should have --watch option", () => {
+  it("has --watch option", () => {
     const cmd = createDevCommand();
     const help = cmd.helpInformation();
     expect(help).toContain("--watch");
   });
 
-  it("should have --level option for validation level", () => {
+  it("has --level option for validation level", () => {
     const cmd = createDevCommand();
     const help = cmd.helpInformation();
     expect(help).toContain("--level");

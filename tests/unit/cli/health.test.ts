@@ -35,7 +35,6 @@ describe("health checks", () => {
     it("returns PASS when .bp.json is malformed JSON (loadProjectConfig swallows parse errors)", async () => {
       fs.writeFileSync(path.join(tmpDir, ".bp.json"), "{ invalid json }");
       const result = await checkConfigParseable(tmpDir);
-      // loadProjectConfig catches errors and returns null — health check still passes
       expect(result.status).toBe("PASS");
     });
   });
@@ -61,23 +60,61 @@ describe("health checks", () => {
       expect(result.status).toBe("PASS");
     });
   });
+});
 
-  describe("JSON output format", () => {
-    it("checkConfigParseable result matches {name, status, message} shape", async () => {
+describe("bp health output format snapshots", () => {
+  it("checkConfigParseable result shape matches snapshot", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "bp-health-snap-"));
+    try {
       const result = await checkConfigParseable(tmpDir);
-      expect(result).toHaveProperty("name");
-      expect(result).toHaveProperty("status");
-      expect(result).toHaveProperty("message");
-      expect(["PASS", "FAIL"]).toContain(result.status);
-    });
+      expect({
+        name: result.name,
+        status: result.status,
+        hasMessage: typeof result.message === "string",
+      }).toMatchSnapshot();
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
 
-    it("checkEnginesImportable result matches schema", async () => {
-      const result = await checkEnginesImportable();
-      const json = JSON.stringify(result);
-      const parsed = JSON.parse(json) as { name: string; status: string; message: string };
-      expect(parsed.name).toBe("engines-importable");
-      expect(parsed.status).toBe("PASS");
-      expect(typeof parsed.message).toBe("string");
-    });
+  it("checkEnginesImportable result shape matches snapshot", async () => {
+    const result = await checkEnginesImportable();
+    expect({
+      name: result.name,
+      status: result.status,
+      hasMessage: typeof result.message === "string",
+    }).toMatchSnapshot();
+  });
+
+  it("checkNoConflictingConfigs result shape matches snapshot", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "bp-health-snap-"));
+    try {
+      const result = await checkNoConflictingConfigs(tmpDir);
+      expect({
+        name: result.name,
+        status: result.status,
+        hasMessage: typeof result.message === "string",
+      }).toMatchSnapshot();
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("JSON output schema: all checks have name, status, message", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "bp-health-snap-"));
+    try {
+      const [cfg, engines, noConflict] = await Promise.all([
+        checkConfigParseable(tmpDir),
+        checkEnginesImportable(),
+        checkNoConflictingConfigs(tmpDir),
+      ]);
+      for (const check of [cfg, engines, noConflict]) {
+        expect(typeof check.name).toBe("string");
+        expect(["PASS", "FAIL"]).toContain(check.status);
+        expect(typeof check.message).toBe("string");
+      }
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
   });
 });

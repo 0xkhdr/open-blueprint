@@ -16,7 +16,7 @@ function cleanDir(dir: string): void {
   fs.rmSync(dir, { recursive: true, force: true });
 }
 
-describe("Adapters Phase 0: AGENTS.md Universal Output", () => {
+describe("Adapters: AGENTS.md Universal Output", () => {
   let tmpDir: string;
 
   beforeEach(() => {
@@ -235,7 +235,7 @@ describe("Adapters Phase 0: AGENTS.md Universal Output", () => {
   });
 
   describe("Claude Adapter AGENTS.md", () => {
-    it("should generate AGENTS.md with all sections", async () => {
+    it("generates AGENTS.md with all sections", async () => {
       const adapter = new ClaudeAdapter();
       const ir = createTestIR();
       const outputDir = createTmpDir();
@@ -278,7 +278,7 @@ describe("Adapters Phase 0: AGENTS.md Universal Output", () => {
       }
     });
 
-    it("should preserve bp-generated markers for idempotency", async () => {
+    it("preserves bp-generated markers for idempotency", async () => {
       const adapter = new ClaudeAdapter();
       const ir = createTestIR();
       const outputDir = createTmpDir();
@@ -297,7 +297,7 @@ describe("Adapters Phase 0: AGENTS.md Universal Output", () => {
   });
 
   describe("Cursor Adapter AGENTS.md", () => {
-    it("should generate AGENTS.md", async () => {
+    it("generates AGENTS.md", async () => {
       const adapter = new CursorAdapter();
       const ir = createTestIR();
       const outputDir = createTmpDir();
@@ -317,7 +317,7 @@ describe("Adapters Phase 0: AGENTS.md Universal Output", () => {
   });
 
   describe("Generic Adapter AGENTS.md", () => {
-    it("should generate AGENTS.md", async () => {
+    it("generates AGENTS.md", async () => {
       const adapter = new GenericAdapter();
       const ir = createTestIR();
       const outputDir = createTmpDir();
@@ -336,7 +336,7 @@ describe("Adapters Phase 0: AGENTS.md Universal Output", () => {
   });
 
   describe("AGENTS.md Generation Edge Cases", () => {
-    it("should handle empty IR gracefully", () => {
+    it("handles empty IR gracefully", () => {
       const emptyIR: BlueprintIR = {
         version: "2.0",
         spatial_anchor: {
@@ -362,21 +362,17 @@ describe("Adapters Phase 0: AGENTS.md Universal Output", () => {
       expect(md).toBeTruthy();
     });
 
-    it("should include enterprise layer sections in output", () => {
+    it("includes enterprise layer sections in output", () => {
       const ir = createTestIR();
       const md = generateAgentsMD(ir);
 
-      // Phase 0 sections that should be present
       expect(md).toContain("## Settings & Configuration");
       expect(md).toContain("## Risk Assessment");
       expect(md).toContain("## Compliance Requirements");
       expect(md).toContain("## Orchestration & Multi-Agent Coordination");
-
-      // Future sections (Phase 2+)
-      // Commands, MCP Servers, Identity & RBAC, Audit sections will be added in later phases
     });
 
-    it("should escape special characters in markdown", () => {
+    it("escapes special characters in markdown", () => {
       const ir: BlueprintIR = {
         version: "2.0",
         spatial_anchor: {
@@ -412,7 +408,7 @@ describe("Adapters Phase 0: AGENTS.md Universal Output", () => {
   });
 
   describe("Cross-Adapter Consistency", () => {
-    it("should generate consistent AGENTS.md across all adapters", async () => {
+    it("generates consistent AGENTS.md across all adapters", async () => {
       const adapters = [new ClaudeAdapter(), new CursorAdapter(), new GenericAdapter()];
       const ir = createTestIR();
 
@@ -441,7 +437,7 @@ describe("Adapters Phase 0: AGENTS.md Universal Output", () => {
   });
 
   describe("AGENTS.md Templating", () => {
-    it("should handle Handlebars helpers correctly", () => {
+    it("handles Handlebars helpers correctly", () => {
       const ir: BlueprintIR = {
         version: "2.0",
         spatial_anchor: {

@@ -9,7 +9,7 @@ import { AntigravityAdapter } from "../../../src/translator/adapters/antigravity
 import type { BlueprintIR } from "../../../src/translator/ir.js";
 
 function createTmpDir(): string {
-  return fs.mkdtempSync(path.join(os.tmpdir(), "bp-phase1-test-"));
+  return fs.mkdtempSync(path.join(os.tmpdir(), "bp-backends-test-"));
 }
 
 function cleanDir(dir: string): void {
@@ -19,8 +19,8 @@ function cleanDir(dir: string): void {
 const testIR: BlueprintIR = {
   version: "2.0",
   spatial_anchor: {
-    project_name: "phase1-test",
-    surface: "# phase1-test\n\n- convention 1\n",
+    project_name: "backends-test",
+    surface: "# backends-test\n\n- convention 1\n",
     temporal_anchor: "2025-05-28",
     conventions: ["convention 1"],
   },
@@ -56,7 +56,7 @@ const testIR: BlueprintIR = {
   },
 };
 
-describe("Phase 1: Additional Backends", () => {
+describe("Additional Backends", () => {
   let tmpDir: string;
 
   beforeEach(() => {
@@ -68,7 +68,7 @@ describe("Phase 1: Additional Backends", () => {
   });
 
   describe("Copilot Adapter", () => {
-    it("should render GitHub Copilot instructions", async () => {
+    it("renders GitHub Copilot instructions", async () => {
       const adapter = new CopilotAdapter();
       const writtenFiles = await adapter.render(testIR, tmpDir);
 
@@ -80,7 +80,7 @@ describe("Phase 1: Additional Backends", () => {
       expect(writtenFiles).toContain(path.join(tmpDir, "copilot-instructions.md"));
     });
 
-    it("should generate Copilot settings with enforcement rules", async () => {
+    it("generates Copilot settings with enforcement rules", async () => {
       const adapter = new CopilotAdapter();
       await adapter.render(testIR, tmpDir);
 
@@ -94,7 +94,7 @@ describe("Phase 1: Additional Backends", () => {
       expect(settingsContent).toContain("rule-1: enforce");
     });
 
-    it("should handle rules directory", async () => {
+    it("handles rules directory", async () => {
       const adapter = new CopilotAdapter();
       await adapter.render(testIR, tmpDir);
 
@@ -105,7 +105,7 @@ describe("Phase 1: Additional Backends", () => {
   });
 
   describe("Gemini Adapter", () => {
-    it("should render Gemini CLI format", async () => {
+    it("renders Gemini CLI format", async () => {
       const adapter = new GeminiAdapter();
       const writtenFiles = await adapter.render(testIR, tmpDir);
 
@@ -118,7 +118,7 @@ describe("Phase 1: Additional Backends", () => {
       expect(writtenFiles).toContain(path.join(tmpDir, "gemini.md"));
     });
 
-    it("should structure rules and skills directories", async () => {
+    it("structures rules and skills directories", async () => {
       const adapter = new GeminiAdapter();
       await adapter.render(testIR, tmpDir);
 
@@ -131,7 +131,7 @@ describe("Phase 1: Additional Backends", () => {
   });
 
   describe("Kiro Adapter", () => {
-    it("should render AWS Kiro spec-driven format", async () => {
+    it("renders AWS Kiro spec-driven format", async () => {
       const adapter = new KiroAdapter();
       const writtenFiles = await adapter.render(testIR, tmpDir);
 
@@ -144,7 +144,7 @@ describe("Phase 1: Additional Backends", () => {
       expect(writtenFiles.length).toBeGreaterThan(0);
     });
 
-    it("should generate all Kiro spec files", async () => {
+    it("generates all Kiro spec files", async () => {
       const adapter = new KiroAdapter();
       await adapter.render(testIR, tmpDir);
 
@@ -153,7 +153,7 @@ describe("Phase 1: Additional Backends", () => {
       const techContent = fs.readFileSync(path.join(tmpDir, "tech.md"), "utf-8");
       const librariesContent = fs.readFileSync(path.join(tmpDir, "libraries.md"), "utf-8");
 
-      expect(productContent).toContain("phase1-test");
+      expect(productContent).toContain("backends-test");
       expect(structureContent).toContain("Directory Organization");
       expect(techContent).toContain("Enforcement Rules");
       expect(librariesContent).toContain("Skills & Capabilities");
@@ -161,7 +161,7 @@ describe("Phase 1: Additional Backends", () => {
   });
 
   describe("Antigravity Adapter", () => {
-    it("should render Google Antigravity artifact governance format", async () => {
+    it("renders Google Antigravity artifact governance format", async () => {
       const adapter = new AntigravityAdapter();
       const writtenFiles = await adapter.render(testIR, tmpDir);
 
@@ -174,19 +174,19 @@ describe("Phase 1: Additional Backends", () => {
       expect(writtenFiles.length).toBeGreaterThan(0);
     });
 
-    it("should generate workspace configuration", async () => {
+    it("generates workspace configuration", async () => {
       const adapter = new AntigravityAdapter();
       await adapter.render(testIR, tmpDir);
 
       const workspaceContent = fs.readFileSync(path.join(tmpDir, "workspace.yaml"), "utf-8");
 
       expect(workspaceContent).toContain("workspace:");
-      expect(workspaceContent).toContain("phase1-test");
+      expect(workspaceContent).toContain("backends-test");
       expect(workspaceContent).toContain("artifacts:");
       expect(workspaceContent).toContain("coordination:");
     });
 
-    it("should mark artifacts with governance metadata", async () => {
+    it("marks artifacts with governance metadata", async () => {
       const adapter = new AntigravityAdapter();
       await adapter.render(testIR, tmpDir);
 
@@ -201,7 +201,7 @@ describe("Phase 1: Additional Backends", () => {
   });
 
   describe("Cross-Adapter Consistency", () => {
-    it("all Phase 1 adapters should generate AGENTS.md", async () => {
+    it("all adapters generate AGENTS.md", async () => {
       const adapters = [
         { adapter: new CopilotAdapter(), name: "Copilot" },
         { adapter: new GeminiAdapter(), name: "Gemini" },
@@ -224,7 +224,7 @@ describe("Phase 1: Additional Backends", () => {
       }
     });
 
-    it("all Phase 1 adapters should parse and render consistently", async () => {
+    it("all adapters parse and render consistently", async () => {
       const adapters = [
         new CopilotAdapter(),
         new GeminiAdapter(),
@@ -251,7 +251,7 @@ describe("Phase 1: Additional Backends", () => {
   });
 
   describe("Adapter Feature Parity", () => {
-    it("should handle rules with severity levels", async () => {
+    it("handles rules with severity levels", async () => {
       const irWithSoftRule: BlueprintIR = {
         ...testIR,
         rules: [
@@ -278,7 +278,7 @@ describe("Phase 1: Additional Backends", () => {
       expect(settingsContent).toContain("rule-soft: suggest");
     });
 
-    it("should preserve skill information across adapters", async () => {
+    it("preserves skill information across adapters", async () => {
       const adapters = [
         { adapter: new CopilotAdapter(), path: ".github/copilot/skills" },
         { adapter: new GeminiAdapter(), path: "skills" },

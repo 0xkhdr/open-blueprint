@@ -38,14 +38,14 @@ function createBasicIR(): BlueprintIR {
 }
 
 describe("MCP JSON Generator", () => {
-  it("should generate empty mcpServers for no MCP servers", () => {
+  it("generates empty mcpServers for no MCP servers", () => {
     const ir = createBasicIR();
     const json = generateMCPJson(ir);
     const parsed = JSON.parse(json);
     expect(parsed.mcpServers).toEqual({});
   });
 
-  it("should generate basic MCP server config", () => {
+  it("generates basic MCP server config", () => {
     const ir = createBasicIR();
     ir.mcp_servers = [{ name: "test-server", endpoint: "@example/server" }];
     const json = generateMCPJson(ir);
@@ -55,7 +55,7 @@ describe("MCP JSON Generator", () => {
     expect(parsed.mcpServers["test-server"].args).toEqual(["-y", "@example/server"]);
   });
 
-  it("should include auth_scope as env vars", () => {
+  it("includes auth_scope as env vars", () => {
     const ir = createBasicIR();
     ir.mcp_servers = [{ name: "github", endpoint: "@modelcontextprotocol/server-github", auth_scope: ["GH_TOKEN"] }];
     const json = generateMCPJson(ir);
@@ -64,7 +64,7 @@ describe("MCP JSON Generator", () => {
     expect(parsed.mcpServers.github.env.GH_TOKEN).toBe("<GH_TOKEN>");
   });
 
-  it("should include governance fields when present", () => {
+  it("includes governance fields when present", () => {
     const ir = createBasicIR();
     ir.mcp_servers = [
       {
@@ -84,7 +84,7 @@ describe("MCP JSON Generator", () => {
     expect(parsed.mcpServers["secure-server"].require_confirmation).toEqual(["admin_tool"]);
   });
 
-  it("should include tool registry when present", () => {
+  it("includes tool registry when present", () => {
     const ir = createBasicIR();
     ir.mcp_servers = [
       {
@@ -115,7 +115,7 @@ describe("Claude Adapter MCP", () => {
     cleanDir(tmpDir);
   });
 
-  it("should parse mcp.json if present", async () => {
+  it("parses mcp.json if present", async () => {
     const claudeDir = path.join(tmpDir, ".claude");
     fs.mkdirSync(claudeDir, { recursive: true });
     fs.mkdirSync(path.join(claudeDir, "agents"), { recursive: true });
@@ -140,7 +140,7 @@ describe("Claude Adapter MCP", () => {
     expect(ir.mcp_servers?.[0].endpoint).toBe("@modelcontextprotocol/server-github");
   });
 
-  it("should render mcp.json when servers defined", async () => {
+  it("renders mcp.json when servers defined", async () => {
     const adapter = new ClaudeAdapter();
     const ir = createBasicIR();
     ir.mcp_servers = [{ name: "test", endpoint: "@test/server" }];
@@ -168,7 +168,7 @@ describe("Cursor Adapter MCP", () => {
     cleanDir(tmpDir);
   });
 
-  it("should render mcp.json to .cursor directory", async () => {
+  it("renders mcp.json to .cursor directory", async () => {
     const adapter = new CursorAdapter();
     const ir = createBasicIR();
     ir.mcp_servers = [{ name: "github", endpoint: "@modelcontextprotocol/server-github", risk_level: "medium" }];

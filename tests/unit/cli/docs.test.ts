@@ -15,12 +15,12 @@ describe("Docs Command - Documentation Generator", () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("should create docs command", () => {
+  it("creates docs command", () => {
     const cmd = createDocsCommand();
     expect(cmd.name()).toBe("docs");
   });
 
-  it("should have --output option", () => {
+  it("has --output option", () => {
     const cmd = createDocsCommand();
     const help = cmd.helpInformation();
     expect(help).toContain("--output");
@@ -32,7 +32,7 @@ describe("Docs Command - Documentation Generator", () => {
     expect(help).toContain("governance");
   });
 
-  it("should describe generating from blueprint", () => {
+  it("describes generating from blueprint", () => {
     const cmd = createDocsCommand();
     const help = cmd.helpInformation().toLowerCase();
     expect(help).toContain("blueprint");
@@ -44,7 +44,7 @@ describe("Docs Command - Documentation Generator", () => {
     expect(help).toContain("generate");
   });
 
-  it("should support docs subcommand", () => {
+  it("supports docs subcommand", () => {
     const cmd = createDocsCommand();
     expect(cmd).toBeDefined();
     expect(cmd.name()).toBe("docs");

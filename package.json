@@ -79,6 +79,10 @@
     "unified": "^11.0.5",
     "zod": "^4.4.3"
   },
+  "files": [
+    "dist",
+    "templates"
+  ],
   "publishConfig": {
     "access": "public"
   }

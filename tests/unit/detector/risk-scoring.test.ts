@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { enrichFingerprint } from "../../../src/detector/index.js";
 import type { Fingerprint } from "../../../src/detector/fingerprint.js";
 
-describe("Detector Risk Scoring (Phase 0)", () => {
+describe("Detector Risk Scoring", () => {
   const createBasicFingerprint = (overrides?: Partial<Fingerprint>): Fingerprint => ({
     version: "1.0",
     detected_at: new Date().toISOString(),
@@ -32,7 +32,7 @@ describe("Detector Risk Scoring (Phase 0)", () => {
   });
 
   describe("Risk Tier Detection", () => {
-    it("should detect low risk for simple library", () => {
+    it("detects low risk for simple library", () => {
       const fp = createBasicFingerprint();
       const enhanced = enrichFingerprint(fp);
 
@@ -40,7 +40,7 @@ describe("Detector Risk Scoring (Phase 0)", () => {
       expect(enhanced.suggested_approval_mode).toBe("auto");
     });
 
-    it("should detect medium risk with multiple signals adding to 3+ points", () => {
+    it("detects medium risk with multiple signals adding to 3+ points", () => {
       const fp = createBasicFingerprint({
         security_signals: {
           has_external_apis: true, // +2
@@ -55,7 +55,7 @@ describe("Detector Risk Scoring (Phase 0)", () => {
       expect(enhanced.suggested_approval_mode).toBe("auto");
     });
 
-    it("should detect high risk with multiple signals", () => {
+    it("detects high risk with multiple signals", () => {
       const fp = createBasicFingerprint({
         security_signals: {
           has_external_apis: true, // +2
@@ -70,7 +70,7 @@ describe("Detector Risk Scoring (Phase 0)", () => {
       expect(enhanced.suggested_approval_mode).toBe("confirm");
     });
 
-    it("should detect critical risk for service type", () => {
+    it("detects critical risk for service type", () => {
       const fp = createBasicFingerprint({
         project: {
           name: "test-service",
@@ -91,7 +91,7 @@ describe("Detector Risk Scoring (Phase 0)", () => {
       expect(enhanced.suggested_approval_mode).toBe("read-only");
     });
 
-    it("should detect high/critical risk for payment framework", () => {
+    it("detects high/critical risk for payment framework", () => {
       const fp = createBasicFingerprint({
         project: {
           name: "payment-service",
@@ -115,7 +115,7 @@ describe("Detector Risk Scoring (Phase 0)", () => {
       expect(enhanced.risk_tier).toBe("critical"); // 2+2+2+1 = 7 >= 7
     });
 
-    it("should detect medium risk for auth framework with signals", () => {
+    it("detects medium risk for auth framework with signals", () => {
       const fp = createBasicFingerprint({
         frameworks: [{ name: "oauth2" }],
         security_signals: {
@@ -130,7 +130,7 @@ describe("Detector Risk Scoring (Phase 0)", () => {
       expect(enhanced.risk_tier).toBe("medium"); // 2 < 3
     });
 
-    it("should detect high risk for auth signals", () => {
+    it("detects high risk for auth signals", () => {
       const fp = createBasicFingerprint({
         security_signals: {
           has_external_apis: true, // +2
@@ -144,7 +144,7 @@ describe("Detector Risk Scoring (Phase 0)", () => {
       expect(enhanced.risk_tier).toBe("high"); // 6 >= 5
     });
 
-    it("should track risk signals in enhanced fingerprint", () => {
+    it("tracks risk signals in enhanced fingerprint", () => {
       const fp = createBasicFingerprint({
         security_signals: {
           has_external_apis: true,
@@ -163,14 +163,14 @@ describe("Detector Risk Scoring (Phase 0)", () => {
   });
 
   describe("Approval Mode Inference", () => {
-    it("should suggest auto for low risk", () => {
+    it("suggests auto for low risk", () => {
       const fp = createBasicFingerprint();
       const enhanced = enrichFingerprint(fp);
 
       expect(enhanced.suggested_approval_mode).toBe("auto");
     });
 
-    it("should suggest auto for medium risk", () => {
+    it("suggests auto for medium risk", () => {
       const fp = createBasicFingerprint({
         security_signals: {
           has_external_apis: true,
@@ -184,7 +184,7 @@ describe("Detector Risk Scoring (Phase 0)", () => {
       expect(enhanced.suggested_approval_mode).toBe("auto");
     });
 
-    it("should suggest confirm for high risk", () => {
+    it("suggests confirm for high risk", () => {
       const fp = createBasicFingerprint({
         security_signals: {
           has_external_apis: true, // +2
@@ -198,7 +198,7 @@ describe("Detector Risk Scoring (Phase 0)", () => {
       expect(enhanced.suggested_approval_mode).toBe("confirm"); // high risk
     });
 
-    it("should suggest read-only for critical risk", () => {
+    it("suggests read-only for critical risk", () => {
       const fp = createBasicFingerprint({
         project: {
           name: "critical-service",
@@ -220,7 +220,7 @@ describe("Detector Risk Scoring (Phase 0)", () => {
   });
 
   describe("Token Estimation", () => {
-    it("should estimate base monthly tokens for simple project", () => {
+    it("estimates base monthly tokens for simple project", () => {
       const fp = createBasicFingerprint();
       const enhanced = enrichFingerprint(fp);
 
@@ -228,7 +228,7 @@ describe("Detector Risk Scoring (Phase 0)", () => {
       expect(enhanced.estimated_monthly_tokens).toBeLessThan(3000);
     });
 
-    it("should increase tokens with more src directories", () => {
+    it("increases tokens with more src directories", () => {
       const fpSimple = createBasicFingerprint();
       const fpComplex = createBasicFingerprint({
         directory_topology: {
@@ -246,7 +246,7 @@ describe("Detector Risk Scoring (Phase 0)", () => {
         .toBeGreaterThan(enhancedSimple.estimated_monthly_tokens);
     });
 
-    it("should increase tokens with more frameworks", () => {
+    it("increases tokens with more frameworks", () => {
       const fpSimple = createBasicFingerprint();
       const fpComplex = createBasicFingerprint({
         frameworks: [
@@ -264,7 +264,7 @@ describe("Detector Risk Scoring (Phase 0)", () => {
         .toBeGreaterThan(enhancedSimple.estimated_monthly_tokens);
     });
 
-    it("should apply monorepo complexity multiplier", () => {
+    it("applies monorepo complexity multiplier", () => {
       const fpLibrary = createBasicFingerprint({
         project: {
           name: "library",
@@ -290,7 +290,7 @@ describe("Detector Risk Scoring (Phase 0)", () => {
         .toBeGreaterThan(enhancedLibrary.estimated_monthly_tokens);
     });
 
-    it("should return reasonable token estimates", () => {
+    it("returns reasonable token estimates", () => {
       const fp = createBasicFingerprint({
         frameworks: Array.from({ length: 5 }, (_, i) => ({ name: `framework-${i}` })),
         directory_topology: {
@@ -309,7 +309,7 @@ describe("Detector Risk Scoring (Phase 0)", () => {
   });
 
   describe("Enhanced Fingerprint Structure", () => {
-    it("should preserve original fingerprint data", () => {
+    it("preserves original fingerprint data", () => {
       const fp = createBasicFingerprint({
         frameworks: [{ name: "react" }],
       });
@@ -321,7 +321,7 @@ describe("Detector Risk Scoring (Phase 0)", () => {
       expect(enhanced.frameworks).toEqual(fp.frameworks);
     });
 
-    it("should add risk scoring fields", () => {
+    it("adds risk scoring fields", () => {
       const fp = createBasicFingerprint();
       const enhanced = enrichFingerprint(fp);
 
@@ -336,7 +336,7 @@ describe("Detector Risk Scoring (Phase 0)", () => {
   });
 
   describe("Edge Cases", () => {
-    it("should handle undefined security signals gracefully", () => {
+    it("handles undefined security signals gracefully", () => {
       const fp = createBasicFingerprint({
         security_signals: {
           has_external_apis: false,
@@ -350,7 +350,7 @@ describe("Detector Risk Scoring (Phase 0)", () => {
       expect(enhanced.risk_tier).toBe("low");
     });
 
-    it("should handle empty frameworks array", () => {
+    it("handles empty frameworks array", () => {
       const fp = createBasicFingerprint({
         frameworks: [],
       });
@@ -359,7 +359,7 @@ describe("Detector Risk Scoring (Phase 0)", () => {
       expect(enhanced.risk_tier).toBe("low");
     });
 
-    it("should handle unknown project types", () => {
+    it("handles unknown project types", () => {
       const fp = createBasicFingerprint({
         project: {
           name: "unknown-project",

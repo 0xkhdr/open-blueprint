@@ -40,13 +40,13 @@ function createBasicIR(): BlueprintIR {
 }
 
 describe("Teams YAML Generator", () => {
-  it("should generate empty teams when none defined", () => {
+  it("generates empty teams when none defined", () => {
     const ir = createBasicIR();
     const yaml = generateTeamsYaml(ir);
     expect(yaml).toContain("No agent teams defined");
   });
 
-  it("should generate basic team list", () => {
+  it("generates basic team list", () => {
     const ir = createBasicIR();
     ir.orchestration = {
       agent_teams: [
@@ -60,7 +60,7 @@ describe("Teams YAML Generator", () => {
     expect(yaml).toContain("ui_agent");
   });
 
-  it("should include rich metadata when present", () => {
+  it("includes rich metadata when present", () => {
     const ir = createBasicIR();
     ir.orchestration = {
       agent_teams: [
@@ -87,13 +87,13 @@ describe("Teams YAML Generator", () => {
 });
 
 describe("Chains YAML Generator", () => {
-  it("should generate empty chains when none defined", () => {
+  it("generates empty chains when none defined", () => {
     const ir = createBasicIR();
     const yaml = generateChainsYaml(ir);
     expect(yaml).toContain("No agent chains defined");
   });
 
-  it("should generate sequential chain", () => {
+  it("generates sequential chain", () => {
     const ir = createBasicIR();
     ir.orchestration = {
       agent_chains: [
@@ -109,7 +109,7 @@ describe("Chains YAML Generator", () => {
     expect(yaml).not.toContain("parallel_mode: true");
   });
 
-  it("should generate parallel chain with advanced fields", () => {
+  it("generates parallel chain with advanced fields", () => {
     const ir = createBasicIR();
     ir.orchestration = {
       agent_chains: [
@@ -134,13 +134,13 @@ describe("Chains YAML Generator", () => {
 });
 
 describe("Memory Config Generator", () => {
-  it("should generate disabled config when memory not enabled", () => {
+  it("generates disabled config when memory not enabled", () => {
     const ir = createBasicIR();
     const yaml = generateMemoryConfig(ir);
     expect(yaml).toContain("enabled: false");
   });
 
-  it("should generate basic memory config when enabled", () => {
+  it("generates basic memory config when enabled", () => {
     const ir = createBasicIR();
     ir.orchestration = {
       persistent_memory: { enabled: true },
@@ -149,7 +149,7 @@ describe("Memory Config Generator", () => {
     expect(yaml).toContain("enabled: true");
   });
 
-  it("should include all governance fields", () => {
+  it("includes all governance fields", () => {
     const ir = createBasicIR();
     ir.orchestration = {
       persistent_memory: {
@@ -172,7 +172,7 @@ describe("Memory Config Generator", () => {
 });
 
 describe("Memory Directories Generator", () => {
-  it("should return empty list when memory disabled", () => {
+  it("returns empty list when memory disabled", () => {
     const ir = createBasicIR();
     const tmpDir = createTmpDir();
     try {
@@ -183,7 +183,7 @@ describe("Memory Directories Generator", () => {
     }
   });
 
-  it("should create directories for teams when memory enabled", () => {
+  it("creates directories for teams when memory enabled", () => {
     const ir = createBasicIR();
     ir.orchestration = {
       persistent_memory: { enabled: true, directory: "memory" },
@@ -216,7 +216,7 @@ describe("Claude Adapter Orchestration", () => {
     cleanDir(tmpDir);
   });
 
-  it("should render memory config when enabled", async () => {
+  it("renders memory config when enabled", async () => {
     const adapter = new ClaudeAdapter();
     const ir = createBasicIR();
     ir.orchestration = {
@@ -230,7 +230,7 @@ describe("Claude Adapter Orchestration", () => {
     expect(fs.existsSync(memoryPath)).toBe(true);
   });
 
-  it("should render agent registry when defined", async () => {
+  it("renders agent registry when defined", async () => {
     const adapter = new ClaudeAdapter();
     const ir = createBasicIR();
     ir.agent_registry = {
@@ -269,7 +269,7 @@ describe("PI Adapter Orchestration", () => {
     cleanDir(tmpDir);
   });
 
-  it("should render teams.yaml using shared generator", async () => {
+  it("renders teams.yaml using shared generator", async () => {
     const adapter = new PIAdapter();
     const ir = createBasicIR();
     ir.orchestration = {
@@ -294,7 +294,7 @@ describe("PI Adapter Orchestration", () => {
     expect(content).toContain("owner: ops");
   });
 
-  it("should render chains.yaml using shared generator", async () => {
+  it("renders chains.yaml using shared generator", async () => {
     const adapter = new PIAdapter();
     const ir = createBasicIR();
     ir.orchestration = {
@@ -331,7 +331,7 @@ describe("AGENTS.md Orchestration Sections", () => {
     cleanDir(tmpDir);
   });
 
-  it("should include agent registry table in AGENTS.md", async () => {
+  it("includes agent registry table in AGENTS.md", async () => {
     const adapter = new ClaudeAdapter();
     const ir = createBasicIR();
     ir.agent_registry = {
@@ -356,7 +356,7 @@ describe("AGENTS.md Orchestration Sections", () => {
     expect(content).toContain("Processes data");
   });
 
-  it("should include MCP servers section when defined", async () => {
+  it("includes MCP servers section when defined", async () => {
     const adapter = new ClaudeAdapter();
     const ir = createBasicIR();
     ir.mcp_servers = [
@@ -375,7 +375,7 @@ describe("AGENTS.md Orchestration Sections", () => {
     expect(content).toContain("filesystem");
   });
 
-  it("should include cross-agent communication when defined", async () => {
+  it("includes cross-agent communication when defined", async () => {
     const adapter = new ClaudeAdapter();
     const ir = createBasicIR();
     ir.orchestration = {

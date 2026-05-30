@@ -20,14 +20,14 @@ import {
 } from "../../../src/validator/layers.js";
 
 function createTmpDir(): string {
-  return fs.mkdtempSync(path.join(os.tmpdir(), "bp-phase0-test-"));
+  return fs.mkdtempSync(path.join(os.tmpdir(), "bp-enterprise-test-"));
 }
 
 function cleanDir(dir: string): void {
   fs.rmSync(dir, { recursive: true, force: true });
 }
 
-describe("Phase 0: IR Extension & Enterprise Schemas", () => {
+describe("IR Enterprise Layers", () => {
   let tmpDir: string;
 
   beforeEach(() => {
@@ -38,8 +38,8 @@ describe("Phase 0: IR Extension & Enterprise Schemas", () => {
     cleanDir(tmpDir);
   });
 
-  describe("IR Schema (Task 0.1)", () => {
-    it("should support v2.0 IR with all 8 layers", () => {
+  describe("IR Schema", () => {
+    it("supports v2.0 IR with all 8 layers", () => {
       const ir: BlueprintIR = {
         version: "2.0",
         spatial_anchor: {
@@ -179,7 +179,7 @@ describe("Phase 0: IR Extension & Enterprise Schemas", () => {
       }
     });
 
-    it("should allow optional enterprise layers", () => {
+    it("allows optional enterprise layers", () => {
       const minimalIr: BlueprintIR = {
         version: "2.0",
         spatial_anchor: {
@@ -205,8 +205,8 @@ describe("Phase 0: IR Extension & Enterprise Schemas", () => {
     });
   });
 
-  describe("AGENTS.md Generation (Task 0.3)", () => {
-    it("should generate AGENTS.md from IR", () => {
+  describe("AGENTS.md Generation", () => {
+    it("generates AGENTS.md from IR", () => {
       const ir: BlueprintIR = {
         version: "2.0",
         spatial_anchor: {
@@ -263,7 +263,7 @@ describe("Phase 0: IR Extension & Enterprise Schemas", () => {
       expect(agentsMD).toContain("Review code changes");
     });
 
-    it("should include settings in AGENTS.md when present", () => {
+    it("includes settings in AGENTS.md when present", () => {
       const ir: BlueprintIR = {
         version: "2.0",
         spatial_anchor: {
@@ -299,7 +299,7 @@ describe("Phase 0: IR Extension & Enterprise Schemas", () => {
       expect(agentsMD).toContain("4096");
     });
 
-    it("should generate AGENTS.md for all adapters", async () => {
+    it("generates AGENTS.md for all adapters", async () => {
       const adapters = [new ClaudeAdapter(), new CursorAdapter(), new GenericAdapter()];
 
       const ir: BlueprintIR = {
@@ -344,8 +344,8 @@ describe("Phase 0: IR Extension & Enterprise Schemas", () => {
     });
   });
 
-  describe("Detector Risk Scoring (Task 0.4)", () => {
-    it("should detect risk tier as low", () => {
+  describe("Detector Risk Scoring", () => {
+    it("detects risk tier as low", () => {
       const fp: Fingerprint = {
         version: "1.0",
         detected_at: new Date().toISOString(),
@@ -378,7 +378,7 @@ describe("Phase 0: IR Extension & Enterprise Schemas", () => {
       expect(enhanced.suggested_approval_mode).toBe("auto");
     });
 
-    it("should detect risk tier as high", () => {
+    it("detects risk tier as high", () => {
       const fp: Fingerprint = {
         version: "1.0",
         detected_at: new Date().toISOString(),
@@ -413,7 +413,7 @@ describe("Phase 0: IR Extension & Enterprise Schemas", () => {
       expect(enhanced.suggested_approval_mode).toBe("confirm");
     });
 
-    it("should detect risk tier as critical", () => {
+    it("detects risk tier as critical", () => {
       const fp: Fingerprint = {
         version: "1.0",
         detected_at: new Date().toISOString(),
@@ -449,7 +449,7 @@ describe("Phase 0: IR Extension & Enterprise Schemas", () => {
       expect(enhanced.suggested_approval_mode).toBe("read-only");
     });
 
-    it("should estimate monthly tokens", () => {
+    it("estimates monthly tokens", () => {
       const fp: Fingerprint = {
         version: "1.0",
         detected_at: new Date().toISOString(),
@@ -483,8 +483,8 @@ describe("Phase 0: IR Extension & Enterprise Schemas", () => {
     });
   });
 
-  describe("Validator Layer Schemas (Task 0.5)", () => {
-    it("should validate settings layer", () => {
+  describe("Validator Layer Schemas", () => {
+    it("validates settings layer", () => {
       const validSettings = {
         approval_mode: "confirm",
         model_config: {
@@ -497,7 +497,7 @@ describe("Phase 0: IR Extension & Enterprise Schemas", () => {
       expect(errors).toHaveLength(0);
     });
 
-    it("should reject invalid settings", () => {
+    it("rejects invalid settings", () => {
       const invalidSettings = {
         approval_mode: "invalid-mode", // should be auto/confirm/read-only
       };
@@ -506,7 +506,7 @@ describe("Phase 0: IR Extension & Enterprise Schemas", () => {
       expect(errors.length).toBeGreaterThan(0);
     });
 
-    it("should validate commands layer", () => {
+    it("validates commands layer", () => {
       const validCommands = [
         {
           name: "deploy",
@@ -520,7 +520,7 @@ describe("Phase 0: IR Extension & Enterprise Schemas", () => {
       expect(errors).toHaveLength(0);
     });
 
-    it("should validate MCP servers", () => {
+    it("validates MCP servers", () => {
       const validServers = [
         {
           name: "github",
@@ -534,7 +534,7 @@ describe("Phase 0: IR Extension & Enterprise Schemas", () => {
       expect(errors).toHaveLength(0);
     });
 
-    it("should validate identity layer", () => {
+    it("validates identity layer", () => {
       const validIdentity = {
         rbac_enabled: true,
         roles: [
@@ -550,7 +550,7 @@ describe("Phase 0: IR Extension & Enterprise Schemas", () => {
       expect(errors).toHaveLength(0);
     });
 
-    it("should validate audit layer", () => {
+    it("validates audit layer", () => {
       const validAudit = {
         audit_enabled: true,
         log_level: "info",
@@ -562,7 +562,7 @@ describe("Phase 0: IR Extension & Enterprise Schemas", () => {
       expect(errors).toHaveLength(0);
     });
 
-    it("should validate compliance layer", () => {
+    it("validates compliance layer", () => {
       const validCompliance = {
         frameworks: ["gdpr", "soc2"],
         certified: true,
@@ -572,7 +572,7 @@ describe("Phase 0: IR Extension & Enterprise Schemas", () => {
       expect(errors).toHaveLength(0);
     });
 
-    it("should validate risk layer", () => {
+    it("validates risk layer", () => {
       const validRisk = {
         risk_tier: "high",
         risk_signals: {
@@ -586,8 +586,8 @@ describe("Phase 0: IR Extension & Enterprise Schemas", () => {
     });
   });
 
-  describe("Templater Layer 6-8 Support (Task 0.2)", () => {
-    it("should render templates with new layers in Claude adapter", async () => {
+  describe("Templater Layer Support", () => {
+    it("renders templates with new layers in Claude adapter", async () => {
       const claudeAdapter = new ClaudeAdapter();
       const ir: BlueprintIR = {
         version: "2.0",
@@ -631,7 +631,7 @@ describe("Phase 0: IR Extension & Enterprise Schemas", () => {
   });
 
   describe("IR Version Migration (v1.0 to v2.0)", () => {
-    it("should maintain backward compatibility with existing v1.0 IR structures", () => {
+    it("maintains backward compatibility with existing v1.0 IR structures", () => {
       // Test that we can parse minimal IR structures
       const oldStyleIr = {
         version: "2.0", // We now require 2.0

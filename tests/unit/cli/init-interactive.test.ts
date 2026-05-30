@@ -15,42 +15,42 @@ describe("Init Command - Interactive Mode", () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("should create init command", () => {
+  it("creates init command", () => {
     const cmd = createInitCommand();
     expect(cmd.name()).toBe("init");
   });
 
-  it("should have --interactive flag in help", () => {
+  it("has --interactive flag in help", () => {
     const cmd = createInitCommand();
     const help = cmd.helpInformation();
     expect(help).toContain("--interactive");
   });
 
-  it("should support --tools flag for multi-backend init", () => {
+  it("supports --tools flag for multi-backend init", () => {
     const cmd = createInitCommand();
     const help = cmd.helpInformation();
     expect(help).toContain("--tools");
   });
 
-  it("should support --tool option", () => {
+  it("supports --tool option", () => {
     const cmd = createInitCommand();
     const help = cmd.helpInformation();
     expect(help).toContain("--tool");
   });
 
-  it("should support --template option", () => {
+  it("supports --template option", () => {
     const cmd = createInitCommand();
     const help = cmd.helpInformation();
     expect(help).toContain("--template");
   });
 
-  it("should support --force option", () => {
+  it("supports --force option", () => {
     const cmd = createInitCommand();
     const help = cmd.helpInformation();
     expect(help).toContain("--force");
   });
 
-  it("should support --dry-run option", () => {
+  it("supports --dry-run option", () => {
     const cmd = createInitCommand();
     const help = cmd.helpInformation();
     expect(help).toContain("--dry-run");

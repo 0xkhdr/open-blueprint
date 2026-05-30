@@ -15,24 +15,24 @@ describe("Migrate Command - Cross-Tool Migration", () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("should create migrate command", () => {
+  it("creates migrate command", () => {
     const cmd = createMigrateCommand();
     expect(cmd.name()).toBe("migrate");
   });
 
-  it("should support --from backend option", () => {
+  it("supports --from backend option", () => {
     const cmd = createMigrateCommand();
     const help = cmd.helpInformation();
     expect(help).toContain("--from");
   });
 
-  it("should support --to backend option", () => {
+  it("supports --to backend option", () => {
     const cmd = createMigrateCommand();
     const help = cmd.helpInformation();
     expect(help).toContain("--to");
   });
 
-  it("should include all supported backends in help", () => {
+  it("includes all supported backends in help", () => {
     const cmd = createMigrateCommand();
     const help = cmd.helpInformation();
     const backends = [
@@ -51,25 +51,25 @@ describe("Migrate Command - Cross-Tool Migration", () => {
     }
   });
 
-  it("should support --input directory option", () => {
+  it("supports --input directory option", () => {
     const cmd = createMigrateCommand();
     const help = cmd.helpInformation();
     expect(help).toContain("--input");
   });
 
-  it("should support --output directory option", () => {
+  it("supports --output directory option", () => {
     const cmd = createMigrateCommand();
     const help = cmd.helpInformation();
     expect(help).toContain("--output");
   });
 
-  it("should support both schema and cross-backend migration", () => {
+  it("supports both schema and cross-backend migration", () => {
     const cmd = createMigrateCommand();
     const help = cmd.helpInformation().toLowerCase();
     expect(help).toContain("migrate blueprint");
   });
 
-  it("should mention fingerprint in help for schema migration", () => {
+  it("mentions fingerprint in help for schema migration", () => {
     const cmd = createMigrateCommand();
     const help = cmd.helpInformation().toLowerCase();
     // Schema migration fallback should be mentioned
