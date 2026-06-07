@@ -4,6 +4,7 @@ import * as path from "node:path";
 import matter from "gray-matter";
 import { logger } from "../logger.js";
 import type { Fingerprint } from "../detector/fingerprint.js";
+import { normalizeText } from "../utils/normalize.js";
 import type { ValidationError } from "./structural.js";
 
 export const FINGERPRINT_FILE = ".bp-fingerprint.json";
@@ -299,12 +300,28 @@ export interface OutputSnapshot {
 }
 
 export function computeOutputHash(output: string): string {
-  const normalized = output.toLowerCase().replace(/\s+/g, " ").trim();
+  const normalized = normalizeText(output, { caseInsensitive: true });
   return crypto.createHash("sha256").update(normalized, "utf8").digest("hex");
 }
 
+/**
+ * Whether two output hashes refer to identical (normalized) output.
+ *
+ * This is an exact identity check, not a graded similarity score: the
+ * underlying hashes match or they do not. Named accordingly to avoid implying
+ * fuzzy comparison.
+ */
+export function isOutputIdentical(hash1: string, hash2: string): boolean {
+  return hash1 === hash2;
+}
+
+/**
+ * @deprecated Use {@link isOutputIdentical}. Retained for backward
+ * compatibility; returns 1.0 for identical hashes and 0.0 otherwise — a binary
+ * identity check, never an intermediate similarity value.
+ */
 export function computeSimilarity(hash1: string, hash2: string): number {
-  return hash1 === hash2 ? 1.0 : 0.0;
+  return isOutputIdentical(hash1, hash2) ? 1.0 : 0.0;
 }
 
 async function checkRuleEffectivenessDrift(
@@ -414,14 +431,13 @@ async function checkOutputDrift(_files: string[], projectRoot: string): Promise<
 
       const latest = history.at(-1) as OutputSnapshot;
       const previous = history.at(-2) as OutputSnapshot;
-      const similarity = computeSimilarity(latest.output_hash, previous.output_hash);
 
-      if (similarity !== 1.0) {
+      if (!isOutputIdentical(latest.output_hash, previous.output_hash)) {
         errors.push({
           file: snapshotFile,
           type: "OUTPUT_DRIFT",
           severity: "info",
-          message: `Output from rule "${ruleId}" has diverged significantly (similarity: ${(similarity * 100).toFixed(0)}%)`,
+          message: `Output from rule "${ruleId}" no longer matches the previous snapshot`,
           resolution: `Review recent changes to rule "${ruleId}"; output may indicate behavior change or config drift`,
         });
       }

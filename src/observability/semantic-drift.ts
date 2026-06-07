@@ -56,7 +56,15 @@ export function establishBaseline(metrics: RuntimeMetrics[], windowDays = 7): Be
   };
 }
 
-export function detectSemanticDrift(
+/**
+ * Detect drift in agent *behavior* — rule success rates, token usage, and skill
+ * invocation counts — relative to an established baseline.
+ *
+ * Note: this measures runtime/behavioral metrics, not the textual or semantic
+ * content of rules and skills. It is deliberately named "behavioral" to avoid
+ * implying natural-language/semantic analysis.
+ */
+export function detectBehavioralDrift(
   baseline: BehaviorBaseline,
   current: RuntimeMetrics,
   threshold = 0.15
@@ -116,6 +124,13 @@ export function detectSemanticDrift(
     },
   };
 }
+
+/**
+ * @deprecated Use {@link detectBehavioralDrift}. This name implied semantic
+ * (natural-language) analysis; the function actually measures behavioral
+ * metrics. Retained as an alias for backward compatibility.
+ */
+export const detectSemanticDrift = detectBehavioralDrift;
 
 function average(values: number[]): number {
   return values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0;

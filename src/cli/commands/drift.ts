@@ -4,7 +4,7 @@ import { loadProjectConfig } from "../../config/project.js";
 import { BpError } from "../../errors.js";
 import {
   type BehaviorBaseline,
-  detectSemanticDrift,
+  detectBehavioralDrift,
   establishBaseline,
   type RuntimeMetrics,
 } from "../../observability/semantic-drift.js";
@@ -160,7 +160,7 @@ export function createDriftCommand(): Command {
       const current = makeSyntheticCurrent();
       const threshold = parseFloat(opts.threshold ?? "0.15");
 
-      const report = detectSemanticDrift(baseline, current, threshold);
+      const report = detectBehavioralDrift(baseline, current, threshold);
 
       if (opts.json) {
         console.log(JSON.stringify(report));

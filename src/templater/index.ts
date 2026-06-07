@@ -1,4 +1,3 @@
-import * as fs from "node:fs";
 import * as fsPromises from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -12,6 +11,13 @@ import { normalizeError } from "../utils/errors.js";
 import { type RenderContext, shouldRenderTemplate } from "./conditional.js";
 import { registerPartials } from "./engine.js";
 import { TemplateVarsValidationError } from "./errors.js";
+import {
+  createEmptyManifest,
+  loadManifest,
+  recordFile,
+  saveManifest,
+  toManifestKey,
+} from "./manifest.js";
 import { hasTemplateMetadata, parseTemplateMetadata, stripMetadata } from "./metadata.js";
 import { renderFromRegistry } from "./registry.js";
 import { mergeRiskTemplates, resolveRiskTemplatePack } from "./risk-selector.js";
@@ -92,9 +98,16 @@ export function sanitizeTemplateVars(vars: Record<string, unknown>): Record<stri
   return sanitized;
 }
 
+export interface ManifestRecord {
+  outputPath: string;
+  template: string;
+}
+
 export interface TemplaterResult {
   files: WriteResult[];
   templatePack: string;
+  /** Files bp rendered this pass, for ownership-manifest accounting. */
+  manifestRecords: ManifestRecord[];
 }
 
 export interface TemplateContext {
@@ -212,6 +225,7 @@ export async function runTemplater(
   await registerPartials(basePartialsDir);
 
   const results: WriteResult[] = [];
+  const manifestRecords: ManifestRecord[] = [];
   let basePackName = "";
 
   // 1. Resolve blueprint inheritance first
@@ -230,6 +244,7 @@ export async function runTemplater(
           isExtendedRun: true,
         });
         results.push(...baseResult.files);
+        manifestRecords.push(...baseResult.manifestRecords);
         basePackName = baseResult.templatePack;
       } catch (e) {
         logger.warn(
@@ -297,6 +312,9 @@ export async function runTemplater(
     });
 
     results.push(result);
+    if (result.action !== "skipped") {
+      manifestRecords.push({ outputPath, template: templateName });
+    }
   }
 
   // Write .blueprintignore if not exists
@@ -319,8 +337,26 @@ export async function runTemplater(
     await fsPromises.writeFile(fingerprintFile, JSON.stringify(fingerprint, null, 2), "utf-8");
   }
 
+  // Record ownership of every rendered file in .bp/manifest.json so later
+  // commands can distinguish managed files from developer-modified ones.
+  if (!isExtendedRun && !dryRun && manifestRecords.length > 0) {
+    const manifest = (await loadManifest(projectRoot)) ?? createEmptyManifest(BP_VERSION);
+    manifest.bp_version = BP_VERSION;
+    for (const record of manifestRecords) {
+      let content: string;
+      try {
+        content = await fsPromises.readFile(record.outputPath, "utf-8");
+      } catch {
+        continue;
+      }
+      recordFile(manifest, toManifestKey(projectRoot, record.outputPath), content, "generated", record.template);
+    }
+    await saveManifest(projectRoot, manifest);
+  }
+
   return {
     files: results,
     templatePack: basePackName ? `${basePackName} -> ${pack.name}` : pack.name,
+    manifestRecords,
   };
 }

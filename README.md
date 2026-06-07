@@ -131,6 +131,20 @@ bp convert --from claude --to windsurf      # convert between any pair
 bp doctor --all                             # diagnose all configured backends
 ```
 
+### Ownership Tracking & Round-Trip
+
+`bp` records the files it generates in an ownership manifest (`.bp/manifest.json`),
+so it can tell an intentional developer edit from configuration rot — and adopt
+files you authored yourself.
+
+```bash
+bp adopt --status         # classify files: managed | modified | missing | untracked
+bp adopt                  # bring user-authored rules/skills under ownership tracking
+bp adopt --wrap           # ...and wrap their bodies in bp:preserve markers
+bp emit                   # serialize the parsed BlueprintIR back to disk (round-trip)
+bp emit --input ir.json   # ...from an explicit IR file, manifest-aware & marker-safe
+```
+
 ---
 
 ## License

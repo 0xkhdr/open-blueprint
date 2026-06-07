@@ -72,6 +72,22 @@ describe("bp init integration", () => {
       expect(fs.existsSync(path.join(outputDir, ".claude/skills/refactor-async.md"))).toBe(true);
     });
 
+    it("records all generated files in the ownership manifest", async () => {
+      await runBlueprintInit(fixtureDir, outputDir);
+      const { loadManifest } = await import("../../src/templater/manifest.js");
+      const manifest = await loadManifest(outputDir);
+      expect(manifest).not.toBeNull();
+      const keys = Object.keys(manifest?.files ?? {});
+      expect(keys).toContain("CLAUDE.md");
+      expect(keys).toContain(".claude/rules/01-position.md");
+      // Every tracked file is bp-generated with a valid hash and template ref.
+      for (const entry of Object.values(manifest?.files ?? {})) {
+        expect(entry.origin).toBe("generated");
+        expect(entry.hash).toMatch(/^[a-f0-9]{64}$/);
+        expect(entry.template).not.toBeNull();
+      }
+    });
+
     it("passes structural validation after init", async () => {
       const { fingerprint } = await runBlueprintInit(fixtureDir, outputDir);
       const pack = resolveTemplatePack(fingerprint, "claude");

@@ -135,6 +135,39 @@ export function wrapBlock(id: string, content: string): string {
   return `<!-- bp-generated:begin ${id} -->\n${content}\n<!-- bp-generated:end ${id} -->`;
 }
 
+const PRESERVE_OPEN = "<!-- bp:preserve -->";
+const PRESERVE_CLOSE = "<!-- bp:end-preserve -->";
+
+/** Whether the content already contains a preserve block. */
+export function hasPreserveBlock(content: string): boolean {
+  return PRESERVE_BEGIN.test(content);
+}
+
+/**
+ * Wrap a file's body (everything after YAML frontmatter) in preserve markers so
+ * future bp writes keep it verbatim. Frontmatter bytes are left untouched.
+ * Idempotent: returns the content unchanged if a preserve block already exists.
+ */
+export function wrapPreserve(content: string): string {
+  if (hasPreserveBlock(content)) return content;
+
+  let frontmatter = "";
+  let body = content;
+  const fmMatch = content.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/);
+  if (fmMatch) {
+    frontmatter = fmMatch[0];
+    body = content.slice(frontmatter.length);
+  }
+
+  const trimmedBody = body.replace(/^\s+/, "").replace(/\s+$/, "");
+  if (trimmedBody.length === 0) {
+    // Nothing to preserve; leave the file as-is.
+    return content;
+  }
+
+  return `${frontmatter}${PRESERVE_OPEN}\n${trimmedBody}\n${PRESERVE_CLOSE}\n`;
+}
+
 export function extractGeneratedContent(block: string, id: string): string {
   const beginMarker = `<!-- bp-generated:begin ${id} -->`;
   const endMarker = `<!-- bp-generated:end ${id} -->`;
