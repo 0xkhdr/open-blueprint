@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>open-blueprint — Analysis &amp; Recommendations</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --panel: #161b22;
+    --panel-2: #1c2330;
+    --border: #30363d;
+    --text: #e6edf3;
+    --muted: #9da7b3;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --yellow: #d29922;
+    --red: #f85149;
+    --purple: #bc8cff;
+    --code-bg: #0b0f14;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: var(--sans); line-height: 1.6; font-size: 16px;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px 96px; }
+  header.hero {
+    border-bottom: 1px solid var(--border); padding: 48px 0 32px; margin-bottom: 8px;
+    background: radial-gradient(900px 300px at 20% -20%, rgba(88,166,255,.12), transparent);
+  }
+  header.hero h1 { margin: 0 0 6px; font-size: 30px; letter-spacing: -.5px; }
+  header.hero h1 code { font-family: var(--mono); color: var(--accent); font-size: .8em; }
+  header.hero p { margin: 4px 0; color: var(--muted); }
+  .tagline { font-size: 15px; }
+  .meta { font-size: 13px; color: var(--muted); margin-top: 14px; }
+  .meta span { margin-right: 18px; }
+
+  nav.toc {
+    position: sticky; top: 0; z-index: 5; backdrop-filter: blur(8px);
+    background: rgba(13,17,23,.82); border-bottom: 1px solid var(--border);
+    display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 0; margin-bottom: 32px;
+  }
+  nav.toc a {
+    color: var(--muted); text-decoration: none; font-size: 13px; padding: 5px 11px;
+    border: 1px solid transparent; border-radius: 999px;
+  }
+  nav.toc a:hover { color: var(--text); border-color: var(--border); background: var(--panel); }
+
+  section { margin: 40px 0; scroll-margin-top: 70px; }
+  h2 {
+    font-size: 22px; margin: 0 0 16px; padding-bottom: 8px;
+    border-bottom: 1px solid var(--border); letter-spacing: -.3px;
+  }
+  h2 .num { color: var(--accent); font-family: var(--mono); font-size: .8em; margin-right: 10px; }
+  h3 { font-size: 17px; margin: 24px 0 10px; }
+  p { margin: 10px 0; }
+  .muted { color: var(--muted); }
+
+  .card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    padding: 18px 20px; margin: 16px 0;
+  }
+  .card.flush { padding: 0; overflow: hidden; }
+
+  .pipeline { display: flex; flex-wrap: wrap; align-items: stretch; gap: 0; margin: 18px 0; }
+  .stage {
+    flex: 1 1 0; min-width: 150px; text-align: center; padding: 16px 10px;
+    background: var(--panel-2); border: 1px solid var(--border); position: relative;
+  }
+  .stage:not(:last-child)::after {
+    content: "→"; position: absolute; right: -11px; top: 50%; transform: translateY(-50%);
+    color: var(--accent); font-size: 20px; z-index: 2; background: var(--bg);
+    width: 22px; height: 22px; line-height: 22px; border-radius: 50%;
+  }
+  .stage b { display: block; color: var(--accent); font-family: var(--mono); font-size: 13px; }
+  .stage small { color: var(--muted); font-size: 12px; }
+
+  pre {
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 16px; overflow-x: auto; font-family: var(--mono); font-size: 13px;
+    line-height: 1.55; margin: 12px 0;
+  }
+  code.inline {
+    font-family: var(--mono); font-size: .88em; background: var(--panel-2);
+    border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px; color: var(--purple);
+  }
+  .path { color: var(--muted); font-family: var(--mono); font-size: 12px; }
+  .c-key { color: var(--purple); }
+  .c-str { color: var(--green); }
+  .c-com { color: #6e7781; font-style: italic; }
+  .c-fn  { color: var(--accent); }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 12px; border: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--panel-2); font-weight: 600; }
+  td code { font-family: var(--mono); font-size: 12px; color: var(--purple); }
+
+  .pill { display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
+  .pill.yes { background: rgba(63,185,80,.15); color: var(--green); border: 1px solid rgba(63,185,80,.4); }
+  .pill.no { background: rgba(248,81,73,.15); color: var(--red); border: 1px solid rgba(248,81,73,.4); }
+  .pill.partial { background: rgba(210,153,34,.15); color: var(--yellow); border: 1px solid rgba(210,153,34,.4); }
+
+  .qbox { border-left: 3px solid var(--accent); background: var(--panel); padding: 14px 18px; border-radius: 0 10px 10px 0; margin: 14px 0; }
+  .qbox .q { font-weight: 600; color: var(--accent); }
+  .verdict { display: inline-block; font-weight: 700; padding: 3px 12px; border-radius: 8px; margin: 6px 0; }
+  .verdict.txt { background: rgba(188,140,255,.14); color: var(--purple); border: 1px solid rgba(188,140,255,.4); }
+  .verdict.mixed { background: rgba(210,153,34,.14); color: var(--yellow); border: 1px solid rgba(210,153,34,.4); }
+
+  .rec { display: flex; gap: 14px; align-items: flex-start; padding: 16px; border: 1px solid var(--border); border-radius: 12px; margin: 12px 0; background: var(--panel); }
+  .rec .idx { flex: 0 0 34px; height: 34px; line-height: 34px; text-align: center; border-radius: 50%; background: var(--panel-2); color: var(--accent); font-family: var(--mono); font-weight: 700; border: 1px solid var(--border); }
+  .rec .body { flex: 1; }
+  .rec h4 { margin: 2px 0 6px; font-size: 16px; }
+  .rec .why { color: var(--muted); font-size: 14px; }
+  .tag-prio { font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 6px; margin-left: 8px; vertical-align: middle; }
+  .p-hi { background: rgba(248,81,73,.16); color: var(--red); border: 1px solid rgba(248,81,73,.4); }
+  .p-med { background: rgba(210,153,34,.16); color: var(--yellow); border: 1px solid rgba(210,153,34,.4); }
+
+  ul.clean { margin: 8px 0; padding-left: 20px; }
+  ul.clean li { margin: 5px 0; }
+  .legend { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  footer { border-top: 1px solid var(--border); margin-top: 56px; padding-top: 20px; color: var(--muted); font-size: 13px; }
+  .kbd { font-family: var(--mono); font-size: 12px; background: var(--panel-2); border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 5px; padding: 1px 6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <h1>open-blueprint <code>(bp)</code> — Analysis &amp; Recommendations</h1>
+    <p class="tagline">Does the flow deliver real value for developers working with agentic tools — and what's missing for consistent governance that adopts developer changes?</p>
+    <div class="meta">
+      <span>📦 <code class="inline">@agentic/bp</code></span>
+      <span>🔍 Repo: 0xkhdr/open-blueprint</span>
+      <span>🌿 claude/blueprint-repo-analysis-hEiyJ</span>
+      <span>📅 2026-06-07</span>
+    </div>
+  </header>
+
+  <nav class="toc">
+    <a href="#what">What it is</a>
+    <a href="#q1">Q1 · Skills vs Rules comparison</a>
+    <a href="#q2">Q2 · Dynamic vs scaffold</a>
+    <a href="#value">Value &amp; gaps</a>
+    <a href="#recs">Recommendations</a>
+    <a href="#refs">Code references</a>
+  </nav>
+
+  <!-- ───────────── WHAT IT IS ───────────── -->
+  <section id="what">
+    <h2><span class="num">00</span>What the tool actually is</h2>
+    <p><code class="inline">bp</code> is a <strong>scaffold-and-verify CLI</strong> for agentic governance files. It detects a repo's topology, renders Handlebars scaffolds for rules / skills / agents, validates them, and translates them across 31 AI coding backends through a backend-neutral <code class="inline">BlueprintIR</code>.</p>
+    <div class="pipeline">
+      <div class="stage"><b>DETECTOR</b><small>fingerprint the repo</small></div>
+      <div class="stage"><b>TEMPLATER</b><small>render <code>*.hbs</code> scaffolds</small></div>
+      <div class="stage"><b>VALIDATOR</b><small>4-layer checks</small></div>
+      <div class="stage"><b>TRANSLATOR</b><small>IR ↔ 31 backends</small></div>
+    </div>
+    <div class="card">
+      <strong>Genuine value today:</strong> the backend-neutral IR + 31 adapters (real cross-tool interop), marker-based brownfield-safe merging, and <em>origin-blind</em> validation. For a team standardizing agentic config across Claude Code / Cursor / Windsurf / Gemini, that is a legitimate problem solved.
+    </div>
+  </section>
+
+  <!-- ───────────── Q1 ───────────── -->
+  <section id="q1">
+    <h2><span class="num">Q1</span>How does it compare the <em>skills</em> and <em>rules</em> domains?</h2>
+    <div class="qbox">
+      <span class="q">Your question:</span> Does it compare the raw text of these rules, or use another pattern?
+    </div>
+    <p>
+      <span class="verdict txt">Structured field comparison on parsed frontmatter — NOT raw-text/file diffing, and NOT any semantic / AST / embedding technique.</span>
+    </p>
+
+    <h3>Step 1 — Parse, don't read</h3>
+    <p>Files are loaded with <code class="inline">gray-matter</code>, splitting YAML frontmatter from the body. The key asymmetry between the two domains:</p>
+    <table>
+      <tr><th>Domain</th><th>What "is" the object</th><th>Fields extracted</th></tr>
+      <tr><td><b>Rule</b></td><td>frontmatter only — <span class="muted">markdown body is discarded</span></td><td><code>id, scope, severity, action, rationale, tags</code></td></tr>
+      <tr><td><b>Skill</b></td><td>frontmatter <b>+ prose body</b></td><td><code>name, description, when_to_use, tools_required, procedure</code></td></tr>
+    </table>
+    <p class="muted">So a rule <em>is</em> its frontmatter; a skill <em>is</em> its frontmatter <strong>plus</strong> its body (<code class="inline">procedure: parsed.content.trim()</code>).</p>
+
+    <h3>Step 2 — Compare field-by-field with exact equality</h3>
+    <p class="path">src/ecosystem/diff.ts:108–136</p>
+    <pre><span class="c-com">// rules</span>
+<span class="c-key">if</span> (left.action !== right.action) changes.<span class="c-fn">push</span>(<span class="c-str">"action modified"</span>);
+<span class="c-com">// skills</span>
+<span class="c-key">if</span> (left.procedure !== right.procedure) changes.<span class="c-fn">push</span>(<span class="c-str">"procedure modified"</span>);</pre>
+    <p>Both use exact string equality (<code class="inline">!==</code>). Arrays (<code class="inline">tags</code>, <code class="inline">tools_required</code>) use set add/remove diffing. There is <strong>no</strong> fuzzy match, Levenshtein, token similarity, or embedding anywhere in the codebase.</p>
+    <div class="card">
+      The only <code class="inline">computeSimilarity</code> (<span class="path">src/validator/drift.ts:306</span>) is <strong>binary</strong>:
+      <pre><span class="c-key">return</span> hash1 === hash2 ? <span class="c-str">1.0</span> : <span class="c-str">0.0</span>;</pre>
+      …over a lightly normalized (lowercase + whitespace-collapsed) SHA-256. It is an identity check, not a graded similarity score.
+    </div>
+
+    <h3>Step 3 — Domain-specific structural checks (beyond the diff)</h3>
+    <table>
+      <tr><th>Domain</th><th>Extra check</th><th>Technique</th></tr>
+      <tr><td><b>Rules</b></td><td>Contradiction detection</td><td>Hardcoded <code>ANTONYM_PAIRS</code> table (~10 pairs); lowercases <code>action</code> and runs <code>.includes("must use")</code> vs <code>.includes("never use")</code>. <span class="muted">String pattern matching, not meaning.</span></td></tr>
+      <tr><td><b>Skills</b></td><td>Circular-dependency detection</td><td>Builds a graph from <code>uses</code>/<code>requires_skills</code> frontmatter, runs <b>Tarjan's SCC</b>. <span class="muted">The one genuinely non-textual comparison.</span></td></tr>
+      <tr><td><b>Cross-domain</b></td><td>Rule → skill references</td><td>Regex <code>[[skill:x]]</code> / <code>@skill:x</code> extracted from <code>action</code>, validated by set membership against skill names.</td></tr>
+    </table>
+
+    <div class="card">
+      <strong>⚠️ Naming oversells it.</strong> "Semantic drift" (<span class="path">src/observability/semantic-drift.ts</span>) is actually <em>behavioral-metric</em> drift — success rates &amp; invocation counts, not text meaning. And <code class="inline">computeSimilarity</code> is boolean identity, not similarity.
+    </div>
+  </section>
+
+  <!-- ───────────── Q2 ───────────── -->
+  <section id="q2">
+    <h2><span class="num">Q2</span>Does it handle dynamic user-created skills &amp; rules, or only its own scaffolds?</h2>
+    <div class="qbox">
+      <span class="q">Your question:</span> Does the package handle user dynamic creation/modification, or just the scaffold files it creates?
+    </div>
+    <p><span class="verdict mixed">Mixed — and this split is the crux of your governance concern. Behaviour differs by command.</span></p>
+    <table>
+      <tr><th>Capability</th><th>User-authored files?</th><th>Where / why</th></tr>
+      <tr><td><b>Validate</b> (<code>verify</code>, <code>drift</code>)</td><td><span class="pill yes">YES</span></td><td>Globs <code>manifest.file_patterns.{rules,skills,agents}</code> — origin-blind <span class="path">(src/validator/index.ts:91–109)</span></td></tr>
+      <tr><td><b>Translate / convert</b></td><td><span class="pill yes">YES</span></td><td>Adapters parse whatever exists on disk into the IR</td></tr>
+      <tr><td><b>Merge on re-scaffold</b></td><td><span class="pill partial">ONLY WITH MARKERS</span></td><td>Block-merge needs <code>&lt;!-- bp-generated:begin/end --&gt;</code> or <code>&lt;!-- bp:preserve --&gt;</code> <span class="path">(src/templater/merger.ts)</span></td></tr>
+      <tr><td><b>Scaffold / generate</b></td><td><span class="pill no">NO</span></td><td>Templater only walks bundled <code>*.hbs</code> <span class="path">(src/templater/index.ts:164)</span> — no <code>renderRule()</code>/<code>renderSkill()</code> from user input</td></tr>
+      <tr><td><b>Track origin</b> (managed vs user)</td><td><span class="pill no">NO</span></td><td>No manifest/lockfile of what <code>bp</code> created</td></tr>
+    </table>
+    <div class="card">
+      <strong>In plain terms:</strong> <code class="inline">verify</code> and <code class="inline">convert</code> fully respect dynamic user content — a hand-written <code class="inline">.claude/skills/my-thing.md</code> is parsed, validated, and translated like any scaffold. But <strong>generation is one-directional and template-bound</strong>, and there is <strong>no record of which files <code>bp</code> owns</strong>.
+      <ul class="clean">
+        <li>On re-run, a user file with no markers is <b>skipped</b> by default (safe) or <b>clobbered</b> with <code class="inline">--force</code> <span class="path">(src/templater/writer.ts)</span>.</li>
+        <li>A user editing <em>inside</em> a generated block loses that edit on the next render unless wrapped in <code class="inline">bp:preserve</code>.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ───────────── VALUE ───────────── -->
+  <section id="value">
+    <h2><span class="num">01</span>Does the flow offer real value — and what's missing?</h2>
+    <h3>✅ Value it has now</h3>
+    <ul class="clean">
+      <li>Backend-neutral IR + 31 adapters → <strong>real cross-tool interop</strong>.</li>
+      <li>Marker-based merge → <strong>brownfield-safe</strong> regeneration.</li>
+      <li>Origin-blind validation → user content is checked, not just scaffolds.</li>
+    </ul>
+    <h3>🔧 What's missing for durable, change-adopting governance</h3>
+    <p class="muted">Ordered by leverage. Gap #1 is the root cause that the others flow from.</p>
+    <ul class="clean">
+      <li><strong>No ownership manifest.</strong> Without a lockfile of hashes/paths bp generated, the tool can't tell <em>its</em> drift from an <em>intentional developer change</em>. This is the single biggest blocker to "governance that adopts developer changes."</li>
+      <li><strong>No auto-marker adoption.</strong> Preservation requires the user to know about <code class="inline">bp:preserve</code>; existing user files stay fragile.</li>
+      <li><strong>Comparison too literal to govern meaning.</strong> Any whitespace/wording change reads as "modified," while genuinely contradictory rules pass unless they hit the ~10 hardcoded antonyms.</li>
+      <li><strong>Generation can't round-trip.</strong> The IR can <em>read</em> user skills/rules but the templater can't <em>write</em> arbitrary (non-template) entries back — no "edit once, regenerate everywhere" loop.</li>
+      <li><strong>Misleading "semantic"/drift naming.</strong> Both engines are metric/identity based; either rename honestly or implement graded content similarity.</li>
+    </ul>
+  </section>
+
+  <!-- ───────────── RECS ───────────── -->
+  <section id="recs">
+    <h2><span class="num">02</span>Recommendations</h2>
+
+    <div class="rec">
+      <div class="idx">1</div>
+      <div class="body">
+        <h4>Ownership manifest <span class="tag-prio p-hi">HIGH</span></h4>
+        <p>Add <code class="inline">.bp/manifest.json</code> mapping <code class="inline">path → content-hash → source-template</code>. Lets <code class="inline">verify</code> distinguish "you changed this on purpose" from "this rotted." <span class="why">Root fix — unlocks #2–#4.</span></p>
+      </div>
+    </div>
+    <div class="rec">
+      <div class="idx">2</div>
+      <div class="body">
+        <h4>A <code>bp adopt</code> command <span class="tag-prio p-hi">HIGH</span></h4>
+        <p class="why">Wrap existing user rules/skills in managed markers automatically, making their content first-class instead of fragile — no need for users to learn <code class="inline">bp:preserve</code>.</p>
+      </div>
+    </div>
+    <div class="rec">
+      <div class="idx">3</div>
+      <div class="body">
+        <h4>Smarter comparison <span class="tag-prio p-med">MED</span></h4>
+        <p class="why">Normalize before diffing (whitespace/case) so cosmetic edits don't read as changes; generalize contradiction detection beyond the hardcoded antonym list toward structured-intent comparison.</p>
+      </div>
+    </div>
+    <div class="rec">
+      <div class="idx">4</div>
+      <div class="body">
+        <h4>IR → file round-trip <span class="tag-prio p-med">MED</span></h4>
+        <p class="why">Let the templater emit arbitrary IR entries (not just bundled <code class="inline">*.hbs</code>), enabling "edit in one backend, regenerate everywhere." Turns a one-shot scaffolder into a governance hub.</p>
+      </div>
+    </div>
+    <div class="rec">
+      <div class="idx">5</div>
+      <div class="body">
+        <h4>Honest naming or real similarity <span class="tag-prio p-med">MED</span></h4>
+        <p class="why">Rename "semantic drift" → "behavioral drift" and the boolean check → "identity check," <em>or</em> implement graded similarity so "diverged significantly" is meaningful.</p>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:24px;">
+      <strong>Suggested first slice:</strong> Recommendations <b>#1 + #2</b> on branch <code class="inline">claude/blueprint-repo-analysis-hEiyJ</code>. Together they convert <code class="inline">bp</code> from a scaffolder into governance that survives developer edits.
+    </div>
+  </section>
+
+  <!-- ───────────── REFS ───────────── -->
+  <section id="refs">
+    <h2><span class="num">03</span>Key code references</h2>
+    <table>
+      <tr><th>Concern</th><th>File</th></tr>
+      <tr><td>Frontmatter parsing (rules vs skills)</td><td><code>src/translator/adapters/base/MarkdownAdapter.ts</code></td></tr>
+      <tr><td>IR schemas (RuleSchema / SkillSchema)</td><td><code>src/translator/ir.ts:30–46</code></td></tr>
+      <tr><td>Field-by-field diff</td><td><code>src/ecosystem/diff.ts:108–136</code></td></tr>
+      <tr><td>Binary "similarity" + output hash</td><td><code>src/validator/drift.ts:301–308</code></td></tr>
+      <tr><td>Antonym contradiction + skill SCC graph</td><td><code>src/validator/logical.ts</code></td></tr>
+      <tr><td>Cross-layer rule→skill refs</td><td><code>src/validator/cross-layer.ts</code></td></tr>
+      <tr><td>Behavioral "semantic" drift</td><td><code>src/observability/semantic-drift.ts</code></td></tr>
+      <tr><td>Origin-blind validation file collection</td><td><code>src/validator/index.ts:91–109</code></td></tr>
+      <tr><td>Block-merge markers &amp; preservation</td><td><code>src/templater/merger.ts</code></td></tr>
+      <tr><td>Write / skip / overwrite logic</td><td><code>src/templater/writer.ts</code></td></tr>
+      <tr><td>Template discovery (<code>*.hbs</code> only)</td><td><code>src/templater/index.ts:164</code></td></tr>
+    </table>
+    <p class="legend">Line numbers reflect the state of the repo at analysis time and may shift as the code evolves.</p>
+  </section>
+
+  <footer>
+    Generated for review of <strong>open-blueprint</strong>. Open this file in any browser — it is fully self-contained (no external assets). &nbsp;·&nbsp; Tip: use the sticky nav bar to jump between sections.
+  </footer>
+
+</div>
+</body>
+</html>
