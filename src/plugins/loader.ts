@@ -3,7 +3,7 @@ import * as vm from "node:vm";
 import { PluginLoadError, PluginTimeoutError } from "../errors.js";
 import { VALIDATION_TIMEOUT_MS } from "../validator/index.js";
 import type { ValidationError } from "../validator/structural.js";
-import { type PluginAPI, createPluginContext } from "./sandbox.js";
+import { createPluginContext, type PluginAPI } from "./sandbox.js";
 
 export interface PluginResult {
   pluginPath: string;
@@ -68,7 +68,12 @@ export async function loadPlugin(pluginPath: string): Promise<PluginResult> {
 
   const timeout = new Promise<never>((_, reject) =>
     setTimeout(
-      () => reject(new PluginTimeoutError(`Plugin "${pluginPath}" timed out after ${VALIDATION_TIMEOUT_MS}ms`)),
+      () =>
+        reject(
+          new PluginTimeoutError(
+            `Plugin "${pluginPath}" timed out after ${VALIDATION_TIMEOUT_MS}ms`
+          )
+        ),
       VALIDATION_TIMEOUT_MS
     )
   );

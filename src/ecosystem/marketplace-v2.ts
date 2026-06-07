@@ -2,24 +2,18 @@ export interface MarketplaceTemplate {
   name: string;
   version: string;
   author: string;
-  verified: boolean;
-  rating: number;
+  /**
+   * True when the package lives under the official `@bp-templates/` npm scope.
+   * This is a namespace check only — it is not an audit or endorsement.
+   */
+  official: boolean;
   downloads: number;
   dependencies: string[];
   backends: string[];
   frameworks: string[];
   risk_tiers: string[];
   compliance: string[];
-  layers: number[];
   min_bp_version: string;
-}
-
-export interface MarketplaceRating {
-  user: string;
-  rating: number;
-  comment: string;
-  timestamp: string;
-  version: string;
 }
 
 export interface MarketplaceSearchResult {
@@ -38,7 +32,7 @@ export interface MarketplaceFilters {
   framework?: string;
   risk_tier?: string;
   compliance?: string;
-  verified_only?: boolean;
+  official_only?: boolean;
 }
 
 interface NpmSearchObject {
@@ -53,6 +47,14 @@ interface NpmSearchObject {
   downloads?: { monthly?: number };
 }
 
+/**
+ * Search the public npm registry for blueprint template packages. Templates are
+ * ordinary npm packages tagged with `backend:`, `framework:`, `risk:`, and
+ * `compliance:` keywords; this function queries the live registry and maps the
+ * results. Network/registry errors are surfaced to the caller (not swallowed),
+ * so an offline run reports a failure rather than an empty — and misleading —
+ * result set.
+ */
 export async function searchMarketplace(
   query: string,
   filters?: MarketplaceFilters
@@ -60,39 +62,25 @@ export async function searchMarketplace(
   const registry = "https://registry.npmjs.org";
   const searchUrl = `${registry}/-/v1/search?text=${encodeURIComponent(`${query} blueprint`)}&size=20`;
 
-  let templates: MarketplaceTemplate[] = [];
-
-  try {
-    const response = await fetch(searchUrl);
-    if (response.ok) {
-      const data = (await response.json()) as { objects?: NpmSearchObject[] };
-      templates = (data.objects || []).map((obj: NpmSearchObject) => ({
-        name: obj.package?.name || "",
-        version: obj.package?.version || "0.0.0",
-        author: obj.package?.author?.name || "unknown",
-        verified: Boolean(obj.package?.name?.startsWith("@bp-templates/")),
-        rating: 0,
-        downloads: obj.downloads?.monthly || 0,
-        dependencies: Object.keys(obj.package?.dependencies || {}),
-        backends: (obj.package?.keywords || [])
-          .filter((k: string) => k.startsWith("backend:"))
-          .map((k: string) => k.replace("backend:", "")),
-        frameworks: (obj.package?.keywords || [])
-          .filter((k: string) => k.startsWith("framework:"))
-          .map((k: string) => k.replace("framework:", "")),
-        risk_tiers: (obj.package?.keywords || [])
-          .filter((k: string) => k.startsWith("risk:"))
-          .map((k: string) => k.replace("risk:", "")),
-        compliance: (obj.package?.keywords || [])
-          .filter((k: string) => k.startsWith("compliance:"))
-          .map((k: string) => k.replace("compliance:", "")),
-        layers: [],
-        min_bp_version: obj.package?.engines?.["@agentic/bp"] || "1.0.0",
-      }));
-    }
-  } catch {
-    // Return empty on network failure
+  const response = await fetch(searchUrl);
+  if (!response.ok) {
+    throw new Error(`npm registry search failed: ${response.status} ${response.statusText}`);
   }
+
+  const data = (await response.json()) as { objects?: NpmSearchObject[] };
+  let templates: MarketplaceTemplate[] = (data.objects || []).map((obj: NpmSearchObject) => ({
+    name: obj.package?.name || "",
+    version: obj.package?.version || "0.0.0",
+    author: obj.package?.author?.name || "unknown",
+    official: Boolean(obj.package?.name?.startsWith("@bp-templates/")),
+    downloads: obj.downloads?.monthly || 0,
+    dependencies: Object.keys(obj.package?.dependencies || {}),
+    backends: keywordValues(obj.package?.keywords, "backend:"),
+    frameworks: keywordValues(obj.package?.keywords, "framework:"),
+    risk_tiers: keywordValues(obj.package?.keywords, "risk:"),
+    compliance: keywordValues(obj.package?.keywords, "compliance:"),
+    min_bp_version: obj.package?.engines?.["@agentic/bp"] || "1.0.0",
+  }));
 
   if (filters?.backend) {
     const backend = filters.backend;
@@ -110,8 +98,8 @@ export async function searchMarketplace(
     const compliance = filters.compliance;
     templates = templates.filter((t) => t.compliance.includes(compliance));
   }
-  if (filters?.verified_only) {
-    templates = templates.filter((t) => t.verified);
+  if (filters?.official_only) {
+    templates = templates.filter((t) => t.official);
   }
 
   return {
@@ -126,38 +114,6 @@ export async function searchMarketplace(
   };
 }
 
-export async function rateTemplate(
-  templateName: string,
-  rating: number,
-  comment: string,
-  authToken: string
-): Promise<void> {
-  if (rating < 1 || rating > 5) {
-    throw new Error("Rating must be between 1 and 5");
-  }
-
-  const response = await fetch("https://marketplace.agentic.dev/api/ratings", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${authToken}`,
-    },
-    body: JSON.stringify({ template: templateName, rating, comment }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to submit rating: ${response.statusText}`);
-  }
-}
-
-export async function getTemplateRatings(templateName: string): Promise<MarketplaceRating[]> {
-  try {
-    const response = await fetch(
-      `https://marketplace.agentic.dev/api/ratings?template=${encodeURIComponent(templateName)}`
-    );
-    if (!response.ok) return [];
-    return response.json() as Promise<MarketplaceRating[]>;
-  } catch {
-    return [];
-  }
+function keywordValues(keywords: string[] | undefined, prefix: string): string[] {
+  return (keywords || []).filter((k) => k.startsWith(prefix)).map((k) => k.replace(prefix, ""));
 }

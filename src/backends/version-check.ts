@@ -32,9 +32,7 @@ export async function detectBackendVersion(backendId: string): Promise<string | 
       const raw = await fsPromises.readFile(candidate, "utf-8");
       const trimmed = raw.trim();
       if (trimmed) return trimmed;
-    } catch {
-      continue;
-    }
+    } catch {}
   }
   return null;
 }

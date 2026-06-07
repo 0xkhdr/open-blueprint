@@ -4,7 +4,6 @@ import chalk from "chalk";
 import { Command } from "commander";
 import matter from "gray-matter";
 import ora from "ora";
-import { toSarif } from "../formatters/sarif.js";
 import { getBackend, listBackendIds } from "../../backends/registry.js";
 import { checkBackendVersion } from "../../backends/version-check.js";
 import { loadProjectConfig } from "../../config/project.js";
@@ -16,6 +15,7 @@ import { normalizeError } from "../../utils/errors.js";
 import type { ValidationLevel } from "../../validator/index.js";
 import { EXIT_CODES, exitCodeForResult, runValidator } from "../../validator/index.js";
 import type { ValidationError } from "../../validator/structural.js";
+import { toSarif } from "../formatters/sarif.js";
 
 const VALID_LEVELS = ["structural", "semantic", "logical", "drift", "governance", "all"] as const;
 
@@ -198,7 +198,12 @@ export function createVerifyCommand(): Command {
                     .map(async (id) => {
                       try {
                         const cfg = getBackend(id);
-                        await checkBackendVersion(id, absolutePath, cfg.minVersion, cfg.testedVersions);
+                        await checkBackendVersion(
+                          id,
+                          absolutePath,
+                          cfg.minVersion,
+                          cfg.testedVersions
+                        );
                       } catch {
                         // version check failure is non-fatal
                       }

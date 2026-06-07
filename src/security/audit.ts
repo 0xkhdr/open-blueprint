@@ -35,7 +35,9 @@ export class AuditLogger {
     this.correlationId = id;
   }
 
-  async log(entry: Omit<AuditLogEntry, "timestamp" | "user" | "correlation_id" | "sig">): Promise<void> {
+  async log(
+    entry: Omit<AuditLogEntry, "timestamp" | "user" | "correlation_id" | "sig">
+  ): Promise<void> {
     const hmacKey = process.env.BP_AUDIT_HMAC_KEY ?? null;
     if (!hmacKey) {
       logger.warn("Audit HMAC key not configured; log integrity cannot be verified");

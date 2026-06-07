@@ -280,7 +280,10 @@ function checkMarkdownWellformedness(filePath: string, content: string): Validat
   return errors;
 }
 
-export async function validateStructural(filePath: string, manifest: BackendManifest): Promise<ValidationError[]> {
+export async function validateStructural(
+  filePath: string,
+  manifest: BackendManifest
+): Promise<ValidationError[]> {
   const errors: ValidationError[] = [];
 
   try {

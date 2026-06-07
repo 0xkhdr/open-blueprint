@@ -104,7 +104,10 @@ export async function registerPartials(partialsDir: string): Promise<void> {
   }
 }
 
-export async function renderTemplate(templatePath: string, context: Record<string, unknown>): Promise<string> {
+export async function renderTemplate(
+  templatePath: string,
+  context: Record<string, unknown>
+): Promise<string> {
   return startSpan("bp.template", async () => {
     const cached = templateCache.get(templatePath);
     let compiled: HandlebarsTemplateDelegate;

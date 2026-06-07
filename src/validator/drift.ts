@@ -2,8 +2,8 @@ import * as crypto from "node:crypto";
 import * as fsPromises from "node:fs/promises";
 import * as path from "node:path";
 import matter from "gray-matter";
-import { logger } from "../logger.js";
 import type { Fingerprint } from "../detector/fingerprint.js";
+import { logger } from "../logger.js";
 import { normalizeText } from "../utils/normalize.js";
 import type { ValidationError } from "./structural.js";
 
@@ -23,7 +23,10 @@ export async function loadStoredFingerprint(projectRoot: string): Promise<Finger
   }
 }
 
-export async function storeFingerprint(projectRoot: string, fingerprint: Fingerprint): Promise<void> {
+export async function storeFingerprint(
+  projectRoot: string,
+  fingerprint: Fingerprint
+): Promise<void> {
   const fp = path.join(projectRoot, FINGERPRINT_FILE);
   await fsPromises.writeFile(fp, JSON.stringify(fingerprint, null, 2), "utf-8");
 }
@@ -88,7 +91,10 @@ export function computeFingerprintDelta(stored: Fingerprint, current: Fingerprin
 // Check 2: Entry point drift
 // ---------------------------------------------------------------------------
 
-async function checkEntryPointDrift(files: string[], projectRoot: string): Promise<ValidationError[]> {
+async function checkEntryPointDrift(
+  files: string[],
+  projectRoot: string
+): Promise<ValidationError[]> {
   const errors: ValidationError[] = [];
 
   const anchorFile = files.find((f) => f.endsWith("CLAUDE.md") || f.endsWith("/CLAUDE.md"));
@@ -358,7 +364,10 @@ async function checkRuleEffectivenessDrift(
       }
     }
   } catch (err) {
-    logger.warn({ err }, "Rule metrics file corrupted or unreadable; skipping effectiveness drift check");
+    logger.warn(
+      { err },
+      "Rule metrics file corrupted or unreadable; skipping effectiveness drift check"
+    );
   }
 
   return errors;
@@ -443,7 +452,10 @@ async function checkOutputDrift(_files: string[], projectRoot: string): Promise<
       }
     }
   } catch (err) {
-    logger.warn({ err }, "Output snapshot file corrupted or unreadable; skipping output drift check");
+    logger.warn(
+      { err },
+      "Output snapshot file corrupted or unreadable; skipping output drift check"
+    );
   }
 
   return errors;

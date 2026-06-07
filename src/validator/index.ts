@@ -4,11 +4,10 @@ import * as path from "node:path";
 import fg from "fast-glob";
 import { EXIT_CODES } from "../constants.js";
 import type { Fingerprint } from "../detector/fingerprint.js";
+import { PluginLoadError, PluginTimeoutError } from "../errors.js";
 import { logger } from "../logger.js";
 import { loadPlugins } from "../plugins/loader.js";
-import { PluginLoadError, PluginTimeoutError } from "../errors.js";
 import { startSpan } from "../telemetry/tracer.js";
-import { ResourceLimitError, ValidationTimeoutError } from "./errors.js";
 import type { BackendManifest } from "../templater/selector.js";
 import { getRegisteredAdapter } from "../translator/adapters/registry.js";
 import { validateAlertingConfig } from "./alerting.js";
@@ -16,6 +15,7 @@ import { loadCacheAsync, saveCacheAsync } from "./cache.js";
 import { validateCostConfig } from "./cost.js";
 import { validateCrossLayerReferences } from "./cross-layer.js";
 import { validateDrift } from "./drift.js";
+import { ResourceLimitError, ValidationTimeoutError } from "./errors.js";
 import {
   validateAudit,
   validateCommands,

@@ -258,7 +258,10 @@ export async function runTemplater(
   const pack = resolveTemplatePack(fingerprint, backend, templateOverride);
   const ctx = buildContext(fingerprint);
   const sanitizedVars = vars ? sanitizeTemplateVars(vars) : {};
-  const context = { ...(ctx as unknown as Record<string, unknown>), ...(sanitizedVars as Record<string, unknown>) };
+  const context = {
+    ...(ctx as unknown as Record<string, unknown>),
+    ...(sanitizedVars as Record<string, unknown>),
+  };
 
   const baseFiles = await findTemplateFiles(pack.directory);
   const riskTier = ctx.risk_tier ?? "low";
@@ -349,7 +352,13 @@ export async function runTemplater(
       } catch {
         continue;
       }
-      recordFile(manifest, toManifestKey(projectRoot, record.outputPath), content, "generated", record.template);
+      recordFile(
+        manifest,
+        toManifestKey(projectRoot, record.outputPath),
+        content,
+        "generated",
+        record.template
+      );
     }
     await saveManifest(projectRoot, manifest);
   }

@@ -39,22 +39,21 @@ type Fingerprint = z.infer<typeof FingerprintSchema>;
 ### Example 1 — Programmatic detection
 
 ```typescript
-import { detectProject } from "./src/detector/index.js";
+import { detect } from "./src/detector/index.js";
 
-const fingerprint = await detectProject(process.cwd());
-console.log(fingerprint.language);    // "typescript"
-console.log(fingerprint.framework);   // "next.js"
-console.log(fingerprint.riskTier);    // "medium"
+const fingerprint = await detect(process.cwd());
+console.log(fingerprint.languages);    // [{ name: "typescript", primary: true, ... }]
+console.log(fingerprint.frameworks);   // [{ name: "nextjs", confidence: 0.95, ... }]
 ```
 
-### Example 2 — Within `bp doctor`
+### Example 2 — Enriching a fingerprint with risk signals
 
 ```typescript
-import { detectProject } from "../../detector/index.js";
-import { scoreRisk } from "../../detector/cost-scorer.js";
+import { detect, enrichFingerprint } from "../../detector/index.js";
 
-const fp = await detectProject(cwd);
-const score = scoreRisk(fp);
-// score.tier → "low" | "medium" | "high" | "critical"
-// score.signals → string[] of triggered signal names
+const fp = await detect(cwd);
+const enriched = enrichFingerprint(fp);
+// enriched.risk_tier              → "low" | "medium" | "high" | "critical"
+// enriched.suggested_approval_mode → "auto" | "confirm" | "read-only"
+// enriched.enterprise_signals      → detected RBAC / audit / DLP signals
 ```

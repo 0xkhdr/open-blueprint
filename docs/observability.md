@@ -1,6 +1,6 @@
 # Observability & Cost Governance
 
-Configure telemetry, cost budgets, semantic drift detection, and alerting for your open-blueprint deployment.
+Configure telemetry, cost budgets, behavioral drift detection, and alerting policy for your open-blueprint deployment.
 
 ---
 
@@ -59,9 +59,12 @@ bp doctor --cost
 
 ---
 
-## Semantic Drift Detection
+## Behavioral Drift Detection
 
-Semantic drift tracks behavioral changes that file-level diff does not capture.
+Behavioral drift tracks runtime/behavioral changes (rule success rates, token
+usage, skill invocation counts) that a file-level diff does not capture. It
+operates on metrics you collect — not on the natural-language content of rules —
+so it requires real metrics input.
 
 ```yaml
 semantic_drift:
@@ -72,11 +75,18 @@ semantic_drift:
   similarity_threshold: 0.7
 ```
 
-Run drift checks:
+Run drift checks against real metrics files:
 
 ```bash
-bp verify --drift semantic
+# 1. Build a baseline from collected runtime metrics (NDJSON, one record per line)
+bp drift baseline --metrics metrics.ndjson --json > baseline.json
+
+# 2. Compare the latest metrics snapshot against the baseline
+bp drift behavioral --baseline baseline.json --current current.json
 ```
+
+> The legacy `bp drift semantic` alias is deprecated in favor of
+> `bp drift behavioral`, which names what it actually measures.
 
 Three drift types are tracked:
 
@@ -134,25 +144,34 @@ metrics:
   success_rate_baseline: 0.95
 ```
 
-Generate dashboards:
+Detect a telemetry platform from your dependencies and generate an init snippet:
 
 ```bash
-bp generate-dashboard --platform grafana --output grafana-dashboard.json
-bp generate-monitors --platform datadog --output datadog-monitors.yaml
-bp generate-alerts --platform prometheus --output prometheus-rules.yaml
+bp telemetry detect                 # inspect deps/env for OpenTelemetry, Datadog, etc.
+bp telemetry init --platform otel   # print an init config snippet for the platform
 ```
 
 ---
 
 ## Command Reference
 
+These are the observability- and cost-related commands that actually ship with `bp`:
+
 | Command | Description |
 |---------|-------------|
-| `bp doctor --cost` | Cost report with per-agent/skill/rule breakdown |
-| `bp verify --drift semantic` | Semantic drift check |
-| `bp generate-dashboard --platform <p>` | Generate dashboard config |
-| `bp generate-monitors --platform <p>` | Generate alerting rules |
-| `bp config cost --monthly-budget 1000` | Set monthly budget |
+| `bp doctor --cost` | Cost dashboard from the blueprint's configured `cost` section |
+| `bp cost report` | Print the cost dashboard |
+| `bp cost budget [limit]` | View or set the monthly budget |
+| `bp cost attribution [level]` | View/set cost attribution granularity |
+| `bp drift behavioral --baseline <f> --current <f>` | Compare real metrics files for behavioral drift |
+| `bp drift baseline --metrics <ndjson>` | Build a baseline from a real NDJSON metrics file |
+| `bp telemetry detect` | Auto-detect telemetry platform from dependencies |
+| `bp telemetry init --platform <p>` | Generate a telemetry init config snippet |
+
+> **Note:** Cost figures are computed from the values you configure in the
+> blueprint's `cost` section (e.g. `cost_per_token_usd`, `estimated_monthly_tokens`).
+> `bp` does not meter live token usage — wire those values from your provider's
+> billing/telemetry to keep the dashboard accurate.
 
 ---
 

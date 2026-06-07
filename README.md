@@ -3,7 +3,7 @@
 [![Version](https://img.shields.io/npm/v/@agentic/bp?color=blue)](https://www.npmjs.com/package/@agentic/bp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/0xkhdr/open-blueprint/ci.yml?branch=main)](https://github.com/0xkhdr/open-blueprint/actions)
-[![Coverage](https://img.shields.io/badge/Coverage-95%25-brightgreen)](coverage)
+[![Coverage](https://img.shields.io/badge/Coverage-%E2%89%A575%25%20CI--enforced-brightgreen)](vitest.config.ts)
 [![Bun Supported](https://img.shields.io/badge/Bun-Supported-orange?logo=bun)](https://bun.sh)
 [![LSP Enabled](https://img.shields.io/badge/LSP-Integrate-blueviolet)](src/lsp)
 

@@ -1,7 +1,9 @@
+import type { Dirent } from "node:fs";
 import * as fsPromises from "node:fs/promises";
 import * as path from "node:path";
-import { logger } from "../logger.js";
 import { PermissionError } from "../errors.js";
+import { logger } from "../logger.js";
+import { getTemplatesRoot } from "../templater/selector.js";
 import { normalizeError } from "../utils/errors.js";
 import { loadPublicKey, signData, verifySignature } from "./signer.js";
 
@@ -34,7 +36,11 @@ export class RegistryClient {
 
   public token: string | undefined;
 
-  constructor(registryUrl = "https://registry.npmjs.org", token?: string, adapter?: RegistryAdapter) {
+  constructor(
+    registryUrl = "https://registry.npmjs.org",
+    token?: string,
+    adapter?: RegistryAdapter
+  ) {
     assertHttpsUrl(registryUrl);
     this.registryUrl = registryUrl;
     this.token = token;
@@ -65,35 +71,51 @@ export class RegistryClient {
       return all;
     }
 
-    return [
-      {
-        name: "@bp-templates/fastapi",
-        version: "1.0.0",
-        description: "Official FastAPI template pack",
-      },
-      {
-        name: "@bp-templates/django",
-        version: "1.0.0",
-        description: "Official Django template pack",
-      },
-      {
-        name: "@bp-templates/go-std",
-        version: "1.0.0",
-        description: "Official Go standard library pack",
-      },
-      {
-        name: "@bp-templates/rust-axum",
-        version: "1.0.0",
-        description: "Official Rust Axum template pack",
-      },
-    ];
+    // No remote adapter and no in-session packages: report the template packs
+    // actually bundled with this installation — the same packs `install` can
+    // copy from disk. This avoids advertising packages that do not exist.
+    return RegistryClient.listBundledPacks();
   }
 
-  async install(
-    packageName: string,
-    targetDir: string,
-    publicKey?: string
-  ): Promise<void> {
+  /**
+   * Enumerate the backend template packs shipped inside this package's
+   * `templates/` directory. A pack is any subdirectory containing a
+   * `manifest.json`. Returns real, installable entries only.
+   */
+  static async listBundledPacks(): Promise<RegistryPackage[]> {
+    const root = getTemplatesRoot();
+    let entries: Dirent[];
+    try {
+      entries = await fsPromises.readdir(root, { withFileTypes: true });
+    } catch {
+      return [];
+    }
+
+    const packs: RegistryPackage[] = [];
+    for (const entry of entries) {
+      if (!entry.isDirectory() || entry.name.startsWith("_") || entry.name.startsWith(".")) {
+        continue;
+      }
+      const manifestPath = path.join(root, entry.name, "manifest.json");
+      let version = "1.0.0";
+      try {
+        const raw = await fsPromises.readFile(manifestPath, "utf-8");
+        const manifest = JSON.parse(raw) as { version?: string };
+        if (typeof manifest.version === "string") version = manifest.version;
+      } catch {
+        // No manifest: not an installable pack, skip it.
+        continue;
+      }
+      packs.push({
+        name: entry.name,
+        version,
+        description: `Bundled ${entry.name} template pack`,
+      });
+    }
+    return packs.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async install(packageName: string, targetDir: string, publicKey?: string): Promise<void> {
     const resolvedPublicKey = publicKey ?? (await loadPublicKey());
     if (!resolvedPublicKey) {
       logger.warn("BP_REGISTRY_PUBLIC_KEY not configured; registry signature verification skipped");

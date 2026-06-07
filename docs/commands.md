@@ -31,7 +31,7 @@ This document provides a comprehensive reference for all 24 commands, arguments,
 | [`bp telemetry`](#bp-telemetry) | Configures and validates telemetry settings | `enable`, `disable`, `status` |
 | [`bp cost`](#bp-cost) | Tracks and manages budgets and costs | `report`, `budget <limit>`, `attribution` |
 | [`bp drift`](#bp-drift) | Run advanced semantic drift detection checks | `--level`, `--json`, `--report-only` |
-| [`bp marketplace`](#bp-marketplace) | Browse and interact with blueprint marketplace | `search`, `install`, `publish` |
+| [`bp marketplace`](#bp-marketplace) | Discover blueprint template packages on npm | `search` |
 
 ---
 
@@ -280,11 +280,15 @@ Semantic drift detection commands.
 
 ### `bp marketplace`
 
-Browse and interact with blueprint marketplace.
+Discover blueprint template packages published on the public npm registry.
+Template packs are ordinary npm packages tagged with `backend:`, `framework:`,
+`risk:`, and `compliance:` keywords.
 
 * **Subcommands**:
-  * `search <query>`: Search for template packs in the registry.
-  * `install <pack>`: Download and register a pack.
-  * `publish <dir>`: Package and submit a template.
-* **Example**: `bp marketplace search fastapi`
+  * `search [query]`: Search npm for blueprint template packages. Supports
+    `--backend`, `--framework`, `--risk-tier`, `--compliance`, `--official`, and
+    `--json` filters. Network/registry errors are surfaced, not silently swallowed.
+* **Example**: `bp marketplace search fastapi --official`
+* **Note**: Installing and publishing template packs is handled by
+  [`bp template`](#bp-template), not `bp marketplace`.
 * **Error codes**: [8](troubleshooting.md#code-8) Network error · [9](troubleshooting.md#code-9) Path traversal

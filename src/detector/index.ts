@@ -287,13 +287,14 @@ export async function detect(
       throw new DetectorError(`Project root does not exist: ${absoluteRoot}`);
     }
 
-    const [languages, frameworks, tooling, security_signals, directory_topology] = await Promise.all([
-      Promise.resolve().then(() => detectLanguages(absoluteRoot)),
-      Promise.resolve().then(() => detectFrameworks(absoluteRoot)),
-      Promise.resolve().then(() => detectTooling(absoluteRoot)),
-      Promise.resolve().then(() => detectSecurity(absoluteRoot)),
-      scanDirectoryTopology(absoluteRoot, fs),
-    ]);
+    const [languages, frameworks, tooling, security_signals, directory_topology] =
+      await Promise.all([
+        Promise.resolve().then(() => detectLanguages(absoluteRoot)),
+        Promise.resolve().then(() => detectFrameworks(absoluteRoot)),
+        Promise.resolve().then(() => detectTooling(absoluteRoot)),
+        Promise.resolve().then(() => detectSecurity(absoluteRoot)),
+        scanDirectoryTopology(absoluteRoot, fs),
+      ]);
 
     const [name, type, git_workflow, entry_points] = await Promise.all([
       detectProjectName(absoluteRoot, fs),
@@ -331,7 +332,10 @@ export async function detect(
 
     const result = FingerprintSchema.safeParse(fingerprint);
     if (!result.success) {
-      throw new DetectorError(`Fingerprint validation failed: ${result.error.message}`, result.error);
+      throw new DetectorError(
+        `Fingerprint validation failed: ${result.error.message}`,
+        result.error
+      );
     }
 
     return result.data;

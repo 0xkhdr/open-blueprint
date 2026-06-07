@@ -3,7 +3,12 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { RegistryClient } from "../../../src/registry/client.js";
-import { generateKeyPair, verifySignature, signData } from "../../../src/registry/signer.js";
+import {
+  generateKeyPair,
+  loadPublicKey,
+  signData,
+  verifySignature,
+} from "../../../src/registry/signer.js";
 
 function createTmpDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), "bp-registry-test-"));
@@ -40,6 +45,18 @@ describe("Registry Signer & Client", () => {
       const badVerified = verifySignature(Buffer.from("bad data"), sig, keys.publicKey);
       expect(badVerified).toBe(false);
     });
+
+    it("loadPublicKey returns the env-configured key when present", async () => {
+      const prev = process.env.BP_REGISTRY_PUBLIC_KEY;
+      process.env.BP_REGISTRY_PUBLIC_KEY = "-----BEGIN PUBLIC KEY-----\nMOCK\n-----END PUBLIC KEY-----";
+      try {
+        const key = await loadPublicKey();
+        expect(key).toContain("BEGIN PUBLIC KEY");
+      } finally {
+        if (prev === undefined) delete process.env.BP_REGISTRY_PUBLIC_KEY;
+        else process.env.BP_REGISTRY_PUBLIC_KEY = prev;
+      }
+    });
   });
 
   describe("RegistryClient list, install, publish", () => {
@@ -68,6 +85,32 @@ describe("Registry Signer & Client", () => {
 
       expect(fs.existsSync(path.join(installTarget, "manifest.json"))).toBe(true);
       expect(fs.readFileSync(path.join(installTarget, "README.md"), "utf-8")).toBe("my custom template pack");
+    });
+
+    it("listBundledPacks returns only real on-disk template packs", async () => {
+      const packs = await RegistryClient.listBundledPacks();
+      const names = packs.map((p) => p.name);
+      // The repo ships these backend template packs on disk.
+      expect(names).toContain("claude");
+      expect(names).toContain("generic");
+      // Internal/base directories must never be surfaced as installable packs.
+      expect(names).not.toContain("_base");
+      expect(names.some((n) => n.startsWith("_") || n.startsWith("."))).toBe(false);
+      // Every reported pack must carry a description and version.
+      for (const p of packs) {
+        expect(p.version).toBeTruthy();
+        expect(p.description).toContain(p.name);
+      }
+    });
+
+    it("list() falls back to bundled packs when no adapter or mock packages exist", async () => {
+      const client = new RegistryClient("https://registry.mock");
+      RegistryClient.clearMockPackages();
+      const list = await client.list();
+      // No fictional packages — only real bundled packs are returned.
+      expect(list.length).toBeGreaterThan(0);
+      expect(list.map((p) => p.name)).toContain("claude");
+      expect(list.map((p) => p.name)).not.toContain("@bp-templates/fastapi");
     });
 
     it("throws error if signature is invalid during install", async () => {

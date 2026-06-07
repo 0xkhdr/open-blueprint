@@ -75,12 +75,14 @@ export function createCostCommand(): Command {
           throw new Error("Budget limit must be a positive number.");
         }
         if (!ir.cost) {
+          // Record only what the user actually supplied. cost_per_token_usd and
+          // estimated_monthly_tokens are intentionally left unset — fabricating
+          // them would produce a misleading "estimated spend". Wire them from
+          // your provider's billing/telemetry to enable spend projection.
           ir.cost = {
             monthly_budget_usd: limit,
             cost_tracking_enabled: true,
             token_tracking_enabled: true,
-            cost_per_token_usd: 0.00001,
-            estimated_monthly_tokens: 1000000,
             cost_attribution_level: "agent",
             per_agent_budgets: [],
           };

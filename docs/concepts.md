@@ -174,4 +174,4 @@ The **Translator** converts blueprints between different agent targets by parsin
 Source Files (.claude/) ──► IR Parser ──► BlueprintIR ──► IR Renderer ──► Target Files (.cursorrules)
 ```
 
-Fidelity remains above **98%** in round-trip translations (e.g. `claude` ➔ `cursor` ➔ `claude`).
+Round-trip fidelity is verified by integration tests to stay **≥ 95%** for the core adapters (e.g. `claude` ➔ `cursor` ➔ `claude`). See `tests/integration/backends/round-trip.test.ts`.

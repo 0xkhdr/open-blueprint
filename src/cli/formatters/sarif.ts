@@ -1,6 +1,7 @@
 import type { ValidationError } from "../../validator/structural.js";
 
-const SARIF_SCHEMA = "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json";
+const SARIF_SCHEMA =
+  "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json";
 
 interface SarifLocation {
   physicalLocation: {
@@ -31,10 +32,7 @@ function severityToLevel(severity: string): "error" | "warning" | "note" {
   return "note";
 }
 
-export function toSarif(
-  errors: ValidationError[],
-  toolVersion = "1.0.0"
-): SarifLog {
+export function toSarif(errors: ValidationError[], toolVersion = "1.0.0"): SarifLog {
   const ruleIds = [...new Set(errors.map((e) => e.type))];
   const rules = ruleIds.map((id) => ({ id, name: id }));
 

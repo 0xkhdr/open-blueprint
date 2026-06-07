@@ -44,8 +44,7 @@ export async function loadPublicKey(): Promise<string | null> {
   try {
     const files = await fsPromises.readdir(keyringDir);
     const keyFile = files.find((f) => f.endsWith(".pub") || f.endsWith(".pem"));
-    if (keyFile)
-      return (await fsPromises.readFile(path.join(keyringDir, keyFile), "utf-8")).trim();
+    if (keyFile) return (await fsPromises.readFile(path.join(keyringDir, keyFile), "utf-8")).trim();
   } catch {
     // keyring dir absent or unreadable
   }
