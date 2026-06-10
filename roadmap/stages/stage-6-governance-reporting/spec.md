@@ -69,6 +69,11 @@ unchanged), pack lockfile + integrity check (Stage 2/5), skills validator invent
 
 ### 4. Drift completion (`src/validator/drift.ts` + pack-integrity)
 
+> Naming note: refactor `2ed02a6` renamed `detectSemanticDrift → detectBehavioralDrift`
+> and `computeSimilarity → isOutputIdentical` (deprecated aliases kept). Pack/manual drift
+> here is a separate concern from file-content behavioral drift — use the new names when
+> touching `drift.ts`, and reuse `src/utils/normalize.ts` for prose hashing.
+
 - `PACK_DRIFTED`: installed content hash ≠ lockfile hash (modified in place).
 - `PACK_OUTDATED` (Stage 5 index data, when configured).
 - `RULE_MANUAL_STALE`: manual rule untouched while its scope-matched files changed

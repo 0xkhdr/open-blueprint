@@ -7,6 +7,11 @@ lint, test, or share skills, and skill files get only generic markdown validatio
 **Depends on Stage 1** (validator integration patterns) and **Stage 2** (pack format,
 store, materialization, lockfile — skills reuse all of it).
 
+> Post-roadmap note: `bp adopt` (`src/cli/commands/adopt.ts`, refactor `2ed02a6`) already
+> brings user-authored rules/skills/agents under the ownership manifest with `--status`
+> classification. `bp skill` here should reuse that tracking/classification for skills, not
+> duplicate it — author/lint/test on top of adopt's ownership model.
+
 ## Goals
 
 1. `bp skill` command group: `new`, `lint`, `list`, `test`, plus skill packs via the

@@ -1,7 +1,8 @@
 # Stage 5 — Signed Pack Distribution (Rules, Skills, Plugins)
 
-Closes **GAP-5** (`roadmap/00-analysis.md`): the registry client is mock-only and the
-RSA signer is unused. This stage lets clients share rule packs, skill packs, and plugins
+Closes **GAP-5** (`roadmap/00-analysis.md`): the registry client has no real remote
+fetch/publish (`list()` only enumerates bundled disk packs, with an in-memory mock map
+behind it for tests) and the RSA signer is unused. This stage lets clients share rule packs, skill packs, and plugins
 under a verifiable trust umbrella: signed artifacts, explicit trust policy, install from
 URL or git, while keeping bp's zero-infrastructure character (no bp-hosted registry
 required — any static file host works).

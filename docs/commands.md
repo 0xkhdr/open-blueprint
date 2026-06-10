@@ -11,6 +11,8 @@ This document provides a comprehensive reference for all 24 commands, arguments,
 | [`bp init`](#bp-init) | Scaffolds standard blueprints for target agents | `[tool]`, `--force`, `--dry-run`, `--no-verify` |
 | [`bp verify`](#bp-verify) | Validates blueprint structural and semantic integrity | `[paths...]`, `--level`, `--fix`, `--watch` |
 | [`bp sync`](#bp-sync) | Checks for and resolves project structural drift | `--auto-apply`, `--report`, `--json` |
+| [`bp adopt`](#bp-adopt) | Brings user-authored rules/skills/agents under ownership tracking | `[path]`, `--status`, `--wrap`, `--dry-run`, `--json` |
+| [`bp emit`](#bp-emit) | Serializes a BlueprintIR back to governance files (round-trip) | `[path]`, `--input`, `--from`, `--force`, `--dry-run`, `--json` |
 | [`bp convert`](#bp-convert) | Translates rules and tools across agent platforms | `--from`, `--to`, `--output` |
 | [`bp dev`](#bp-dev) | Live reload dev server with real-time validation | `--watch`, `--level`, `--port`, `--dashboard` |
 | [`bp docs`](#bp-docs) | Generate governance documentation from blueprint | `--format`, `--output` |
@@ -77,6 +79,36 @@ Detects and resolves repository structural drift.
   * `--json`: Emit the drift report as machine-readable JSON
 * **Example**: `bp sync --auto-apply`
 * **Error codes**: [6](troubleshooting.md#code-6) Drift detected · [1](troubleshooting.md#code-1) Unexpected error
+
+### `bp adopt`
+
+Brings existing user-authored rules, skills, and agents under bp ownership tracking
+(records them in `.bp/manifest.json`) so later commands can tell managed files from
+developer-modified or untracked ones.
+
+* **Arguments**: `[path]` — project path (default: `.`)
+* **Options**:
+  * `--status`: Report managed/modified/untracked status without making changes
+  * `--wrap`: Wrap adopted file bodies in `bp:preserve` markers
+  * `--dry-run`: Preview changes without writing
+  * `--json`: Machine-readable JSON output
+* **Example**: `bp adopt --status`
+* **Error codes**: [1](troubleshooting.md#code-1) Unexpected error
+
+### `bp emit`
+
+Serializes a `BlueprintIR` back to the backend's governance files (round-trip), honoring
+`bp:preserve` markers, `.blueprintignore`, path safety, and ownership.
+
+* **Arguments**: `[path]` — project path (default: `.`)
+* **Options**:
+  * `--input <file>`: Read IR from a JSON file instead of parsing the project
+  * `--from <backend>`: Backend to parse the current project as
+  * `--force`: Overwrite files that lack bp markers
+  * `--dry-run`: Preview writes without modifying disk
+  * `--json`: Machine-readable JSON output
+* **Example**: `bp emit --from claude --dry-run`
+* **Error codes**: [1](troubleshooting.md#code-1) Unexpected error (path-safety violations in the writer are caught and reported as a general command failure)
 
 ### `bp convert`
 

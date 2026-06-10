@@ -102,11 +102,15 @@ Skill files only get generic structural/semantic validation as markdown; nothing
   reaches host realm despite the denied globals in `sandbox.ts`). The docs imply
   sandboxed third-party validators; that claim is false today. **Stage 4 fixes this.**
 
-### GAP-5 (medium): registry/distribution is mock-only
+### GAP-5 (medium): no real remote distribution or trust policy
 
-`src/registry/client.ts` serves a hardcoded mock registry. `signer.ts` implements
-RSA-2048 sign/verify + keyring loading, but no real fetch, no pack publishing, no
-trust policy connecting signatures to pack/skill installs. **Stage 5 fixes this.**
+`src/registry/client.ts` has no real remote fetch or publish: `list()` only enumerates
+the template packs bundled on disk (`listBundledPacks`), with an in-memory mock map
+behind it for unit tests. (Post-roadmap refactor `694fbbf` already removed the fake
+`@bp-templates/*` listing, marketplace ratings, and the unaudited "verified" badge —
+do not reintroduce them.) `signer.ts` implements RSA-2048 sign/verify + keyring loading,
+but no real fetch, no pack publishing, no trust policy connecting signatures to
+pack/skill installs. **Stage 5 fixes this.**
 
 ### GAP-6 (medium): no governance feedback loop
 
@@ -125,6 +129,27 @@ no drift detection on installed packs (pack updated upstream vs. installed versi
   `BpError(message, exitCode, code, resolution)` error type, OTel spans via
   `startSpan` in `src/telemetry/tracer.ts`.
 - `npm run ci` = typecheck + lint + custom lints + coverage. Every stage must keep it green.
+
+### Post-roadmap codebase state (merged after this analysis was first written)
+
+Two refactors landed on `main` after the roadmap was authored — account for them:
+
+- **`2ed02a6` (ownership + honest naming).** Added an **ownership manifest** at
+  `.bp/manifest.json` (`src/templater/manifest.ts`): records every rendered file's hash,
+  source template, and origin. Added `bp adopt` (`src/cli/commands/adopt.ts`) — brings
+  user-authored rules/skills/agents under tracking with `--status` classification — and
+  `bp emit` (`src/cli/commands/emit.ts`, `src/translator/serialize.ts`). Added
+  `src/utils/normalize.ts` (prose normalization before diffing). Renamed
+  `detectSemanticDrift → detectBehavioralDrift` and `computeSimilarity → isOutputIdentical`
+  (deprecated aliases kept) — **use the new names in any new code.**
+  - Stage 3: reuse `bp adopt`'s tracking/classification for user-authored skills; do not
+    duplicate it.
+  - Stages 5/6: the pack **lockfile** is a distinct artifact from the ownership
+    **`.bp/manifest.json`** — do not conflate or overwrite the manifest.
+- **`694fbbf` (honesty refactor).** Removed marketplace ratings, the "verified" badge, the
+  fake `@bp-templates/*` registry listing, synthetic drift/cost data. Do not reintroduce
+  these. `docs/commands.md` was NOT updated for `bp adopt`/`bp emit` — any stage touching
+  `docs/commands.md` should add those rows while it's there (DoD: docs match shipped CLI).
 
 ## 4. Strategy: how the stages compose
 
