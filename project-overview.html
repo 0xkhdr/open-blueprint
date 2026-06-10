@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>open-blueprint Project Overview</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface-hover: #1c2128;
+      --border: #30363d;
+      --text: #c9d1d9;
+      --text-heading: #e6edf3;
+      --text-muted: #8b949e;
+      --accent: #58a6ff;
+      --accent-secondary: #a371f7;
+      --green: #3fb950;
+      --yellow: #d29922;
+      --red: #f85149;
+      --code-bg: #21262d;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 40px 24px; }
+    .hero { text-align: center; padding: 60px 0 40px; border-bottom: 1px solid var(--border); margin-bottom: 32px; }
+    .hero h1 { color: var(--text-heading); font-size: 2.8rem; margin: 0 0 12px; letter-spacing: -0.5px; }
+    .hero p { color: var(--text-muted); font-size: 1.15rem; margin: 0; max-width: 700px; margin-left: auto; margin-right: auto; }
+    .badges { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 24px; }
+    .badge { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; padding: 4px 10px; border-radius: 4px; border: 1px solid var(--border); color: var(--text-muted); }
+    .badge.hl { border-color: var(--accent); color: var(--accent); }
+    .badge.green { border-color: var(--green); color: var(--green); }
+
+    h2 { color: var(--text-heading); font-size: 1.5rem; margin: 48px 0 20px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+    h3 { color: var(--accent); font-size: 1.15rem; margin: 28px 0 12px; }
+    h4 { color: var(--text-heading); font-size: 1rem; margin: 20px 0 8px; }
+    p { margin: 0 0 14px; color: var(--text); }
+
+    .section-intro { color: var(--text-muted); font-size: 0.95rem; margin-bottom: 20px; }
+
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 24px; margin-bottom: 20px; transition: border-color 0.2s; }
+    .card:hover { border-color: var(--border-hover, #484f58); }
+    .card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .card-icon { font-size: 1.4rem; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: var(--code-bg); border-radius: 6px; border: 1px solid var(--border); }
+    .card-title { font-size: 1.05rem; font-weight: 600; color: var(--text-heading); margin: 0; }
+    .card-sub { font-size: 0.85rem; color: var(--text-muted); margin: 4px 0 0; }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 310px), 1fr)); gap: 16px; }
+
+    table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.9rem; }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+    th { color: var(--text-muted); font-weight: 500; background: var(--code-bg); }
+    tr:hover td { background: var(--surface-hover); }
+    code { font-family: 'SF Mono', Monaco, Consolas, monospace; font-size: 0.85em; background: var(--code-bg); padding: 2px 6px; border-radius: 4px; color: var(--accent); }
+    pre { background: var(--code-bg); padding: 16px; border-radius: 8px; overflow-x: auto; font-size: 0.85rem; border: 1px solid var(--border); margin: 12px 0; }
+
+    .status { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+    .status.ok { background: var(--green); }
+    .status.warn { background: var(--yellow); }
+
+    .arch-flow { display: flex; align-items: center; justify-content: center; gap: 24px; flex-wrap: wrap; margin: 28px 0; padding: 24px; background: var(--code-bg); border-radius: 10px; border: 1px solid var(--border); }
+    .arch-col { text-align: center; min-width: 160px; }
+    .arch-title { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .arch-box { padding: 16px 20px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); font-size: 0.95rem; }
+    .arch-box.hl { border-color: var(--accent); color: var(--accent); }
+    .arch-arrow { color: var(--text-muted); font-size: 1.2rem; }
+
+    .cli-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; }
+    .cli-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--code-bg); border-radius: 6px; font-size: 0.9rem; border: 1px solid var(--border); }
+    .cli-item code { color: var(--accent); background: none; padding: 0; }
+
+    footer { text-align: center; color: var(--text-muted); font-size: 0.85rem; margin-top: 60px; padding: 24px 0; border-top: 1px solid var(--border); }
+
+    @media (max-width: 700px) {
+      .container { padding: 20px 16px; }
+      .hero h1 { font-size: 2rem; }
+      .arch-flow { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="hero">
+      <h1>open-blueprint</h1>
+      <p>Zero-runtime-overhead CLI utility that scaffolds and verifies governance structures for agentic AI tools.</p>
+      <div class="badges">
+        <span class="badge hl">v1.0.0</span>
+        <span class="badge green">MIT</span>
+        <span class="badge">Node &ge;20</span>
+        <span class="badge">Bun &ge;1.0</span>
+        <span class="badge">LSP</span>
+      </div>
+    </div>
+
+    <h2 id="purpose">Purpose</h2>
+    <p>
+      <code>bp</code> takes a repository, detects its topology, and scaffolds a standardized governance structure suitable for any of 31+ agentic AI backends (Claude, Cursor, Cursor, Gemini, etc.).  It then runs a 4-layer validation pipeline and can translate between platforms.
+    </p>
+
+    <h2 id="architecture">Architecture</h2>
+    <div class="arch-flow">
+      <div class="arch-col">
+        <div class="arch-title">1. Detect</div>
+        <div class="arch-box">Repo MRI</div>
+      </div>
+      <div class="arch-arrow">&rarr;</div>
+      <div class="arch-col">
+        <div class="arch-title">2. Scaffold</div>
+        <div class="arch-box">Handlebars tem&shy;plates</div>
+      </div>
+      <div class="arch-arrow">&rarr;</div>
+      <div class="arch-col">
+        <div class="arch-title">3. Validate</div>
+        <div class="arch-box hl">4-layer QA</div>
+      </div>
+      <div class="arch-arrow">&rarr;</div>
+      <div class="arch-col">
+        <div class="arch-title">4. Sync</div>
+        <div class="arch-box">Backend adapters</div>
+      </div>
+    </div>
+
+    <h2 id="components">Core Components</h2>
+    <div class="grid">
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon">&#128268;</div>
+          <div><div class="card-title">Detector</div></div>
+        </div>
+        <p>Scans the project and builds a <em>Fingerprint</em> — a snapshot of languages, frameworks, tooling, security signals, directory topology, entry points, and Git workflow. Also enriches the fingerprint with a risk tier and suggested agent approval mode.</p>
+        <p class="card-sub">Entry: <code>src/detector/index.ts</code></p>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon">&#129692;</div>
+          <div><div class="card-title">Templater</div></div>
+        </div>
+        <p>Reads <code>.hbs</code> templates per backend and renders them using the fingerprint as context. Supports risk-based template selection, blueprint inheritance, and conditional generation (skip templates that do not match the project's profile).</p>
+        <p class="card-sub">Entry: <code>src/templater/index.ts</code></p>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon">&#9989;</div>
+          <div><div class="card-title">Validator</div></div>
+        </div>
+        <p>Runs a 4-layer (plus governance) validation gate on all governed files. Layers: <strong>Structural</strong> (file integrity, frontmatter, encoding), <strong>Semantic</strong> (rule consistency, cross-references), <strong>Logical</strong> (contradictions, cycles), <strong>Drift</strong> (fingerprint delta). Includes caching, resource limits, and a 30 s timeout.</p>
+        <p class="card-sub">Entry: <code>src/validator/index.ts</code></p>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon">&#127757;</div>
+          <div><div class="card-title">Translator</div></div>
+        </div>
+        <p>Parses a backend-specific blueprint into a canonical <em>BlueprintIR</em> and renders it back to any other backend. Each of the 31+ backends has a dedicated adapter implementing <code>BlueprintAdapter</code>.</p>
+        <p class="card-sub">Entry: <code>src/translator/index.ts</code></p>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon">&#9881;</div>
+          <div><div class="card-title">Config</div></div>
+        </div>
+        <p>Manages per-project configuration via <code>.bp.json</code>. Schema defines backends, primary backend, inheritance (<code>extends</code>), plugins, overrides, and workspace scanning options.</p>
+        <p class="card-sub">Entry: <code>src/config/project.ts</code></p>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon">&#128274;</div>
+          <div><div class="card-title">Security</div></div>
+        </div>
+        <p>HMAC-signed audit logging, governance hook validation, path-traversal guards, and a plugin sandbox based on <code>node:vm</code>. All registry fetches enforce HTTPS.</p>
+        <p class="card-sub">Entry: <code>src/security/</code></p>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon">&#128736;</div>
+          <div><div class="card-title">Plugins</div></div>
+        </div>
+        <p>Loads custom validator plugins in an isolated VM with a restricted API. Plugins can call <code>validate()</code>, <code>log()</code>, and <code>error()</code> to inject findings into the validation result stream.</p>
+        <p class="card-sub">Entry: <code>src/plugins/loader.ts</code></p>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon">&#128451;</div>
+          <div><div class="card-title">Registry Client</div></div>
+        </div>
+        <p>Fetches and installs template packs from a registry. Supports offline fallback and signature verification (RSA). Mock registry for unit testing. Entry into the template marketplace.</p>
+        <p class="card-sub">Entry: <code>src/registry/client.ts</code></p>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon">&#128202;</div>
+          <div><div class="card-title">Telemetry</div></div>
+        </div>
+        <p>OpenTelemetry-compatible tracing with auto-injected correlation IDs. Disabled in tests. Structured logging via Pino with redaction of secrets, tokens, and keys. SARIF output for CI integration.</p>
+        <p class="card-sub">Entry: <code>src/telemetry/</code></p>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon">&#128259;</div>
+          <div><div class="card-title">Blueprint Sync</div></div>
+        </div>
+        <p>Diff, merge, and drift-reconciliation routines. Compares local fingerprints against the canonical state and suggests or auto-applies fixes.</p>
+        <p class="card-sub">Entry: <code>src/blueprint-sync/</code></p>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon">&#128300;</div>
+          <div><div class="card-title">LSP Server</div></div>
+        </div>
+        <p>Language Server Protocol implementation for real-time blueprint validation. Provides diagnostics, completions (triggered on <code>:</code>, <code>-</code>, and space), document hover, and code actions.</p>
+        <p class="card-sub">Entry: <code>src/lsp/server.ts</code></p>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon">&#129518;</div>
+          <div><div class="card-title">Enterprise</div></div>
+        </div>
+        <p>Compliance reporting, runbooks, and environment-template scaffolding for regulated teams.</p>
+        <p class="card-sub">Entry: <code>src/enterprise/</code></p>
+      </div>
+
+    </div>
+
+    <h2 id="cli">CLI Commands (24)</h2>
+    <p class="section-intro">Every command is a self-contained module in <code>src/cli/commands/</code>. All commands log to the HMAC-auditable audit stream and emit structured logs (Pino + OTel spans).</p>
+    <div class="cli-grid">
+      <div class="cli-item"><code>init</code> &mdash; Scaffold</div>
+      <div class="cli-item"><code>verify</code> &mdash; Run 4-layer gate</div>
+      <div class="cli-item"><code>sync</code> &mdash; Drift sync</div>
+      <div class="cli-item"><code>convert</code> &mdash; Cross-backend</div>
+      <div class="cli-item"><code>doctor</code> &mdash; Diagnose</div>
+      <div class="cli-item"><code>drift</code> &mdash; Drift check</div>
+      <div class="cli-item"><code>template</code> &mdash; Scaffold templates</div>
+      <div class="cli-item"><code>rule</code> &mdash; Rule library</div>
+      <div class="cli-item"><code>hook</code> &mdash; Hook generate/validate</div>
+      <div class="cli-item"><code>config</code> &mdash; Config read/write</div>
+      <div class="cli-item"><code>diff</code> &mdash; File diffs</div>
+      <div class="cli-item"><code>merge</code> &mdash; Merge blueprints</div>
+      <div class="cli-item"><code>agent</code> &mdash; Agent management</div>
+      <div class="cli-item"><code>team</code> &mdash; Team blueprints</div>
+      <div class="cli-item"><code>chain</code> &mdash; Agent chains</div>
+      <div class="cli-item"><code>memory</code> &mdash; Memory / MCP</div>
+      <div class="cli-item"><code>telemetry</code> &mdash; OTel spans</div>
+      <div class="cli-item"><code>cost</code> &mdash; Budget / alerts</div>
+      <div class="cli-item"><code>mcp</code> &mdash; MCP server config</div>
+      <div class="cli-item"><code>marketplace</code> &mdash; Template marketplace</div>
+      <div class="cli-item"><code>health</code> &mdash; System health</div>
+      <div class="cli-item"><code>dev</code> &mdash; Dev server</div>
+      <div class="cli-item"><code>docs</code> &mdash; Docs generation</div>
+      <div class="cli-item"><code>update / migrate</code> &mdash; Version mgmt</div>
+    </div>
+
+    <h2 id="backends">Supported Backends (31+)</h2>
+    <div class="card">
+      <p class="section-intro">Each backend has a dedicated adapter in <code>src/translator/adapters/</code>. Base classes shared across groups: <code>MarkdownAdapter</code>, <code>SkillOnlyAdapter</code>, <code>TomlCommandAdapter</code>, and <code>PromptMdAdapter</code>.</p>
+      <table>
+        <thead><tr><th>Backend</th><th>Type</th><th>Command Syntax</th></tr></thead>
+        <tbody>
+          <tr><td>claude</td><td>Standard</td><td><code>/bp:&lt;workflow&gt;</code></td></tr>
+          <tr><td>cursor</td><td>Standard</td><td><code>/bp-&lt;workflow&gt;</code></td></tr>
+          <tr><td>codex</td><td>Global path</td><td><code>/bp:&lt;workflow&gt;</code></td></tr>
+          <tr><td>github-copilot</td><td>IDE-only</td><td><code>/bp-&lt;workflow&gt;</code></td></tr>
+          <tr><td>kiro</td><td>Standard</td><td><code>/bp-&lt;workflow&gt;</code></td></tr>
+          <tr><td>gemini</td><td>TOML</td><td><code>bp-&lt;workflow&gt;</code></td></tr>
+          <tr><td>windsurf</td><td>Standard</td><td><code>/bp-&lt;workflow&gt;</code></td></tr>
+          <tr><td>pi, antigravity, continue, cline, forgecode, trae, junie, kilecode, roocode, qwen, amazon-q, opencode, costrict, lingma, auggie, bob, crush, iflow, qoder, factory</td><td>Various</td><td>Depends on adapter</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="validation">Validation Pipeline</h2>
+    <div class="card">
+      <table>
+        <thead><tr><th>Layer</th><th>What it checks</th><th>When skipped</th></tr></thead>
+        <tbody>
+          <tr><td><strong>1. Structural</strong></td><td>File existence, frontmatter, encoding, size, BOM, unclosed code fences</td><td>Never</td></tr>
+          <tr><td><strong>2. Semantic</strong></td><td>Rule consistency, cross-references, duplicate commands, invalid scopes, MCP completeness</td><td>Structural hard failures</td></tr>
+          <tr><td><strong>3. Logical</strong></td><td>Rule contradictions, circular skill dependencies, semantic contradictions</td><td>Structural hard failures</td></tr>
+          <tr><td><strong>4. Drift</strong></td><td>Fingerprint delta, entry-point drift, test command drift, dependency drift</td><td>Only when level≠drift|all</td></tr>
+          <tr><td><strong>5. Governance</strong></td><td>Settings, commands, identity, audit, compliance, risk, registry, orchestration, RBAC, cross-layer refs, cost, alerting</td><td>Explicit flag only</td></tr>
+        </tbody>
+      </table>
+      <p class="card-sub">Caches per-file validation results keyed by content hash. Timeouts after <code>BP_VALIDATION_TIMEOUT_MS</code> (default 30 s).</p>
+    </div>
+
+    <h2 id="data-models">Key Data Models</h2>
+    <div class="card">
+      <h4>Fingerprint</h4>
+      <p>Generated by the Detector. Captures: project name, type, Git workflow, detected languages, frameworks, tools, entry points, directory topology, and security signals.</p>
+      <h4>BlueprintIR</h4>
+      <p>Canonical intermediate representation. Every backend adapter parses its native format into this uniform structure — rules, skills, agents, hooks, settings, commands, identity, audit, compliance, risk, registry, cost, alerting, MCP servers, and orchestration.</p>
+      <h4>BackendManifest</h4>
+      <p>Tells the CLI which file patterns to look for, max file sizes, and the frontmatter schema expected for each section (rules, skills, agents).</p>
+    </div>
+
+    <h2 id="exit-codes">Exit Code Registry</h2>
+    <div class="card">
+      <table>
+        <thead><tr><th>Code</th><th>Name</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td>0</td><td>SUCCESS</td><td>All checks passed</td></tr>
+          <tr><td>1</td><td>GENERAL_ERROR</td><td>Unexpected / catch-all</td></tr>
+          <tr><td>2</td><td>STRUCTURAL_FAILURE</td><td>Integrity check failure</td></tr>
+          <tr><td>3</td><td>SEMANTIC_FAILURE</td><td>Content semantics invalid</td></tr>
+          <tr><td>4</td><td>LOGICAL_FAILURE</td><td>Logical contradiction</td></tr>
+          <tr><td>5</td><td>DRIFT_DETECTED</td><td>Fingerprint divergence</td></tr>
+          <tr><td>6</td><td>UNSUPPORTED_BACKEND</td><td>Unknown backend ID</td></tr>
+          <tr><td>7</td><td>TEMPLATE_NOT_FOUND</td><td>No template for fingerprint</td></tr>
+          <tr><td>8</td><td>PERMISSION_DENIED</td><td>Filesystem / sandbox</td></tr>
+          <tr><td>9</td><td>REGISTRY_UNREACHABLE</td><td>Network / registry</td></tr>
+          <tr><td>10</td><td>SIGNATURE_FAILED</td><td>Crypto verification</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="security-logging">Security & Observability</h2>
+    <div class="grid">
+      <div class="card">
+        <div class="card-header"><div class="card-icon">&#128220;</div><div class="card-title">Audit Logger</div></div>
+        <p>HMAC-SHA256 signed log entries written to <code>~/.bp/audit-YYYY-MM-DD.log</code>. Includes command, args, user, correlation ID, and status. Symlink <code>~/.bp/audit.log</code> always points to the active day.</p>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-icon">&#128310;</div><div class="card-title">Tracing</div></div>
+        <p>OpenTelemetry spans for every major phase (<code>bp.detect</code>, <code>bp.validate</code>, etc.). Errors are recorded as span exceptions. Pino logs are redacted for <code>apiKey</code>, <code>token</code>, <code>secret</code>, <code>password</code>, and <code>privateKey</code>.</p>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-icon">&#128274;</div><div class="card-title">Sandbox</div></div>
+        <p>Plugin scripts run in a Node.js VM with no access to <code>require</code>, <code>process</code>, or <code>console</code> — only the provided <code>PluginAPI</code> wrapper. Template vars are sanitized against shell metacharacters and prototype pollution.</p>
+      </div>
+    </div>
+
+    <h2 id="file-structure">Source Overview</h2>
+    <pre>
+src/
+  cli/
+    index.ts              CLI bootstrap (Commander), 24 subcommands
+    commands/             One module per command (init, verify, sync, ...)
+    formatters/           SARIF, JSON, table output
+    orchestrators/        High-level init/verify orchestration
+  detector/             Repository topology & fingerprinting
+  templater/            Handlebars rendering + risk-aware selection
+  validator/            4-layer + governance validation
+  translator/           BlueprintIR + 31+ backend adapters
+  config/               .bp.json schema & I/O
+  plugins/              Plugin loader + VM sandbox API
+  registry/             Template registry (HTTP) + signer
+  security/             Audit, hooks, path traversal, sandbox
+  telemetry/            OpenTelemetry tracer & metrics
+  blueprint-sync/       Diff / merge / drift reconciliation
+  lsp/                  Language Server Protocol server
+  enterprise/           Compliance & runbooks
+  observability/        Anomaly detection & alerting
+  multiagent/           Chains, memory, MCP governance
+  rule-library/         Rule & template pack manager
+  backends/             Backend registry & syntax helpers
+  dx/                   Dev server, docs, migration
+  utils/                Shared utilities (fs, retry, errors, paths)
+  constants.ts          Known directories, frameworks, exit codes
+  errors.ts             Typed error hierarchy (BpError subclasses)
+  logger.ts             Pino logger + correlation ID storage
+    </pre>
+
+    <h2 id="testing">Testing & Quality</h2>
+    <div class="card">
+      <table>
+        <thead><tr><th>Script</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td><code>test</code></td><td>Vitest unit tests (excludes e2e)</td></tr>
+          <tr><td><code>test:e2e</code></td><td>End-to-end test suite</td></tr>
+          <tr><td><code>test:coverage</code></td><td>V8 coverage (95 % target)</td></tr>
+          <tr><td><code>lint</code></td><td>Biome check</td></tr>
+          <tr><td><code>lint:custom</code></td><td>No sync fs in hot paths, no interior process.exit, no require</td></tr>
+          <tr><td><code>check:circular</code></td><td>Madge circular dependency check</td></tr>
+          <tr><td><code>typecheck</code></td><td>TypeScript --noEmit</td></tr>
+          <tr><td><code>ci</code></td><td>Full CI pipeline (typecheck + lint + custom lint + coverage)</td></tr>
+          <tr><td><code>sbom</code></td><td>CycloneDX SBOM generation</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <footer>
+      Generated on 2026-06-11 &bull; <a href="https://github.com/0xkhdr/open-blueprint" target="_blank" style="color:var(--accent);text-decoration:none;">github.com/0xkhdr/open-blueprint</a>
+    </footer>
+  </div>
+</body>
+</html>
