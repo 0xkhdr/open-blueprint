@@ -15,6 +15,8 @@ import { loadCacheAsync, saveCacheAsync } from "./cache.js";
 import { validateCostConfig } from "./cost.js";
 import { validateCrossLayerReferences } from "./cross-layer.js";
 import { validateDrift } from "./drift.js";
+import type { EnforcementSummary } from "./enforcement.js";
+import { validateEnforcementDetailed } from "./enforcement.js";
 import { ResourceLimitError, ValidationTimeoutError } from "./errors.js";
 import {
   validateAudit,
@@ -49,6 +51,7 @@ export type ValidationLevel =
   | "structural"
   | "semantic"
   | "logical"
+  | "enforcement"
   | "drift"
   | "governance"
   | "all";
@@ -69,6 +72,7 @@ export interface ValidationResult {
   infos: ValidationError[];
   level: ValidationLevel;
   filesChecked: number;
+  enforcement?: EnforcementSummary;
 }
 
 export { EXIT_CODES };
@@ -355,6 +359,16 @@ async function runValidationPipeline(options: ValidatorOptions): Promise<Validat
     allErrors.push(...logicalErrors);
   }
 
+  // Layer 3.5: Enforcement (executable rule checks; after logical, before drift)
+  let enforcementSummary: EnforcementSummary | undefined;
+  if (!structuralHardFail && (level === "enforcement" || level === "all")) {
+    const enforcementResult = await startSpan("bp.validate.enforcement", () =>
+      validateEnforcementDetailed(projectRoot, manifest, fingerprint)
+    );
+    allErrors.push(...enforcementResult.errors);
+    enforcementSummary = enforcementResult.summary;
+  }
+
   // Layer 4: Drift (always run since it checks drift)
   if (level === "drift" || level === "all") {
     if (fingerprint) {
@@ -437,6 +451,7 @@ async function runValidationPipeline(options: ValidatorOptions): Promise<Validat
     infos,
     level,
     filesChecked: files.length,
+    ...(enforcementSummary ? { enforcement: enforcementSummary } : {}),
   };
 }
 
@@ -473,12 +488,14 @@ export function exitCodeForResult(result: ValidationResult): number {
     return EXIT_CODES.SUCCESS;
   }
 
-  // Logical conflicts → exit 4
+  // Logical conflicts and enforcement violations → exit 4
   const hasLogical = result.errors.some(
     (e) =>
       e.type === "RULE_CONFLICT_HARD" ||
       e.type === "SEMANTIC_CONTRADICTION" ||
-      e.type === "CIRCULAR_SKILL_DEPENDENCY"
+      e.type === "CIRCULAR_SKILL_DEPENDENCY" ||
+      e.type === "RULE_VIOLATION" ||
+      e.type === "RULE_CHECK_INVALID"
   );
   if (hasLogical) return EXIT_CODES.LOGICAL_FAILURE;
 

@@ -1,5 +1,7 @@
 # Stage 1 — Executable Rule Conditions (Enforcement Engine)
 
+> **Status: ✅ COMPLETED** (2026-06-11)
+
 Closes **GAP-1** (`roadmap/00-analysis.md`): rule `action` strings are prose that nothing
 evaluates, so `bp verify` cannot actually enforce governance. This stage adds a
 declarative, machine-evaluable `check` to rules and an enforcement layer in the validator.

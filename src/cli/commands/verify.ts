@@ -17,7 +17,15 @@ import { EXIT_CODES, exitCodeForResult, runValidator } from "../../validator/ind
 import type { ValidationError } from "../../validator/structural.js";
 import { toSarif } from "../formatters/sarif.js";
 
-const VALID_LEVELS = ["structural", "semantic", "logical", "drift", "governance", "all"] as const;
+const VALID_LEVELS = [
+  "structural",
+  "semantic",
+  "logical",
+  "enforcement",
+  "drift",
+  "governance",
+  "all",
+] as const;
 
 function formatError(err: ValidationError, cwd: string): void {
   const loc = err.line ? `:${err.line}` : "";
@@ -127,7 +135,11 @@ export function createVerifyCommand(): Command {
   cmd
     .description("Validate blueprint integrity")
     .argument("[paths...]", "One or more repository paths to verify")
-    .option("--level <level>", "structural | semantic | logical | drift | all", "all")
+    .option(
+      "--level <level>",
+      "structural | semantic | logical | enforcement | drift | governance | all",
+      "all"
+    )
     .option("--json", "Machine-readable JSON output", false)
     .option("--format <format>", "Output format: json | sarif", "json")
     .option("--fix", "Auto-correct unambiguous structural issues", false)
@@ -216,6 +228,9 @@ export function createVerifyCommand(): Command {
                 projectRoot: absolutePath,
                 manifest: pack.manifest,
                 fingerprint,
+                ...(VALID_LEVELS.includes(opts.failOn as ValidationLevel)
+                  ? { failOn: opts.failOn as ValidationLevel }
+                  : {}),
               });
 
               // Apply fixes before reporting
@@ -270,6 +285,15 @@ export function createVerifyCommand(): Command {
                   spinner?.fail(
                     chalk.red(
                       `[${targetPath}] ${result.errors.length} error(s), ${result.warnings.length} warning(s) (${result.filesChecked} files)`
+                    )
+                  );
+                }
+
+                if (result.enforcement) {
+                  const { enforced, violations, manual } = result.enforcement;
+                  console.log(
+                    chalk.dim(
+                      `  Enforcement: ${enforced} enforced, ${violations} violation(s), ${manual} manual`
                     )
                   );
                 }

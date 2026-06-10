@@ -107,3 +107,39 @@ Permalink: Template Pack
 
 * **Definition**: A public or private organizational repository where signed blueprint templates are published and shared.
 * **Where Used**: Accessed via `bp marketplace` subcommands.
+
+---
+
+### Check
+
+Permalink: Check
+
+* **Definition**: A declarative, Zod-validated condition attached to a rule (`check:` frontmatter) that bp can evaluate against the repository using only static filesystem and Fingerprint reads — file/content globs, frontmatter fields, `package.json` dependencies, JSON keys, and boolean composites (`allOf`/`anyOf`/`not`). See [Check](data-models.md#check).
+* **Where Used**: Evaluated by `bp verify --level enforcement` and `bp rule test`; validated by `bp rule lint`.
+
+---
+
+### Enforcement
+
+Permalink: Enforcement
+
+* **Definition**: The validation layer that evaluates each rule's `check` against the real repository. Failing hard-severity checks are errors that fail the build; failing soft checks are warnings; results are summarized as `enforced` / `violations` / `manual` counts.
+* **Where Used**: `bp verify --level enforcement` (also part of `--level all`, after logical and before drift).
+
+---
+
+### Manual rule
+
+Permalink: Manual rule
+
+* **Definition**: A rule bp cannot evaluate automatically — it has no `check`, declares `enforcement: manual`, or its check is unsupported in the repository's ecosystem. Reported as `RULE_MANUAL` (info-level); never counted as passing and never affects the exit code. It is a documented obligation for a human reviewer.
+* **Where Used**: Reported by `bp verify --level enforcement` and `bp rule test`.
+
+---
+
+### Violation
+
+Permalink: Violation
+
+* **Definition**: A failed rule check (`RULE_VIOLATION`). Severity follows the rule: `hard` ⇒ error (non-zero exit), `soft` ⇒ warning. The message carries the rule id, action text, and the check outcome detail with up to 10 evidence locations; the resolution comes from the rule's `rationale` when present.
+* **Where Used**: Emitted by the enforcement layer during `bp verify` and by `bp rule test`.

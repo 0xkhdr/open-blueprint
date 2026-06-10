@@ -166,3 +166,82 @@ A named, versioned collection of governance rules distributed via the marketplac
   "verified": true
 }
 ```
+
+---
+
+## `Check`
+
+A declarative, machine-evaluable rule condition (Stage 1 enforcement). Attached to a
+rule via the optional `check` frontmatter field; evaluated by `bp verify --level
+enforcement` and `bp rule test`. Checks are pure static reads of the repository and
+the Fingerprint — no network, no shell, no code execution.
+
+Rules without a `check` are reported as **manual** (`RULE_MANUAL`, info) — bp never
+silently counts them as passing. Rules may also set `enforcement: manual` explicitly.
+
+Limits: regexes ≤ 256 chars and rejected if they contain quantified groups with inner
+quantifiers (star-height guard); globs ≤ 256 chars with no `****`; composite trees are
+capped at depth 3 and 16 children per composite.
+
+| Type | Semantics |
+|------|-----------|
+| `file-exists` | ≥ 1 file matches `glob` |
+| `file-absent` | 0 files match `glob` |
+| `content-match` | Files matching `glob` contain ≥ `minMatches` (default 1) regex matches; `scope: every` (default) requires all files, `any` requires at least one |
+| `content-absent` | No file matching `glob` contains the regex |
+| `frontmatter-field` | YAML frontmatter `field` in every matching file satisfies `expect` (`exists` / `equals` / `oneOf`) |
+| `dependency-present` | Dependency declared in `package.json` (any section); optional `range` is an exact range-string comparison. Other ecosystems degrade to manual |
+| `dependency-absent` | Dependency not declared in `package.json` |
+| `fingerprint` | Dotted path into the Fingerprint satisfies `expect` (`equals` / `truthy`) |
+| `json-key` | Dotted path into a JSON file satisfies `expect` (`exists` / `equals`) |
+| `allOf` / `anyOf` / `not` | Boolean composition (short-circuiting) |
+
+**One example per type (YAML frontmatter form):**
+
+```yaml
+# file-exists — a security policy must be present
+check: { type: file-exists, glob: "SECURITY.md" }
+
+# file-absent — no private keys committed
+check: { type: file-absent, glob: "**/*.pem" }
+
+# content-match — some source file initializes an audit logger
+check: { type: content-match, glob: "src/**/*.{ts,js}", pattern: "audit[-_]?log", flags: i, scope: any }
+
+# content-absent — no plaintext http:// endpoints
+check: { type: content-absent, glob: "src/**/*.ts", pattern: "[\"'`]http://(?!localhost)" }
+
+# frontmatter-field — every rule file declares a valid severity
+check:
+  type: frontmatter-field
+  glob: ".claude/rules/*.md"
+  field: severity
+  expect: { oneOf: [hard, soft] }
+
+# dependency-present — a structured logger is declared
+check: { type: dependency-present, name: pino }
+
+# dependency-absent — a banned package is not declared
+check: { type: dependency-absent, name: left-pad }
+
+# fingerprint — the project ships a Dockerfile
+check: { type: fingerprint, path: security_signals.has_docker, expect: { truthy: true } }
+
+# json-key — strict TypeScript is enabled
+check: { type: json-key, file: tsconfig.json, path: compilerOptions.strict, expect: { equals: true } }
+
+# composites — boolean combinations, max depth 3
+check:
+  type: allOf
+  checks:
+    - { type: file-exists, glob: "SECURITY.md" }
+    - type: anyOf
+      checks:
+        - { type: dependency-present, name: pino }
+        - { type: dependency-present, name: winston }
+```
+
+**`CheckOutcome`** (returned by the evaluator): `passed: boolean`, `detail: string`
+(human explanation, e.g. `0 files matched glob 'src/**/audit*.ts'`), and up to 10
+`evidence` entries (`{ file, line? }`). Files larger than 1 MiB are skipped from
+content scans and noted in `detail`.

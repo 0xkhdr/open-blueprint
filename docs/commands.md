@@ -59,7 +59,7 @@ Validates blueprint structural and semantic integrity.
 
 * **Arguments**: `[paths...]`
 * **Options**:
-  * `--level <level>`: Validation depth (`structural`, `semantic`, `logical`, `drift`, `all`, default: `all`)
+  * `--level <level>`: Validation depth (`structural`, `semantic`, `logical`, `enforcement`, `drift`, `governance`, `all`, default: `all`)
   * `--json`: Print machine-readable JSON (default: `false`)
   * `--fix`: Attempt auto-correction of structural anomalies
   * `--watch`: Watch files and re-validate on change
@@ -67,6 +67,8 @@ Validates blueprint structural and semantic integrity.
   * `--entropy-scan`: Enable entropy-based high-entropy string detection (opt-in; also configurable via `scan.entropyEnabled: true` in `.bp.json`)
 * **Example**: `bp verify --level all --watch`
 * **Example**: `bp verify --entropy-scan`
+* **Example**: `bp verify --level enforcement`
+* **Enforcement level**: evaluates each rule's declarative `check` against the repository (see [Check](data-models.md#check)). Failing hard-severity checks are errors (`RULE_VIOLATION`, non-zero exit); failing soft checks are warnings; rules without a check are reported as `RULE_MANUAL` (info) and never affect the exit code; malformed checks are `RULE_CHECK_INVALID` errors. The result summary reports `enforced` / `violations` / `manual` counts (included in `--json` output).
 * **Error codes**: [4](troubleshooting.md#code-4) Structural · [5](troubleshooting.md#code-5) Semantic · [6](troubleshooting.md#code-6) Drift · [1](troubleshooting.md#code-1) Unexpected error
 
 ### `bp sync`
@@ -189,8 +191,8 @@ Diagnostic mode for troubleshooting agent ignores or configurations.
 Rule management utilities.
 
 * **Subcommands**:
-  * `lint <file>`: Check structural and glob scope validity for a rule.
-  * `test <file>`: Dry-run a rule against mock filesystem scenarios.
+  * `lint <file>`: Check structural and glob scope validity for a rule, including Zod validation of any `check` frontmatter (`RULE_CHECK_INVALID` with line numbers).
+  * `test <file>`: Dry-run a rule against the real repository. Prints scope-glob matches, then — when the rule has a `check` — evaluates it and prints PASS/FAIL with a detail message and up to 10 evidence locations. Exit codes: 0 on pass, validation failure (4) for a failing hard rule, 0 with a warning for a failing soft rule. Rules without a check print `manual — bp cannot evaluate this rule automatically`.
   * `graph`: Renders an ASCII rule scope dependency and directory coverage map.
 * **Example**: `bp rule lint .claude/rules/01-security.md`
 

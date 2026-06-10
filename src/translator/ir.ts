@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CheckSchema } from "../validator/checks/schema.js";
 
 const irIdentifier = z
   .string()
@@ -34,6 +35,10 @@ export const RuleSchema = z.object({
   action: irContentField,
   rationale: irContentField.optional(),
   tags: z.array(irShortString).optional(),
+  // Stage 1: machine-evaluable condition. Absent ⇒ rule is manual.
+  check: CheckSchema.optional(),
+  // Default: "auto" when a check is present, otherwise "manual".
+  enforcement: z.enum(["auto", "manual"]).optional(),
 });
 
 export const SkillSchema = z.object({

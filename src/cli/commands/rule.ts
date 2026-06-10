@@ -11,6 +11,9 @@ import { BpError } from "../../errors.js";
 import { resolveTemplatePack } from "../../templater/selector.js";
 import type { BlueprintIR } from "../../translator/ir.js";
 import { normalizeError } from "../../utils/errors.js";
+import { defaultResourceBudget, evaluateCheck } from "../../validator/checks/evaluate.js";
+import type { Check } from "../../validator/checks/schema.js";
+import { CheckSchema } from "../../validator/checks/schema.js";
 import { EXIT_CODES } from "../../validator/index.js";
 import { validateSemantic } from "../../validator/semantic.js";
 import type { ValidationError } from "../../validator/structural.js";
@@ -105,8 +108,58 @@ export function createRuleCommand(): Command {
           }
         }
         console.log();
+
+        // Stage 1: evaluate the declarative check against the real repository
+        if (parsed.data.check === undefined || parsed.data.check === null) {
+          console.log(chalk.blue("ℹ manual — bp cannot evaluate this rule automatically."));
+          console.log(
+            chalk.dim("  Add a 'check' to the frontmatter to make this rule enforceable.\n")
+          );
+          return;
+        }
+
+        const checkParse = CheckSchema.safeParse(parsed.data.check);
+        if (!checkParse.success) {
+          const issue = checkParse.error.issues[0];
+          console.error(
+            chalk.red(
+              `✗ [RULE_CHECK_INVALID] check.${issue?.path.join(".") || "(root)"}: ${issue?.message ?? "malformed check"}`
+            )
+          );
+          throw new BpError("Command failed", EXIT_CODES.LOGICAL_FAILURE, "CMD_ERROR", "");
+        }
+
+        const fingerprint = await detect(cwd);
+        const outcome = await evaluateCheck(checkParse.data as Check, {
+          projectRoot: cwd,
+          fingerprint,
+          fileBudget: defaultResourceBudget(),
+        });
+
+        if (outcome.unsupported) {
+          console.log(chalk.blue(`ℹ manual — ${outcome.detail}`));
+          console.log();
+          return;
+        }
+
+        if (outcome.passed) {
+          console.log(chalk.green(`✔ PASS: ${outcome.detail}`));
+        } else if (severity === "hard") {
+          console.error(chalk.red(`✗ FAIL (hard): ${outcome.detail}`));
+        } else {
+          console.warn(chalk.yellow(`⚠ FAIL (soft): ${outcome.detail}`));
+        }
+        for (const ev of (outcome.evidence ?? []).slice(0, 10)) {
+          console.log(chalk.dim(`    - ${ev.line ? `${ev.file}:${ev.line}` : ev.file}`));
+        }
+        console.log();
+
+        if (!outcome.passed && severity === "hard") {
+          throw new BpError("Rule check failed", EXIT_CODES.LOGICAL_FAILURE, "CMD_ERROR", "");
+        }
         return;
       } catch (e) {
+        if (e instanceof BpError) throw e;
         console.error(chalk.red(`Rule test failed: ${normalizeError(e).message}`));
         throw new BpError("Command failed", 1, "CMD_ERROR", "");
       }
@@ -140,6 +193,31 @@ export function createRuleCommand(): Command {
 
         const allErrors = [...structuralErrors, ...semanticErrors];
 
+        // Stage 1: validate the declarative check, when present
+        try {
+          const content = fs.readFileSync(resolvedPath, "utf-8");
+          const parsed = matter(content);
+          if (parsed.data.check !== undefined && parsed.data.check !== null) {
+            const checkParse = CheckSchema.safeParse(parsed.data.check);
+            if (!checkParse.success) {
+              const issue = checkParse.error.issues[0];
+              const lines = content.split("\n");
+              const checkLine = lines.findIndex((l) => /^check\s*:/.test(l));
+              allErrors.push({
+                file: resolvedPath,
+                ...(checkLine >= 0 ? { line: checkLine + 1 } : {}),
+                type: "RULE_CHECK_INVALID",
+                severity: "error",
+                message: `Invalid check at '${issue?.path.join(".") || "(root)"}': ${issue?.message ?? "malformed check"}`,
+                resolution:
+                  "Fix the 'check' frontmatter to conform to the Check schema (see docs/data-models.md)",
+              });
+            }
+          }
+        } catch {
+          // unreadable/unparsable files already reported by the structural layer
+        }
+
         if (allErrors.length === 0) {
           console.log(
             chalk.green(`✔ [ PASS ] Rule "${file}" is fully valid and conforms to backend spec.`)
@@ -156,6 +234,7 @@ export function createRuleCommand(): Command {
         if (hasErrors)
           throw new BpError("Command failed", EXIT_CODES.STRUCTURAL_FAILURE, "CMD_ERROR", "");
       } catch (e) {
+        if (e instanceof BpError) throw e;
         console.error(chalk.red(`Lint error: ${normalizeError(e).message}`));
         throw new BpError("Command failed", 1, "CMD_ERROR", "");
       }
