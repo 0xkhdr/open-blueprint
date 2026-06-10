@@ -1,11 +1,21 @@
-# open-blueprint (`bp`)
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="icons/brand/brand-lockup-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="icons/brand/brand-lockup-light.png">
+    <img src="icons/brand/brand-lockup-dark.png" alt="open-blueprint — Zero-runtime governance for agentic AI" width="700">
+  </picture>
+</p>
 
-[![Version](https://img.shields.io/npm/v/@agentic/bp?color=blue)](https://www.npmjs.com/package/@agentic/bp)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/0xkhdr/open-blueprint/ci.yml?branch=main)](https://github.com/0xkhdr/open-blueprint/actions)
-[![Coverage](https://img.shields.io/badge/Coverage-%E2%89%A575%25%20CI--enforced-brightgreen)](vitest.config.ts)
-[![Bun Supported](https://img.shields.io/badge/Bun-Supported-orange?logo=bun)](https://bun.sh)
-[![LSP Enabled](https://img.shields.io/badge/LSP-Integrate-blueviolet)](src/lsp)
+<h1 align="center">open-blueprint (`bp`)</h1>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/@agentic/bp"><img src="https://img.shields.io/npm/v/@agentic/bp?color=blue" alt="NPM Version"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT"></a>
+  <a href="https://github.com/0xkhdr/open-blueprint/actions"><img src="https://img.shields.io/github/actions/workflow/status/0xkhdr/open-blueprint/ci.yml?branch=main" alt="Build Status"></a>
+  <a href="vitest.config.ts"><img src="https://img.shields.io/badge/Coverage-%E2%89%A575%25%20CI--enforced-brightgreen" alt="Coverage"></a>
+  <a href="https://bun.sh"><img src="https://img.shields.io/badge/Bun-Supported-orange?logo=bun" alt="Bun Supported"></a>
+  <a href="src/lsp"><img src="https://img.shields.io/badge/LSP-Integrate-blueviolet" alt="LSP Enabled"></a>
+</p>
 
 **open-blueprint (`bp`)** is a zero-runtime-overhead development and CI command-line utility that prepares software repositories for agentic AI tools (such as Claude Code, Cursor, OpenDev, and Goose) by scaffolding standardized governance structures, verifying their integrity, and actively detecting configuration drift.
 
