@@ -2,8 +2,8 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { installPackToProject } from "../../../src/rule-library/materialize.js";
-import type { RulePack } from "../../../src/rule-library/schema.js";
+import { installPackToProject } from "../../../src/packs/materialize.js";
+import type { RulePack } from "../../../src/packs/schema.js";
 import type { BackendManifest } from "../../../src/templater/selector.js";
 import { validatePackIntegrity } from "../../../src/validator/pack-integrity.js";
 
@@ -36,6 +36,7 @@ const pack: RulePack = {
   name: "ACME",
   version: "1.0.0",
   kind: "rules",
+  skills: [],
   framework: "custom",
   description: "House rules",
   author: "x@acme.test",

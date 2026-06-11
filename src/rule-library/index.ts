@@ -1,4 +1,3 @@
-export { createRuleLibraryManager, RuleLibraryManager } from "./manager.js";
 export {
   canonicalPackHash,
   governedContentHash,
@@ -12,17 +11,7 @@ export {
   removePack,
   renderRuleFile,
   savePackLock,
-} from "./materialize.js";
-export {
-  BUILT_IN_PACKS,
-  GDPR_PACK,
-  getRulePack,
-  getRulePacksByFramework,
-  HIPAA_PACK,
-  listRulePacks,
-  PCIDSS_PACK,
-  SOC2_PACK,
-} from "./packs.js";
+} from "../packs/materialize.js";
 export {
   createEmptyPackLock,
   PACK_FILE_EXTENSIONS,
@@ -34,10 +23,10 @@ export {
   PackLockSchema,
   PROJECT_PACKS_DIR,
   RulePackSchema,
-} from "./schema.js";
+} from "../packs/schema.js";
 export {
   assertNoBuiltinCollision,
-  assertUniqueRuleIds,
+  assertUniquePackItemIds,
   isPackFile,
   isPathRef,
   type LoadedPack,
@@ -46,7 +35,18 @@ export {
   type PackSource,
   resolvePack,
   validatePackData,
-} from "./store.js";
+} from "../packs/store.js";
+export { createRuleLibraryManager, RuleLibraryManager } from "./manager.js";
+export {
+  BUILT_IN_PACKS,
+  GDPR_PACK,
+  getRulePack,
+  getRulePacksByFramework,
+  HIPAA_PACK,
+  listRulePacks,
+  PCIDSS_PACK,
+  SOC2_PACK,
+} from "./packs.js";
 export type {
   InstallOptions,
   RuleLibraryIndex,

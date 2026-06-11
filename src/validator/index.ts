@@ -41,6 +41,7 @@ import { auditPerformance } from "./performance.js";
 import { validateRBAC } from "./rbac.js";
 import { runBackendRules } from "./rules/backend-rules.js";
 import { validateSemantic } from "./semantic.js";
+import { validateSkills } from "./skills.js";
 import type { ValidationError } from "./structural.js";
 import { validateStructuralBatch } from "./structural.js";
 
@@ -352,6 +353,15 @@ async function runValidationPipeline(options: ValidatorOptions): Promise<Validat
 
   const allErrors: ValidationError[] = [...cachedErrors, ...newErrors];
 
+  // Layer 2.5: Skills (semantic level; global because name collisions are
+  // cross-file, so it bypasses the per-file cache — Stage 3)
+  if (!structuralHardFail && (level === "semantic" || level === "all")) {
+    const skillErrors = await startSpan("bp.validate.skills", () =>
+      validateSkills(projectRoot, manifest)
+    );
+    allErrors.push(...skillErrors);
+  }
+
   // Layer 3: Logical (always run since it is global across rules)
   if (!structuralHardFail && (level === "logical" || level === "all")) {
     const logicalErrors = await startSpan("bp.validate.logical", () =>
@@ -516,7 +526,11 @@ export function exitCodeForResult(result: ValidationResult): number {
       e.type === "UNKNOWN_COMMAND_REFERENCE" ||
       e.type === "DUPLICATE_COMMAND" ||
       e.type === "INVALID_BUDGET" ||
-      e.type === "MCP_SERVER_INCOMPLETE"
+      e.type === "MCP_SERVER_INCOMPLETE" ||
+      e.type === "SKILL_SCHEMA_INVALID" ||
+      e.type === "SKILL_NAME_COLLISION" ||
+      e.type === "SKILL_UNKNOWN_TOOL" ||
+      e.type === "SKILL_NO_PROCEDURE"
   );
   if (hasSemantic) return EXIT_CODES.SEMANTIC_FAILURE;
 

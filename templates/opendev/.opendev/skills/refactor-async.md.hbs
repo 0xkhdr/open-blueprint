@@ -2,9 +2,16 @@
 name: refactor-async
 description: Refactor synchronous operations to async/await
 when_to_use: When optimizing I/O or refactoring synchronous blockages
-tools_required: ["Read", "Edit", "Bash"]
+tools_required: [read_file, edit_file, run_tests]
 ---
 
 # Skill: refactor-async
 
 Use this skill when optimizing synchronous operations to async/await in OpenDev.
+
+## Procedure
+
+1. Read the target function and identify all async boundaries.
+2. Check callers — they may need to become async too.
+3. Replace `.then(fn)` with `await` and `.catch(fn)` with `try/catch`, adding `async` to the signature.
+4. Run the test suite and confirm all callers still work.

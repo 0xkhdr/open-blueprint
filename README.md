@@ -83,6 +83,7 @@ Documentation follows a progressive-disclosure structure. Read only what you nee
 ### Advanced Customization
 
 * **[Rule Packs](docs/rule-packs.md)** — Author, lint, install, and remove client-defined rule packs with lockfile-tracked materialization.
+* **[Skill Authoring](docs/skill-authoring.md)** — Create, validate, dry-run, and share skills with the canonical tool vocabulary and `kind: skills` packs.
 * **[Plugin Developer API](docs/plugin-api.md)** — Write custom TypeScript validators for company governance policies.
 * **[Contributor Guidelines](docs/contributing.md)** — Development setup instructions, testing steps, and Architecture Decision Records.
 * **[Template Authoring Guide](docs/template-authoring.md)** — Build, merchandise, and cryptographically sign Handlebars template packages.

@@ -3,6 +3,7 @@ import * as path from "node:path";
 import fg from "fast-glob";
 import matter from "gray-matter";
 import type { BackendManifest } from "../templater/selector.js";
+import { allKnownToolNames, isMcpToolRef } from "../translator/tools.js";
 import { normalizeError } from "../utils/errors.js";
 import type { ValidationError } from "./structural.js";
 
@@ -10,6 +11,8 @@ import type { ValidationError } from "./structural.js";
 // Known agentic tool names (Claude Code tool surface)
 // ---------------------------------------------------------------------------
 const KNOWN_TOOLS = new Set([
+  // Canonical vocabulary + backend aliases (Stage 3, src/translator/tools.ts)
+  ...allKnownToolNames(),
   "bash",
   "computer",
   "edit",
@@ -146,7 +149,7 @@ function checkToolReferences(filePath: string, content: string): ValidationError
   const checkTools = (fieldName: string, value: unknown): void => {
     if (!Array.isArray(value)) return;
     for (const tool of value) {
-      if (typeof tool === "string" && !KNOWN_TOOLS.has(tool)) {
+      if (typeof tool === "string" && !KNOWN_TOOLS.has(tool) && !isMcpToolRef(tool)) {
         errors.push({
           file: filePath,
           type: "UNKNOWN_TOOL_REFERENCE",

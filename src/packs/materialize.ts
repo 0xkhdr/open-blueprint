@@ -1,11 +1,12 @@
 /**
- * Pack materialization — turns validated pack rules into backend rule files
- * (e.g. `.claude/rules/pack-<packId>-<ruleId>.md`) and records the install in
- * `.bp/packs.lock.json`.
+ * Pack materialization — turns validated pack items into backend files
+ * (`.claude/rules/pack-<packId>-<ruleId>.md`, `.claude/skills/pack-<packId>-
+ * <skillId>.md`, …) and records the install in `.bp/packs.lock.json`.
  *
  * Generated files carry provenance frontmatter (`pack_id`, `pack_version`) and
  * bp-generated block markers, so re-installs are idempotent, `bp:preserve`
- * regions survive, and `bp verify` governs them exactly like scaffolded rules.
+ * regions survive, and `bp verify` governs them exactly like scaffolded
+ * rules and skills.
  */
 
 import * as crypto from "node:crypto";
@@ -17,8 +18,9 @@ import { BpError } from "../errors.js";
 import { wrapBlock } from "../templater/merger.js";
 import type { BackendManifest } from "../templater/selector.js";
 import { writeFile } from "../templater/writer.js";
-import type { Rule } from "../translator/ir.js";
+import type { Rule, Skill } from "../translator/ir.js";
 import { patternToDir } from "../translator/serialize.js";
+import { renderSkillMarkdown, skillId } from "../translator/skill-file.js";
 import { validateSemantic } from "../validator/semantic.js";
 import type { ValidationError } from "../validator/structural.js";
 import {
@@ -74,6 +76,10 @@ export function packRuleFileName(packId: string, ruleId: string): string {
   return `pack-${packId}-${ruleId}.md`;
 }
 
+export function packSkillFileName(packId: string, skillIdValue: string): string {
+  return `pack-${packId}-${skillIdValue}.md`;
+}
+
 /** Render one pack rule as a backend rule file with provenance frontmatter. */
 export function renderRuleFile(pack: RulePack, rule: Rule): string {
   const frontmatter: Record<string, unknown> = {
@@ -97,6 +103,25 @@ export function renderRuleFile(pack: RulePack, rule: Rule): string {
 
   const body = wrapBlock(`pack-${pack.id}-${rule.id}`, bodyLines.join("\n"));
   return `---\n${fmYaml}\n---\n\n${body}\n`;
+}
+
+/**
+ * Render one pack skill as a canonical skill file: full SkillSchema
+ * frontmatter + provenance, procedure body inside a generated-block marker.
+ */
+export function renderSkillFile(pack: RulePack, skill: Skill): string {
+  const id = skillId(skill);
+  const bodyLines = [
+    skill.procedure.trim(),
+    "",
+    `_Installed from pack \`${pack.id}\` v${pack.version}._`,
+  ];
+  const body = wrapBlock(`pack-${pack.id}-${id}`, bodyLines.join("\n"));
+  return renderSkillMarkdown(
+    { ...skill, id },
+    { pack_id: pack.id, pack_version: pack.version },
+    body
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -144,7 +169,7 @@ export interface MaterializeOptions {
 export interface MaterializeResult {
   /** Project-relative paths written (created or updated) this run. */
   written: string[];
-  /** Existing files left untouched (merge-by-rule-id default). */
+  /** Existing files left untouched (merge-by-item-id default). */
   skipped: string[];
   /** Files that belong to another pack or are hand-written; never touched. */
   conflicts: string[];
@@ -165,7 +190,7 @@ async function readIfExists(filePath: string): Promise<string | null> {
   }
 }
 
-/** Whether an existing rule file was generated from the given pack. */
+/** Whether an existing generated file was produced from the given pack. */
 function isOwnedByPack(content: string, packId: string): boolean {
   try {
     return matter(content).data?.pack_id === packId;
@@ -174,12 +199,35 @@ function isOwnedByPack(content: string, packId: string): boolean {
   }
 }
 
-export async function installPackToProject(
-  loaded: LoadedPack,
-  options: MaterializeOptions
-): Promise<MaterializeResult> {
-  const { projectRoot, manifest, force = false, dryRun = false } = options;
-  const { pack } = loaded;
+interface PackItem {
+  /** Pack-unique item id (rule id, or resolved skill id). */
+  id: string;
+  render: () => string;
+}
+
+/** Kind-aware target directory + renderable items for a pack. */
+function planMaterialization(
+  pack: RulePack,
+  manifest: BackendManifest
+): { dir: string; items: PackItem[] } {
+  if (pack.kind === "skills") {
+    if (!manifest.supported_features.skills || !manifest.file_patterns.skills) {
+      throw new BpError(
+        `PACK_UNSUPPORTED_BACKEND: backend '${manifest.backend}' does not support skill files`,
+        1,
+        "PACK_UNSUPPORTED_BACKEND",
+        "Install the pack against a backend with skill file support"
+      );
+    }
+    const { dir } = patternToDir(manifest.file_patterns.skills);
+    return {
+      dir,
+      items: pack.skills.map((skill) => ({
+        id: skillId(skill),
+        render: () => renderSkillFile(pack, skill),
+      })),
+    };
+  }
 
   if (!manifest.supported_features.rules || !manifest.file_patterns.rules) {
     throw new BpError(
@@ -189,19 +237,38 @@ export async function installPackToProject(
       "Install the pack against a backend with rule file support"
     );
   }
+  const { dir } = patternToDir(manifest.file_patterns.rules);
+  return {
+    dir,
+    items: pack.rules.map((rule) => ({
+      id: rule.id,
+      render: () => renderRuleFile(pack, rule),
+    })),
+  };
+}
 
-  const { dir: rulesDir } = patternToDir(manifest.file_patterns.rules);
+export async function installPackToProject(
+  loaded: LoadedPack,
+  options: MaterializeOptions
+): Promise<MaterializeResult> {
+  const { projectRoot, manifest, force = false, dryRun = false } = options;
+  const { pack } = loaded;
+
+  const { dir: targetDir, items } = planMaterialization(pack, manifest);
+  const fileName = (itemId: string) =>
+    pack.kind === "skills" ? packSkillFileName(pack.id, itemId) : packRuleFileName(pack.id, itemId);
+
   const result: MaterializeResult = { written: [], skipped: [], conflicts: [], semantic: [] };
   const writtenAbsolute: string[] = [];
 
-  for (const rule of pack.rules) {
-    const relPath = toPosix(path.join(rulesDir, packRuleFileName(pack.id, rule.id)));
+  for (const item of items) {
+    const relPath = toPosix(path.join(targetDir, fileName(item.id)));
     const absPath = path.join(projectRoot, relPath);
     const existing = await readIfExists(absPath);
 
     if (existing !== null) {
       if (!force) {
-        // Default merge-by-rule-id: existing files (any origin) are kept.
+        // Default merge-by-item-id: existing files (any origin) are kept.
         result.skipped.push(relPath);
         continue;
       }
@@ -212,7 +279,7 @@ export async function installPackToProject(
       }
     }
 
-    const content = renderRuleFile(pack, rule);
+    const content = item.render();
     const writeResult = await writeFile(
       absPath,
       content,
@@ -232,8 +299,8 @@ export async function installPackToProject(
   if (!dryRun) {
     // Record every file on disk that belongs to this pack (written or kept).
     const files: Record<string, string> = {};
-    for (const rule of pack.rules) {
-      const relPath = toPosix(path.join(rulesDir, packRuleFileName(pack.id, rule.id)));
+    for (const item of items) {
+      const relPath = toPosix(path.join(targetDir, fileName(item.id)));
       const content = await readIfExists(path.join(projectRoot, relPath));
       if (content !== null && isOwnedByPack(content, pack.id)) {
         files[relPath] = governedContentHash(content);
@@ -244,7 +311,9 @@ export async function installPackToProject(
       id: pack.id,
       version: pack.version,
       source: loaded.source === "path" ? (loaded.path ?? "path") : loaded.source,
+      kind: pack.kind,
       rules_count: pack.rules.length,
+      skills_count: pack.skills.length,
       installed_at: new Date().toISOString(),
       content_hash: canonicalPackHash(pack),
       files,
@@ -288,7 +357,7 @@ export async function removePack(packId: string, options: RemoveOptions): Promis
       `PACK_NOT_INSTALLED: pack '${packId}' is not in ${PACK_LOCK_FILE}`,
       1,
       "PACK_NOT_INSTALLED",
-      "Run 'bp rule pack:list' to see installed packs"
+      "Run 'bp rule pack:list' or 'bp skill pack:list' to see installed packs"
     );
   }
 
@@ -307,7 +376,7 @@ export async function removePack(packId: string, options: RemoveOptions): Promis
       `PACK_FILE_MODIFIED: refusing to remove pack '${packId}' — files were edited outside preserve blocks:\n${modified.map((m) => `  - ${m.relPath}`).join("\n")}`,
       1,
       "PACK_FILE_MODIFIED",
-      "Review the edits (move them into a <!-- bp:preserve --> block or a hand-written rule), or pass --force to delete anyway"
+      "Review the edits (move them into a <!-- bp:preserve --> block or a hand-written file), or pass --force to delete anyway"
     );
   }
 

@@ -8,7 +8,6 @@ import { loadProjectConfig } from "../../config/project.js";
 import { loadUserConfig } from "../../config/user.js";
 import { detect } from "../../detector/index.js";
 import { BpError } from "../../errors.js";
-import type { BackendManifest } from "../../templater/selector.js";
 import { resolveTemplatePack } from "../../templater/selector.js";
 import { normalizeError } from "../../utils/errors.js";
 import { defaultResourceBudget, evaluateCheck } from "../../validator/checks/evaluate.js";
@@ -18,6 +17,7 @@ import { EXIT_CODES } from "../../validator/index.js";
 import { validateSemantic } from "../../validator/semantic.js";
 import type { ValidationError } from "../../validator/structural.js";
 import { validateStructural } from "../../validator/structural.js";
+import { resolveBackendManifest } from "../resolve-backend.js";
 
 interface RuleMeta {
   filename: string;
@@ -492,14 +492,6 @@ export function createRuleCommand(): Command {
 // Pack lifecycle subcommands (Stage 2)
 // ---------------------------------------------------------------------------
 
-async function resolveBackendManifest(cwd: string): Promise<BackendManifest> {
-  const projectConfig = loadProjectConfig(cwd);
-  const userConfig = loadUserConfig();
-  const backend = projectConfig?.backend ?? userConfig.default_backend;
-  const fingerprint = await detect(cwd);
-  return resolveTemplatePack(fingerprint, backend).manifest;
-}
-
 function packCreateTemplate(id: string): string {
   const name = id
     .split(/[-_]/)
@@ -582,7 +574,7 @@ function registerPackCommands(cmd: Command): void {
     .option("--from-rules <glob>", "Harvest existing rule files' frontmatter into the pack")
     .option("--force", "Overwrite an existing pack file", false)
     .action(async (id: string, options: { fromRules?: string; force?: boolean }) => {
-      const { PROJECT_PACKS_DIR, RulePackSchema } = await import("../../rule-library/schema.js");
+      const { PROJECT_PACKS_DIR, RulePackSchema } = await import("../../packs/schema.js");
       const yaml = (await import("js-yaml")).default;
 
       if (!/^[a-z0-9_-]+$/i.test(id) || id.length > 64) {
@@ -644,7 +636,7 @@ function registerPackCommands(cmd: Command): void {
     .description("Validate a pack file (schema, duplicate ids, per-rule checks)")
     .option("--json", "Output result as JSON", false)
     .action(async (packPath: string, options: { json?: boolean }) => {
-      const { loadPackFromFile } = await import("../../rule-library/store.js");
+      const { loadPackFromFile } = await import("../../packs/store.js");
       try {
         const { pack } = await loadPackFromFile(packPath);
         const summary = {
@@ -684,8 +676,8 @@ function registerPackCommands(cmd: Command): void {
     .option("--force", "Replace this pack's own generated files (never touches others)", false)
     .option("--dry-run", "Preview without writing files", false)
     .action(async (ref: string, options: { force?: boolean; dryRun?: boolean }) => {
-      const { resolvePack, assertNoBuiltinCollision } = await import("../../rule-library/store.js");
-      const { installPackToProject } = await import("../../rule-library/materialize.js");
+      const { resolvePack, assertNoBuiltinCollision } = await import("../../packs/store.js");
+      const { installPackToProject } = await import("../../packs/materialize.js");
 
       const cwd = process.cwd();
       const loaded = await resolvePack(ref, cwd);
@@ -693,6 +685,12 @@ function registerPackCommands(cmd: Command): void {
         console.error(chalk.red(`Error: rule pack not found: ${ref}`));
         console.error(chalk.dim("  Run 'bp rule pack:list' to see available packs."));
         throw new BpError("Command failed", 1, "PACK_NOT_FOUND", "");
+      }
+
+      if (loaded.pack.kind !== "rules") {
+        console.error(chalk.red(`Error: '${loaded.pack.id}' is a '${loaded.pack.kind}' pack`));
+        console.error(chalk.dim("  Install skill packs with 'bp skill pack:install'."));
+        throw new BpError("Command failed", 1, "PACK_WRONG_KIND", "");
       }
 
       if (loaded.source !== "built-in" && !options.force) {
@@ -731,7 +729,7 @@ function registerPackCommands(cmd: Command): void {
     .description("Remove a pack's generated rule files and lockfile entry")
     .option("--force", "Remove even if generated files were hand-edited", false)
     .action(async (id: string, options: { force?: boolean }) => {
-      const { removePack } = await import("../../rule-library/materialize.js");
+      const { removePack } = await import("../../packs/materialize.js");
       const result = await removePack(id, {
         projectRoot: process.cwd(),
         force: options.force ?? false,
@@ -746,11 +744,12 @@ function registerPackCommands(cmd: Command): void {
     .description("List built-in, project, and installed rule packs")
     .action(async () => {
       const { BUILT_IN_PACKS } = await import("../../rule-library/packs.js");
-      const { loadProjectPacks } = await import("../../rule-library/store.js");
-      const { loadPackLock } = await import("../../rule-library/materialize.js");
+      const { loadProjectPacks } = await import("../../packs/store.js");
+      const { loadPackLock } = await import("../../packs/materialize.js");
 
       const cwd = process.cwd();
-      const { packs: projectPacks, failures } = await loadProjectPacks(cwd);
+      const { packs: allProjectPacks, failures } = await loadProjectPacks(cwd);
+      const projectPacks = allProjectPacks.filter(({ pack }) => pack.kind === "rules");
       const lock = await loadPackLock(cwd);
       const installed = new Map(lock.installed.map((e) => [e.id, e]));
 
@@ -774,9 +773,10 @@ function registerPackCommands(cmd: Command): void {
         console.warn(chalk.yellow(`  ⚠ ${failure.path}: invalid pack file`));
       }
 
-      if (lock.installed.length > 0) {
+      const installedRulePacks = lock.installed.filter((e) => e.kind === "rules");
+      if (installedRulePacks.length > 0) {
         console.log(chalk.bold("\nInstalled (from .bp/packs.lock.json):\n"));
-        for (const entry of lock.installed) {
+        for (const entry of installedRulePacks) {
           console.log(
             `  ${chalk.cyan(entry.id)} v${entry.version} — ${entry.rules_count} rules (${entry.source})`
           );
@@ -789,7 +789,7 @@ function registerPackCommands(cmd: Command): void {
     .command("pack:info <ref>")
     .description("Show details about a rule pack (built-in id, project id, or file path)")
     .action(async (ref: string) => {
-      const { resolvePack } = await import("../../rule-library/store.js");
+      const { resolvePack } = await import("../../packs/store.js");
       const loaded = await resolvePack(ref, process.cwd());
       if (!loaded) {
         console.error(chalk.red(`Error: Rule pack not found: ${ref}`));
@@ -820,7 +820,7 @@ function registerPackCommands(cmd: Command): void {
     .description("Search built-in and project rule packs by name, description, or tags")
     .action(async (query: string) => {
       const { createRuleLibraryManager } = await import("../../rule-library/manager.js");
-      const { loadProjectPacks } = await import("../../rule-library/store.js");
+      const { loadProjectPacks } = await import("../../packs/store.js");
 
       const manager = createRuleLibraryManager();
       const lowerQuery = query.toLowerCase();

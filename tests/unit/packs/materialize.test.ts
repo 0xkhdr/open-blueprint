@@ -9,11 +9,12 @@ import {
   installPackToProject,
   loadPackLock,
   packRuleFileName,
+  packSkillFileName,
   removePack,
   renderRuleFile,
-} from "../../../src/rule-library/materialize.js";
-import type { RulePack } from "../../../src/rule-library/schema.js";
-import type { LoadedPack } from "../../../src/rule-library/store.js";
+} from "../../../src/packs/materialize.js";
+import type { RulePack } from "../../../src/packs/schema.js";
+import type { LoadedPack } from "../../../src/packs/store.js";
 import type { BackendManifest } from "../../../src/templater/selector.js";
 
 const manifest: BackendManifest = {
@@ -46,6 +47,7 @@ function makePack(): RulePack {
     name: "ACME Internal",
     version: "1.0.0",
     kind: "rules",
+    skills: [],
     framework: "custom",
     description: "House rules",
     author: "platform@acme.test",
@@ -192,6 +194,88 @@ describe("installPackToProject", () => {
     expect(result.written).toHaveLength(2);
     expect(fs.existsSync(ruleFilePath("no-console"))).toBe(false);
     expect(fs.existsSync(path.join(tmpDir, ".bp/packs.lock.json"))).toBe(false);
+  });
+});
+
+describe("installPackToProject — kind: skills (Stage 3)", () => {
+  function makeSkillPack(): RulePack {
+    return {
+      schema: "bp-pack/1",
+      id: "acme-skills",
+      name: "ACME Skills",
+      version: "1.0.0",
+      kind: "skills",
+      rules: [],
+      framework: "custom",
+      description: "House skills",
+      author: "platform@acme.test",
+      tags: [],
+      skills: [
+        {
+          name: "deploy-check",
+          description: "Verify a deployment is healthy",
+          when_to_use: "After every production deploy",
+          tools_required: ["read_file", "run_command"],
+          procedure: "## Procedure\n\n1. Check the health endpoint.\n2. Tail the error logs.",
+          risk: "low",
+        },
+      ],
+    };
+  }
+
+  const skillFile = () =>
+    path.join(tmpDir, ".claude/skills", packSkillFileName("acme-skills", "deploy-check"));
+
+  it("materializes pack-<packId>-<skillId>.md with provenance and markers", async () => {
+    const result = await installPackToProject(loadedPack(makeSkillPack()), {
+      projectRoot: tmpDir,
+      manifest,
+    });
+
+    expect(result.written).toEqual([".claude/skills/pack-acme-skills-deploy-check.md"]);
+    const content = fs.readFileSync(skillFile(), "utf-8");
+    expect(content).toContain("pack_id: acme-skills");
+    expect(content).toContain("pack_version: 1.0.0");
+    expect(content).toContain("risk: low");
+    expect(content).toContain("<!-- bp-generated:begin pack-acme-skills-deploy-check -->");
+    expect(content).toContain("1. Check the health endpoint.");
+
+    const lock = await loadPackLock(tmpDir);
+    const entry = lock.installed[0]!;
+    expect(entry.kind).toBe("skills");
+    expect(entry.skills_count).toBe(1);
+    expect(entry.rules_count).toBe(0);
+  });
+
+  it("is idempotent and removes cleanly with a hash guard", async () => {
+    await installPackToProject(loadedPack(makeSkillPack()), { projectRoot: tmpDir, manifest });
+    const second = await installPackToProject(loadedPack(makeSkillPack()), {
+      projectRoot: tmpDir,
+      manifest,
+    });
+    expect(second.written).toEqual([]);
+    expect(second.skipped).toEqual([".claude/skills/pack-acme-skills-deploy-check.md"]);
+
+    fs.appendFileSync(skillFile(), "\nTampered outside preserve.\n");
+    await expect(removePack("acme-skills", { projectRoot: tmpDir })).rejects.toSatisfy(
+      (e: unknown) => e instanceof BpError && e.code === "PACK_FILE_MODIFIED"
+    );
+
+    const result = await removePack("acme-skills", { projectRoot: tmpDir, force: true });
+    expect(result.removed).toEqual([".claude/skills/pack-acme-skills-deploy-check.md"]);
+    expect((await loadPackLock(tmpDir)).installed).toHaveLength(0);
+  });
+
+  it("rejects backends without skill support", async () => {
+    const noSkills: BackendManifest = {
+      ...manifest,
+      supported_features: { ...manifest.supported_features, skills: false },
+    };
+    await expect(
+      installPackToProject(loadedPack(makeSkillPack()), { projectRoot: tmpDir, manifest: noSkills })
+    ).rejects.toSatisfy(
+      (e: unknown) => e instanceof BpError && e.code === "PACK_UNSUPPORTED_BACKEND"
+    );
   });
 });
 

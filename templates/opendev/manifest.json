@@ -1,6 +1,13 @@
 {
   "backend": "opendev",
   "version": "2026.1",
+  "tools": [
+    "read_file",
+    "write_file",
+    "run_command",
+    "run_tests",
+    "search"
+  ],
   "supported_features": {
     "anchors": false,
     "rules": false,
@@ -28,8 +35,14 @@
       "severity_values": []
     },
     "skills": {
-      "required": ["name", "description"],
-      "optional": ["tools_required", "when_to_use"]
+      "required": [
+        "name",
+        "description"
+      ],
+      "optional": [
+        "tools_required",
+        "when_to_use"
+      ]
     },
     "agents": {
       "required": [],

@@ -7,8 +7,8 @@
 
 import * as fsPromises from "node:fs/promises";
 import * as path from "node:path";
-import { governedContentHash, loadPackLock } from "../rule-library/materialize.js";
-import { PACK_LOCK_FILE } from "../rule-library/schema.js";
+import { governedContentHash, loadPackLock } from "../packs/materialize.js";
+import { PACK_LOCK_FILE } from "../packs/schema.js";
 import type { ValidationError } from "./structural.js";
 
 export async function validatePackIntegrity(projectRoot: string): Promise<ValidationError[]> {

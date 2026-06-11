@@ -21,6 +21,7 @@ This document provides a comprehensive reference for all 24 commands, arguments,
 | [`bp template`](#bp-template) | Installs and manages templates from internal registry | `list`, `install <pkg>`, `publish <path>` |
 | [`bp doctor`](#bp-doctor) | Executes diagnostics and cost calculations | `--tool`, `--verbose`, `--cost` |
 | [`bp rule`](#bp-rule) | Lints and graphs scope dependencies for rules; manages rule packs | `lint <file>`, `test <file>`, `graph`, `pack:create`, `pack:lint`, `pack:install`, `pack:remove`, `pack:list` |
+| [`bp skill`](#bp-skill) | Authors, validates, dry-runs, and shares skills; manages skill packs | `new <name>`, `lint [glob]`, `list`, `test <file>`, `pack:create`, `pack:lint`, `pack:install`, `pack:remove`, `pack:list` |
 | [`bp hook`](#bp-hook) | Generates and validates pre-execution agent scripts | `generate`, `validate <file>` |
 | [`bp config`](#bp-config) | Modifies global user CLI default variables | `get <key>`, `set <key> <value>`, `reset` |
 | [`bp update`](#bp-update) | Updates bp itself to the latest version | None |
@@ -203,6 +204,24 @@ Rule management utilities.
   * `pack:search <query>`: Searches built-in and project packs by name, description, or tags.
 * **Example**: `bp rule lint .claude/rules/01-security.md`
 * **See also**: [Rule Packs guide](rule-packs.md)
+
+### `bp skill`
+
+Skill authoring and governance (layer 4). Skills use the canonical format (SkillSchema frontmatter + procedure body) and flow through the same validation `bp verify` runs.
+
+* **Subcommands**:
+  * `new <name>`: Scaffolds a skill into the active backend's skills directory. Flags: `--description <text>`, `--tools <a,b>` (canonical vocabulary), `--risk low|medium|high`, `--backend <b>`. Refuses name collisions; the output passes `bp skill lint` by construction.
+  * `lint [glob]`: Runs the skill validation table (schema, collisions, unknown tools, procedure quality, vague triggers, stale paths) over the matched files (default: the backend's skills dir). `--json` for machine output. Exits 3 on errors.
+  * `list`: Table of skills with name, risk, tools, provenance (`scaffolded | pack:<id> | manual`), and file path. `--json` supported.
+  * `test <file>`: Static dry-run — prints canonical → backend tool resolution, runs the validation checks against the target backend's capability list, and round-trips the skill through the translator (`--backend cursor` etc.), reporting any fidelity loss explicitly.
+  * `pack:create <id>`: Scaffolds a `kind: skills` pack at `.bp/packs/<id>.bp-pack.yaml`.
+  * `pack:lint <path>`: Validates a skill pack (schema, kind, duplicate skill ids). `--json` supported.
+  * `pack:install <ref>`: Materializes one skill file per entry (`pack-<packId>-<skillId>.md`) into the backend's skills dir and records the install in `.bp/packs.lock.json`. `--force`, `--dry-run`, `--backend` as for rule packs.
+  * `pack:remove <id>`: Deletes the pack's generated skill files and lockfile entry (hash-guarded; `--force` to override).
+  * `pack:list`: Lists project and installed skill packs.
+* **Example**: `bp skill new deploy-check --tools read_file,run_command --risk low`
+* **Error codes**: [3](troubleshooting.md#code-3) Semantic failure · [1](troubleshooting.md#code-1) Unexpected error
+* **See also**: [Skill Authoring guide](skill-authoring.md)
 
 ### `bp hook`
 

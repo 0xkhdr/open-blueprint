@@ -1,6 +1,15 @@
 {
   "backend": "claude",
   "version": "2026.1",
+  "tools": [
+    "read_file",
+    "write_file",
+    "edit_file",
+    "run_command",
+    "run_tests",
+    "search",
+    "web_fetch"
+  ],
   "supported_features": {
     "anchors": true,
     "rules": true,

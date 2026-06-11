@@ -4,7 +4,7 @@ import {
   createEmptyPackLock,
   PackLockSchema,
   RulePackSchema,
-} from "../../../src/rule-library/schema.js";
+} from "../../../src/packs/schema.js";
 
 function validPackData(): Record<string, unknown> {
   return {
@@ -85,13 +85,74 @@ describe("RulePackSchema", () => {
   });
 });
 
+describe("RulePackSchema — kind: skills (Stage 3)", () => {
+  function validSkillPackData(): Record<string, unknown> {
+    return {
+      schema: "bp-pack/1",
+      id: "acme-skills",
+      name: "ACME Skills",
+      version: "1.0.0",
+      kind: "skills",
+      framework: "custom",
+      description: "House skills",
+      author: "platform@acme.test",
+      tags: [],
+      skills: [
+        {
+          name: "deploy-check",
+          description: "Verify a deployment is healthy",
+          when_to_use: "After every production deploy",
+          tools_required: ["read_file", "run_command"],
+          procedure: "## Procedure\n1. Check the health endpoint.",
+          risk: "low",
+        },
+      ],
+    };
+  }
+
+  it("accepts a valid skill pack", () => {
+    const parsed = RulePackSchema.parse(validSkillPackData());
+    expect(parsed.kind).toBe("skills");
+    expect(parsed.skills[0]?.risk).toBe("low");
+    expect(parsed.rules).toEqual([]);
+  });
+
+  it("rejects a skills pack without skills", () => {
+    const result = RulePackSchema.safeParse({ ...validSkillPackData(), skills: [] });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path.join(".") === "skills")).toBe(true);
+    }
+  });
+
+  it("rejects a skills pack that also declares rules", () => {
+    const result = RulePackSchema.safeParse({
+      ...validSkillPackData(),
+      rules: [{ id: "r", scope: "**/*", severity: "soft", action: "x" }],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a rules pack that declares skills", () => {
+    const data = validPackData();
+    data.skills = (validSkillPackData() as { skills: unknown }).skills;
+    const result = RulePackSchema.safeParse(data);
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects unknown kinds", () => {
+    const result = RulePackSchema.safeParse({ ...validSkillPackData(), kind: "agents" });
+    expect(result.success).toBe(false);
+  });
+});
+
 describe("PackLockSchema", () => {
   it("round-trips an empty lock", () => {
     const lock = createEmptyPackLock();
     expect(PackLockSchema.parse(JSON.parse(JSON.stringify(lock)))).toEqual(lock);
   });
 
-  it("round-trips a lock with an entry", () => {
+  it("round-trips a lock with an entry, defaulting pre-Stage-3 fields", () => {
     const lock = {
       schema: "bp-pack-lock/1",
       installed: [
@@ -106,7 +167,11 @@ describe("PackLockSchema", () => {
         },
       ],
     };
-    expect(PackLockSchema.parse(JSON.parse(JSON.stringify(lock)))).toEqual(lock);
+    // Old lockfiles stay readable; kind/skills_count default for rule packs.
+    expect(PackLockSchema.parse(JSON.parse(JSON.stringify(lock)))).toEqual({
+      ...lock,
+      installed: [{ ...lock.installed[0], kind: "rules", skills_count: 0 }],
+    });
   });
 
   it("rejects a bad content hash", () => {

@@ -1,4 +1,4 @@
-export type { RulePack } from "./schema.js";
+export type { RulePack } from "../packs/schema.js";
 
 export interface RuleLibraryIndex {
   version: "1.0";

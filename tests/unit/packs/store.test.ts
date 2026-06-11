@@ -9,7 +9,7 @@ import {
   loadPackFromFile,
   loadProjectPacks,
   resolvePack,
-} from "../../../src/rule-library/store.js";
+} from "../../../src/packs/store.js";
 
 let tmpDir: string;
 
@@ -70,6 +70,7 @@ describe("loadPackFromFile", () => {
       name: "ACME JSON",
       version: "2.0.0",
       kind: "rules",
+      skills: [],
       framework: "custom",
       description: "JSON pack",
       author: "x@acme.test",

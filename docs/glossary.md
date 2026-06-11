@@ -179,3 +179,30 @@ Permalink: Provenance
 
 * **Definition**: The `pack_id` and `pack_version` frontmatter keys stamped into every materialized rule file, identifying which pack (and version) generated it. Provenance is what lets `--force` re-installs and `pack:remove` touch only a pack's own files, never foreign or hand-written rules.
 * **Where Used**: Written during materialization; checked by `pack:install --force`, `pack:remove`, and the pack integrity drift check.
+
+---
+
+### Skill
+
+Permalink: Skill
+
+* **Definition**: A governance layer-4 artifact: a markdown file whose YAML frontmatter carries the `SkillSchema` fields (`name`, `description`, `when_to_use`, `tools_required`, optional `risk`/`id`/`disable_model_invocation`) and whose body is the numbered procedure the agent follows. Authored once in the canonical, backend-neutral format and translated to any backend through the IR. See [Skill Authoring](skill-authoring.md).
+* **Where Used**: `bp skill new | lint | list | test`; validated by `bp verify` (semantic level, `SKILL_*` findings).
+
+---
+
+### Canonical Tool
+
+Permalink: Canonical Tool
+
+* **Definition**: An entry in the backend-neutral tool vocabulary (`read_file`, `write_file`, `edit_file`, `run_command`, `run_tests`, `search`, `web_fetch`, plus pass-through `mcp:<tool>` references). Skills declare `tools_required` canonically; per-backend alias maps translate to native names (e.g. `read_file` → `read` on claude, `file_read` on opendev), and each backend manifest's `tools` array is its capability list.
+* **Where Used**: `src/translator/tools.ts`; checked by the skill validator (`SKILL_UNKNOWN_TOOL`) and resolved by `bp skill test`.
+
+---
+
+### Skill Pack
+
+Permalink: Skill Pack
+
+* **Definition**: A `bp-pack/1` file with `kind: skills`: 1–100 complete skill entries (procedure body included) sharing the rule-pack identity metadata, store resolution, lockfile, idempotent materialization (`pack-<packId>-<skillId>.md` in the backend's skills dir), and hash-guarded removal. Installed pack skills flow through the same skill validation as hand-written ones.
+* **Where Used**: `bp skill pack:create | pack:lint | pack:install | pack:remove | pack:list`; recorded in `.bp/packs.lock.json` with `kind` and `skills_count`.

@@ -17,7 +17,8 @@ import fg from "fast-glob";
 import yaml from "js-yaml";
 import type { ZodError } from "zod";
 import { BpError } from "../errors.js";
-import { BUILT_IN_PACKS } from "./packs.js";
+import { BUILT_IN_PACKS } from "../rule-library/packs.js";
+import { skillId } from "../translator/skill-file.js";
 import {
   PACK_FILE_EXTENSIONS,
   PROJECT_PACKS_DIR,
@@ -67,20 +68,28 @@ function parsePackDocument(raw: string, filePath: string): unknown {
   }
 }
 
-/** Reject packs with duplicate rule ids (`PACK_DUPLICATE_RULE`). */
-export function assertUniqueRuleIds(pack: RulePack, origin: string): void {
+/**
+ * Reject packs with duplicate item ids (`PACK_DUPLICATE_RULE`): rule ids for
+ * rule packs, resolved skill ids (explicit `id` or slugified name) for skill
+ * packs.
+ */
+export function assertUniquePackItemIds(pack: RulePack, origin: string): void {
+  const ids =
+    pack.kind === "rules" ? pack.rules.map((r) => r.id) : pack.skills.map((s) => skillId(s));
+  const noun = pack.kind === "rules" ? "rule" : "skill";
+
   const seen = new Set<string>();
   const duplicates = new Set<string>();
-  for (const rule of pack.rules) {
-    if (seen.has(rule.id)) duplicates.add(rule.id);
-    seen.add(rule.id);
+  for (const id of ids) {
+    if (seen.has(id)) duplicates.add(id);
+    seen.add(id);
   }
   if (duplicates.size > 0) {
     throw new BpError(
-      `PACK_DUPLICATE_RULE: pack '${pack.id}' (${origin}) declares duplicate rule ids: ${[...duplicates].join(", ")}`,
+      `PACK_DUPLICATE_RULE: pack '${pack.id}' (${origin}) declares duplicate ${noun} ids: ${[...duplicates].join(", ")}`,
       1,
       "PACK_DUPLICATE_RULE",
-      "Give every rule in the pack a unique id"
+      `Give every ${noun} in the pack a unique id`
     );
   }
 }
@@ -108,7 +117,7 @@ export function validatePackData(data: unknown, origin: string): RulePack {
       "Fix the listed fields; see docs/rule-packs.md for the format reference"
     );
   }
-  assertUniqueRuleIds(result.data, origin);
+  assertUniquePackItemIds(result.data, origin);
   return result.data;
 }
 

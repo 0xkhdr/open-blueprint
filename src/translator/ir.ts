@@ -51,6 +51,10 @@ export const SkillSchema = z.object({
   tools_required: z.array(irShortString),
   procedure: irContentField,
   disable_model_invocation: z.boolean().optional(),
+  // Stage 3: stable identifier (defaults to slugified name) and risk tier
+  // mapped to the templates/_base risk tiers.
+  id: irIdentifier.optional(),
+  risk: z.enum(["low", "medium", "high"]).optional(),
 });
 
 export const HookSchema = z.object({

@@ -7,8 +7,8 @@ import {
   installPackToProject,
   loadPackLock,
   removePack,
-} from "../../src/rule-library/materialize.js";
-import { loadPackFromFile, resolvePack } from "../../src/rule-library/store.js";
+} from "../../src/packs/materialize.js";
+import { loadPackFromFile, resolvePack } from "../../src/packs/store.js";
 import { resolveTemplatePack } from "../../src/templater/selector.js";
 import { EXIT_CODES, exitCodeForResult, runValidator } from "../../src/validator/index.js";
 

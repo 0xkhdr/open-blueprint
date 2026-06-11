@@ -1,0 +1,28 @@
+schema: bp-pack/1
+id: acme-skills
+name: ACME Skills
+version: 1.0.0
+kind: skills
+framework: custom
+description: House skills for the fixture project
+author: platform@acme.test
+tags: [testing]
+skills:
+  - name: endpoint-smoke
+    description: Smoke-test an HTTP endpoint after deploy
+    when_to_use: After every production deploy
+    tools_required: [read_file, run_command]
+    risk: low
+    procedure: |
+      ## Procedure
+      1. Read `src/index.ts` to find the health flag.
+      2. Run the smoke command and confirm a 200 response.
+  - name: rollback-release
+    description: Roll back a bad release
+    when_to_use: When the smoke test fails twice in a row
+    tools_required: [run_command]
+    risk: high
+    procedure: |
+      ## Procedure
+      1. Identify the last good release tag.
+      2. Trigger the rollback pipeline and verify health.

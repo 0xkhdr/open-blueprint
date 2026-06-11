@@ -32,7 +32,7 @@ Permalink: The 5 Blueprint Layers
 | **1** | **Spatial Anchor** | `CLAUDE.md` / `.claude/CLAUDE.md` | Contextualizes where the agent is in the project lifecycle, outlining commands and topology. |
 | **2** | **Personas / Agents** | `.claude/agents/*.md` | Defines agent capabilities, permitted tools, and reasoning styles (e.g. Planner, Implementer, Reviewer). |
 | **3** | **Rules** | `.claude/rules/*.md` | Establishes hard and soft constraints on the filesystem (e.g., security guidelines, styling patterns). |
-| **4** | **Skills** | `.claude/skills/*.md` | Provides reusable step-by-step procedures to accomplish tasks (e.g. adding tests, refactoring async). |
+| **4** | **Skills** | `.claude/skills/*.md` | Provides reusable step-by-step procedures to accomplish tasks (e.g. adding tests, refactoring async). Client-authored via `bp skill new`, validated by the skill checks at the semantic level of `bp verify` (schema, tool capabilities, collisions, procedure quality), declared in the canonical tool vocabulary, and shareable as `kind: skills` packs. See [Skill Authoring](skill-authoring.md). |
 | **5** | **Hooks** | `.claude/hooks/*` | Orchestrates lifecycle callback scripts run at tool boundaries (e.g., `pre_tool_use.js`). |
 
 ---
