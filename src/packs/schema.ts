@@ -105,18 +105,31 @@ export type RulePack = z.infer<typeof RulePackSchema>;
 
 const sha256Hex = z.string().regex(/^[a-f0-9]{64}$/, "must be a sha256 hex digest");
 
+/** Lockfile kinds: pack kinds plus Stage 5 plugin artifacts. */
+export const PackLockKindSchema = z.enum(["rules", "skills", "plugin"]);
+export type PackLockKind = z.infer<typeof PackLockKindSchema>;
+
 export const PackLockEntrySchema = z.object({
   id: irIdentifier,
   version: z.string().regex(SEMVER_RE),
-  /** Where the pack came from: "built-in", "project", or a file path. */
-  source: irShortString,
+  /**
+   * Where the pack came from: "built-in", "project", a file path, or a
+   * Stage 5 remote ref (https URL, github: ref, registry:<index-url>).
+   */
+  source: z.string().min(1).max(500),
   /** Pre-Stage-3 lockfiles omit this; rule packs were the only kind. */
-  kind: PackKindSchema.default("rules"),
+  kind: PackLockKindSchema.default("rules"),
   rules_count: z.number().int().min(0),
   skills_count: z.number().int().min(0).default(0),
   installed_at: z.string(),
   /** sha256 of the canonical JSON of the pack — Stage 6 uses it for drift. */
   content_hash: sha256Hex,
+  /** Stage 5: sha256 of the distributed artifact tarball (pin for CI installs). */
+  artifact_sha256: sha256Hex.optional(),
+  /** Stage 5: `publisher` field from the signed artifact manifest. */
+  publisher: z.string().max(200).optional(),
+  /** Stage 5 trust outcome: `signed:<keyname>` or `unsigned-accepted`. */
+  trust: z.string().max(200).optional(),
   /**
    * Generated files, keyed by POSIX path relative to the project root.
    * The hash covers the governed (non-preserve) content so user preserve

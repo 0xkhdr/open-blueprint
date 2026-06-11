@@ -9,9 +9,22 @@ import * as fsPromises from "node:fs/promises";
 import * as path from "node:path";
 import { governedContentHash, loadPackLock } from "../packs/materialize.js";
 import { PACK_LOCK_FILE } from "../packs/schema.js";
+import { compareSemver, findIndexEntry, type RegistryIndex } from "../registry/registry-index.js";
 import type { ValidationError } from "./structural.js";
 
-export async function validatePackIntegrity(projectRoot: string): Promise<ValidationError[]> {
+export interface PackIntegrityOptions {
+  /**
+   * Verified registry index (Stage 5). When provided, installed packs whose
+   * index entry advertises a newer version get a `PACK_OUTDATED` info
+   * finding. Callers fetch it best-effort — never block verify on network.
+   */
+  registryIndex?: RegistryIndex | null;
+}
+
+export async function validatePackIntegrity(
+  projectRoot: string,
+  options: PackIntegrityOptions = {}
+): Promise<ValidationError[]> {
   const errors: ValidationError[] = [];
 
   let lock: Awaited<ReturnType<typeof loadPackLock>>;
@@ -29,6 +42,18 @@ export async function validatePackIntegrity(projectRoot: string): Promise<Valida
   }
 
   for (const entry of lock.installed) {
+    if (options.registryIndex) {
+      const indexEntry = findIndexEntry(options.registryIndex, entry.id);
+      if (indexEntry && compareSemver(indexEntry.version, entry.version) > 0) {
+        errors.push({
+          file: path.join(projectRoot, PACK_LOCK_FILE),
+          type: "PACK_OUTDATED",
+          severity: "info",
+          message: `Pack '${entry.id}' is installed at v${entry.version} but the registry index advertises v${indexEntry.version}`,
+          resolution: `Run \`bp rule pack:install ${entry.id} --force\` (or the skill/plugin equivalent) to upgrade`,
+        });
+      }
+    }
     for (const [relPath, expectedHash] of Object.entries(entry.files)) {
       const absPath = path.join(projectRoot, relPath);
       let content: string;

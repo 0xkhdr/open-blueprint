@@ -27,6 +27,7 @@ import { normalizeError } from "../../utils/errors.js";
 import { EXIT_CODES } from "../../validator/index.js";
 import { validateSkillFiles } from "../../validator/skills.js";
 import type { ValidationError } from "../../validator/structural.js";
+import { installArtifactRef } from "../pack-install.js";
 import { resolveBackendManifest, resolveBackendName } from "../resolve-backend.js";
 
 const SKILL_NAME_RE = /^[a-z0-9][a-z0-9_-]*$/;
@@ -434,17 +435,38 @@ function registerPackCommands(cmd: Command): void {
 
   cmd
     .command("pack:install <ref>")
-    .description("Install a skill pack (project pack id or file path) as skill files")
+    .description(
+      "Install a skill pack (project pack id, file path, https/github artifact ref, or registry id)"
+    )
     .option("--force", "Replace this pack's own generated files (never touches others)", false)
     .option("--dry-run", "Preview without writing files", false)
+    .option("--allow-unsigned", "Accept an unsigned remote artifact (recorded in lockfile)", false)
     .option("--backend <backend>", "Target backend (default: project config)")
     .action(
-      async (ref: string, options: { force?: boolean; dryRun?: boolean; backend?: string }) => {
+      async (
+        ref: string,
+        options: { force?: boolean; dryRun?: boolean; backend?: string; allowUnsigned?: boolean }
+      ) => {
         const { resolvePack, assertNoBuiltinCollision } = await import("../../packs/store.js");
         const { installPackToProject } = await import("../../packs/materialize.js");
+        const { isArtifactRef } = await import("../../registry/client.js");
 
         const cwd = process.cwd();
+
+        // Stage 5: remote signed artifacts go through the verified pipeline.
+        if (isArtifactRef(ref)) {
+          await installArtifactRef(ref, "skills", options);
+          return;
+        }
+
         const loaded = await resolvePack(ref, cwd);
+        if (!loaded && !ref.includes("/") && !ref.includes(path.sep)) {
+          const { loadUserConfig } = await import("../../config/user.js");
+          if (loadUserConfig().registry_url) {
+            await installArtifactRef(ref, "skills", options);
+            return;
+          }
+        }
         if (!loaded) {
           fail(`skill pack not found: ${ref}`, "PACK_NOT_FOUND", "Run 'bp skill pack:list'");
         }

@@ -17,6 +17,7 @@ import { EXIT_CODES } from "../../validator/index.js";
 import { validateSemantic } from "../../validator/semantic.js";
 import type { ValidationError } from "../../validator/structural.js";
 import { validateStructural } from "../../validator/structural.js";
+import { installArtifactRef } from "../pack-install.js";
 import { resolveBackendManifest } from "../resolve-backend.js";
 
 interface RuleMeta {
@@ -672,57 +673,86 @@ function registerPackCommands(cmd: Command): void {
 
   cmd
     .command("pack:install <ref>")
-    .description("Install a rule pack (built-in id, project pack id, or file path) as rule files")
+    .description(
+      "Install a rule pack (built-in id, project pack id, file path, https/github artifact ref, or registry id)"
+    )
     .option("--force", "Replace this pack's own generated files (never touches others)", false)
     .option("--dry-run", "Preview without writing files", false)
-    .action(async (ref: string, options: { force?: boolean; dryRun?: boolean }) => {
-      const { resolvePack, assertNoBuiltinCollision } = await import("../../packs/store.js");
-      const { installPackToProject } = await import("../../packs/materialize.js");
+    .option("--allow-unsigned", "Accept an unsigned remote artifact (recorded in lockfile)", false)
+    .action(
+      async (
+        ref: string,
+        options: { force?: boolean; dryRun?: boolean; allowUnsigned?: boolean }
+      ) => {
+        const { resolvePack, assertNoBuiltinCollision } = await import("../../packs/store.js");
+        const { installPackToProject } = await import("../../packs/materialize.js");
+        const { isArtifactRef } = await import("../../registry/client.js");
 
-      const cwd = process.cwd();
-      const loaded = await resolvePack(ref, cwd);
-      if (!loaded) {
-        console.error(chalk.red(`Error: rule pack not found: ${ref}`));
-        console.error(chalk.dim("  Run 'bp rule pack:list' to see available packs."));
-        throw new BpError("Command failed", 1, "PACK_NOT_FOUND", "");
-      }
+        const cwd = process.cwd();
 
-      if (loaded.pack.kind !== "rules") {
-        console.error(chalk.red(`Error: '${loaded.pack.id}' is a '${loaded.pack.kind}' pack`));
-        console.error(chalk.dim("  Install skill packs with 'bp skill pack:install'."));
-        throw new BpError("Command failed", 1, "PACK_WRONG_KIND", "");
-      }
+        // Stage 5: remote signed artifacts (and registry ids when nothing
+        // local matches) go through the verified install pipeline.
+        if (isArtifactRef(ref)) {
+          await installArtifactRef(ref, "rules", options);
+          return;
+        }
 
-      if (loaded.source !== "built-in" && !options.force) {
-        assertNoBuiltinCollision(loaded.pack);
-      }
+        const loaded = await resolvePack(ref, cwd);
+        if (!loaded && !ref.includes("/") && !ref.includes(path.sep)) {
+          // Bare id with no local match: try the configured registry index.
+          const { loadUserConfig } = await import("../../config/user.js");
+          if (loadUserConfig().registry_url) {
+            await installArtifactRef(ref, "rules", options);
+            return;
+          }
+        }
+        if (!loaded) {
+          console.error(chalk.red(`Error: rule pack not found: ${ref}`));
+          console.error(chalk.dim("  Run 'bp rule pack:list' to see available packs."));
+          throw new BpError("Command failed", 1, "PACK_NOT_FOUND", "");
+        }
 
-      const manifest = await resolveBackendManifest(cwd);
-      const result = await installPackToProject(loaded, {
-        projectRoot: cwd,
-        manifest,
-        force: options.force ?? false,
-        dryRun: options.dryRun ?? false,
-      });
+        if (loaded.pack.kind !== "rules") {
+          console.error(chalk.red(`Error: '${loaded.pack.id}' is a '${loaded.pack.kind}' pack`));
+          console.error(chalk.dim("  Install skill packs with 'bp skill pack:install'."));
+          throw new BpError("Command failed", 1, "PACK_WRONG_KIND", "");
+        }
 
-      const verb = options.dryRun ? "[dry-run] Would install" : "Installed";
-      console.log(
-        chalk.green(`✓ ${verb} pack '${loaded.pack.id}' v${loaded.pack.version} (${loaded.source})`)
-      );
-      for (const f of result.written) console.log(chalk.green(`  + ${f}`));
-      for (const f of result.skipped) console.log(chalk.dim(`  = ${f} (kept existing)`));
-      for (const f of result.conflicts)
-        console.warn(chalk.yellow(`  ! ${f} belongs to another pack or is hand-written; skipped`));
-      if (!options.dryRun) console.log(chalk.dim("  Lockfile updated: .bp/packs.lock.json"));
+        if (loaded.source !== "built-in" && !options.force) {
+          assertNoBuiltinCollision(loaded.pack);
+        }
 
-      const semanticWarnings = result.semantic.filter((e) => e.severity !== "info");
-      if (semanticWarnings.length > 0) {
-        console.warn(chalk.yellow("\n  Scope sanity findings:"));
-        for (const w of semanticWarnings) {
-          console.warn(chalk.yellow(`  ⚠ [${w.type}] ${w.file}: ${w.message}`));
+        const manifest = await resolveBackendManifest(cwd);
+        const result = await installPackToProject(loaded, {
+          projectRoot: cwd,
+          manifest,
+          force: options.force ?? false,
+          dryRun: options.dryRun ?? false,
+        });
+
+        const verb = options.dryRun ? "[dry-run] Would install" : "Installed";
+        console.log(
+          chalk.green(
+            `✓ ${verb} pack '${loaded.pack.id}' v${loaded.pack.version} (${loaded.source})`
+          )
+        );
+        for (const f of result.written) console.log(chalk.green(`  + ${f}`));
+        for (const f of result.skipped) console.log(chalk.dim(`  = ${f} (kept existing)`));
+        for (const f of result.conflicts)
+          console.warn(
+            chalk.yellow(`  ! ${f} belongs to another pack or is hand-written; skipped`)
+          );
+        if (!options.dryRun) console.log(chalk.dim("  Lockfile updated: .bp/packs.lock.json"));
+
+        const semanticWarnings = result.semantic.filter((e) => e.severity !== "info");
+        if (semanticWarnings.length > 0) {
+          console.warn(chalk.yellow("\n  Scope sanity findings:"));
+          for (const w of semanticWarnings) {
+            console.warn(chalk.yellow(`  ⚠ [${w.type}] ${w.file}: ${w.message}`));
+          }
         }
       }
-    });
+    );
 
   cmd
     .command("pack:remove <id>")
@@ -838,14 +868,44 @@ function registerPackCommands(cmd: Command): void {
           .map(({ pack }) => ({ pack, source: "project" as const })),
       ];
 
-      if (results.length === 0) {
+      // Stage 5: consult the configured signed registry index, best-effort.
+      const registryMatches: Array<{
+        id: string;
+        version: string;
+        description?: string | undefined;
+      }> = [];
+      const { loadUserConfig } = await import("../../config/user.js");
+      const registryUrl = loadUserConfig().registry_url;
+      if (registryUrl) {
+        try {
+          const { fetchRegistryIndex } = await import("../../registry/client.js");
+          const index = await fetchRegistryIndex(registryUrl);
+          for (const entry of index.packs) {
+            if (entry.kind !== "rules") continue;
+            const haystack = [entry.id, entry.description ?? "", ...(entry.tags ?? [])]
+              .join(" ")
+              .toLowerCase();
+            if (haystack.includes(lowerQuery)) registryMatches.push(entry);
+          }
+        } catch (e) {
+          console.warn(
+            chalk.yellow(`  ⚠ registry index unavailable: ${normalizeError(e).message}`)
+          );
+        }
+      }
+
+      if (results.length === 0 && registryMatches.length === 0) {
         console.log(chalk.yellow(`No rule packs found matching: ${query}`));
         return;
       }
-      console.log(chalk.bold(`Found ${results.length} pack(s):\n`));
+      console.log(chalk.bold(`Found ${results.length + registryMatches.length} pack(s):\n`));
       for (const { pack, source } of results) {
         console.log(chalk.cyan(`  ${pack.id}`) + chalk.dim(` (${source})`));
         console.log(`    ${pack.description}`);
+      }
+      for (const entry of registryMatches) {
+        console.log(chalk.cyan(`  ${entry.id}`) + chalk.dim(` v${entry.version} (registry)`));
+        if (entry.description) console.log(`    ${entry.description}`);
       }
     });
 }

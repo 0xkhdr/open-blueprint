@@ -158,12 +158,26 @@ export async function savePackLock(projectRoot: string, lock: PackLock): Promise
 // Install
 // ---------------------------------------------------------------------------
 
+/** Stage 5 distribution provenance recorded alongside the lock entry. */
+export interface DistributionInfo {
+  /** Remote source ref (https URL, github: ref, registry:<index-url>). */
+  source: string;
+  /** sha256 of the artifact tarball the pack was installed from. */
+  artifact_sha256: string;
+  /** `publisher` field of the signed artifact manifest. */
+  publisher?: string;
+  /** Trust outcome: `signed:<keyname>` or `unsigned-accepted`. */
+  trust: string;
+}
+
 export interface MaterializeOptions {
   projectRoot: string;
   manifest: BackendManifest;
   /** Replace this pack's own generated files; never touches foreign files. */
   force?: boolean;
   dryRun?: boolean;
+  /** Present when the pack arrived as a Stage 5 signed artifact. */
+  distribution?: DistributionInfo;
 }
 
 export interface MaterializeResult {
@@ -251,7 +265,7 @@ export async function installPackToProject(
   loaded: LoadedPack,
   options: MaterializeOptions
 ): Promise<MaterializeResult> {
-  const { projectRoot, manifest, force = false, dryRun = false } = options;
+  const { projectRoot, manifest, force = false, dryRun = false, distribution } = options;
   const { pack } = loaded;
 
   const { dir: targetDir, items } = planMaterialization(pack, manifest);
@@ -310,7 +324,9 @@ export async function installPackToProject(
     const lockEntry: PackLockEntry = {
       id: pack.id,
       version: pack.version,
-      source: loaded.source === "path" ? (loaded.path ?? "path") : loaded.source,
+      source:
+        distribution?.source ??
+        (loaded.source === "path" ? (loaded.path ?? "path") : loaded.source),
       kind: pack.kind,
       rules_count: pack.rules.length,
       skills_count: pack.skills.length,
@@ -318,6 +334,11 @@ export async function installPackToProject(
       content_hash: canonicalPackHash(pack),
       files,
     };
+    if (distribution) {
+      lockEntry.artifact_sha256 = distribution.artifact_sha256;
+      if (distribution.publisher !== undefined) lockEntry.publisher = distribution.publisher;
+      lockEntry.trust = distribution.trust;
+    }
 
     const lock = await loadPackLock(projectRoot);
     lock.installed = [...lock.installed.filter((e) => e.id !== pack.id), lockEntry];

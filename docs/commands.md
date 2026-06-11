@@ -20,8 +20,10 @@ This document provides a comprehensive reference for all 24 commands, arguments,
 | [`bp merge`](#bp-merge) | Three-way merge of blueprints with conflict detection | `<base> <ours> <theirs>`, `--output` |
 | [`bp template`](#bp-template) | Installs and manages templates from internal registry | `list`, `install <pkg>`, `publish <path>` |
 | [`bp doctor`](#bp-doctor) | Executes diagnostics and cost calculations | `--tool`, `--verbose`, `--cost` |
-| [`bp rule`](#bp-rule) | Lints and graphs scope dependencies for rules; manages rule packs | `lint <file>`, `test <file>`, `graph`, `pack:create`, `pack:lint`, `pack:install`, `pack:remove`, `pack:list` |
-| [`bp skill`](#bp-skill) | Authors, validates, dry-runs, and shares skills; manages skill packs | `new <name>`, `lint [glob]`, `list`, `test <file>`, `pack:create`, `pack:lint`, `pack:install`, `pack:remove`, `pack:list` |
+| [`bp rule`](#bp-rule) | Lints and graphs scope dependencies for rules; manages rule packs | `lint <file>`, `test <file>`, `graph`, `pack:create`, `pack:lint`, `pack:install` (`--allow-unsigned` for remote artifacts), `pack:remove`, `pack:list` |
+| [`bp skill`](#bp-skill) | Authors, validates, dry-runs, and shares skills; manages skill packs | `new <name>`, `lint [glob]`, `list`, `test <file>`, `pack:create`, `pack:lint`, `pack:install` (`--allow-unsigned` for remote artifacts), `pack:remove`, `pack:list` |
+| [`bp pack`](#bp-pack) | Publishes signed pack artifacts and installs plugin artifacts (see [docs/pack-distribution.md](pack-distribution.md)) | `keygen <name>`, `publish <file> --key <pem>`, `index:build <dir> --key <pem>`, `plugin:install <ref>` |
+| [`bp trust`](#bp-trust) | Manages the local keyring for verifying signed pack artifacts | `add <name> <pub.pem>`, `list`, `remove <name>` |
 | [`bp hook`](#bp-hook) | Generates and validates pre-execution agent scripts | `generate`, `validate <file>` |
 | [`bp config`](#bp-config) | Modifies global user CLI default variables | `get <key>`, `set <key> <value>`, `reset` |
 | [`bp update`](#bp-update) | Updates bp itself to the latest version | None |
@@ -357,3 +359,32 @@ Template packs are ordinary npm packages tagged with `backend:`, `framework:`,
 * **Note**: Installing and publishing template packs is handled by
   [`bp template`](#bp-template), not `bp marketplace`.
 * **Error codes**: [8](troubleshooting.md#code-8) Network error · [9](troubleshooting.md#code-9) Path traversal
+
+### `bp pack`
+
+Publish and install signed pack artifacts (Stage 5 — see
+[docs/pack-distribution.md](pack-distribution.md)).
+
+* **Subcommands**:
+  * `keygen <name>`: Generate an RSA signing keypair under `~/.bp/keys/`
+    (private key written with `0600`; refuses to overwrite).
+  * `publish <file> --key <private.pem> [--out <dir>]`: Validate a pack file
+    (or `.mjs` plugin bundle with `--id`, `--version`, `--publisher`), build the
+    signed `bp-artifact/1` tarball, and write an `index-entry.json` snippet.
+  * `index:build <dir> --key <private.pem> [--base-url <url>]`: Assemble the
+    published index entries in a directory into a signed `index.json`/`index.sig`.
+  * `plugin:install <ref>`: Install a plugin artifact from an https URL,
+    `github:` ref, local `.bp-pack.tgz`, or registry id. Unsigned plugins
+    require `--allow-unsigned` and print a security warning (plugins execute code).
+* **Example**: `bp pack publish .bp/packs/security.bp-pack.yaml --key ~/.bp/keys/acme.pem --out dist/`
+
+### `bp trust`
+
+Manage the local trust keyring (`~/.bp/trust.json`) used to verify signed
+artifacts and registry indexes.
+
+* **Subcommands**:
+  * `add <name> <pubkey.pem>`: Trust a publisher's public key.
+  * `list [--json]`: Show the configured keys and signature policy.
+  * `remove <name>`: Stop trusting a key.
+* **Example**: `bp trust add acme-platform ./acme-platform.pub`

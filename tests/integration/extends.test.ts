@@ -9,14 +9,20 @@ import { RegistryClient } from "../../src/registry/client.js";
 describe("blueprint extends / inheritance", () => {
   let tmpDir: string;
 
+  let prevMock: string | undefined;
+
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "bp-extends-test-"));
     fs.rmSync(path.join(os.homedir(), ".bp", "templates"), { recursive: true, force: true });
+    prevMock = process.env.BP_REGISTRY_MOCK;
+    process.env.BP_REGISTRY_MOCK = "1";
   });
 
   afterEach(() => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
     fs.rmSync(path.join(os.homedir(), ".bp", "templates"), { recursive: true, force: true });
+    if (prevMock === undefined) delete process.env.BP_REGISTRY_MOCK;
+    else process.env.BP_REGISTRY_MOCK = prevMock;
     RegistryClient.clearMockPackages();
   });
 

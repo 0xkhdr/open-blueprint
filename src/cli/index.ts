@@ -23,12 +23,14 @@ import { createMCPCommand } from "./commands/mcp.js";
 import { createMemoryCommand } from "./commands/memory.js";
 import { createMergeCommand } from "./commands/merge.js";
 import { createMigrateCommand } from "./commands/migrate.js";
+import { createPackCommand } from "./commands/pack.js";
 import { createRuleCommand } from "./commands/rule.js";
 import { createSkillCommand } from "./commands/skill.js";
 import { createSyncCommand } from "./commands/sync.js";
 import { createTeamCommand } from "./commands/team.js";
 import { createTelemetryCommand } from "./commands/telemetry.js";
 import { createTemplateCommand } from "./commands/template.js";
+import { createTrustCommand } from "./commands/trust.js";
 import { createUpdateCommand } from "./commands/update.js";
 import { createVerifyCommand } from "./commands/verify.js";
 
@@ -74,6 +76,8 @@ program.addCommand(createAdoptCommand());
 program.addCommand(createEmitCommand());
 program.addCommand(createMarketplaceCommand());
 program.addCommand(createHealthCommand());
+program.addCommand(createPackCommand());
+program.addCommand(createTrustCommand());
 
 // Audit logging hook
 program.hook("preAction", (_thisCommand, actionCommand) => {

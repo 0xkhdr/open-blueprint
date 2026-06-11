@@ -430,9 +430,13 @@ async function runValidationPipeline(options: ValidatorOptions): Promise<Validat
       );
       allErrors.push(...driftErrors);
     }
-    const packIntegrityErrors = await startSpan("bp.validate.pack-integrity", () =>
-      validatePackIntegrity(projectRoot)
-    );
+    const packIntegrityErrors = await startSpan("bp.validate.pack-integrity", async () => {
+      // Stage 5: best-effort upstream-drift check against the configured
+      // signed registry index; offline/unconfigured runs skip it silently.
+      const { loadConfiguredRegistryIndex } = await import("../registry/client.js");
+      const registryIndex = await loadConfiguredRegistryIndex();
+      return validatePackIntegrity(projectRoot, { registryIndex });
+    });
     allErrors.push(...packIntegrityErrors);
   }
 
@@ -481,7 +485,29 @@ async function runValidationPipeline(options: ValidatorOptions): Promise<Validat
   if (!structuralHardFail && !options.noPlugins && pluginLevels.length > 0) {
     const { loadProjectConfigAsync } = await import("../config/project.js");
     const pluginConfig = await loadProjectConfigAsync(projectRoot);
-    const specs: PluginSpec[] = pluginConfig?.plugins ?? [];
+    // Stage 5: `artifact:<id>` plugin entries resolve through the lockfile to
+    // the installed plugin bundle under .bp/plugins/.
+    const specs: PluginSpec[] = [];
+    for (const entry of pluginConfig?.plugins ?? []) {
+      if (entry.path.startsWith("artifact:")) {
+        const artifactId = entry.path.slice("artifact:".length);
+        const { resolvePluginArtifactPath } = await import("../registry/install.js");
+        const bundlePath = await resolvePluginArtifactPath(projectRoot, artifactId);
+        if (!bundlePath) {
+          allErrors.push({
+            file: path.join(projectRoot, ".bp.json"),
+            type: "PLUGIN_ARTIFACT_NOT_FOUND",
+            severity: "error",
+            message: `Plugin entry '${entry.path}' references an artifact that is not installed`,
+            resolution: `Install it first: bp pack plugin:install <url-or-id> (artifact id '${artifactId}')`,
+          });
+          continue;
+        }
+        specs.push({ path: bundlePath, mode: entry.mode });
+      } else {
+        specs.push(entry);
+      }
+    }
     if (specs.length > 0) {
       const pluginErrors = await startSpan("bp.validate.plugins", () =>
         runConfiguredPlugins(projectRoot, manifest, fingerprint, files, pluginLevels, specs)
