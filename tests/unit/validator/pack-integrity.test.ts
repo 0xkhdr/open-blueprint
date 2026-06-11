@@ -67,25 +67,41 @@ describe("validatePackIntegrity", () => {
     expect(await validatePackIntegrity(tmpDir)).toEqual([]);
   });
 
-  it("flags missing generated files as PACK_FILE_MISSING warnings", async () => {
+  it("flags missing generated files as PACK_FILE_MISSING + aggregate PACK_DRIFTED", async () => {
     fs.rmSync(ruleFile());
     const errors = await validatePackIntegrity(tmpDir);
-    expect(errors).toHaveLength(1);
-    expect(errors[0]?.type).toBe("PACK_FILE_MISSING");
-    expect(errors[0]?.severity).toBe("warning");
+    expect(errors.map((e) => e.type)).toEqual(["PACK_FILE_MISSING", "PACK_DRIFTED"]);
+    expect(errors.every((e) => e.severity === "warning")).toBe(true);
   });
 
-  it("flags hand-edited files as PACK_FILE_MODIFIED warnings", async () => {
+  it("flags hand-edited files as PACK_FILE_MODIFIED + aggregate PACK_DRIFTED", async () => {
     fs.appendFileSync(ruleFile(), "\nEdited outside preserve.\n");
     const errors = await validatePackIntegrity(tmpDir);
-    expect(errors).toHaveLength(1);
-    expect(errors[0]?.type).toBe("PACK_FILE_MODIFIED");
-    expect(errors[0]?.severity).toBe("warning");
+    expect(errors.map((e) => e.type)).toEqual(["PACK_FILE_MODIFIED", "PACK_DRIFTED"]);
+    expect(errors.every((e) => e.severity === "warning")).toBe(true);
+    expect(errors[1]?.message).toContain("1 modified, 0 missing");
   });
 
   it("tolerates preserve-block additions", async () => {
     fs.appendFileSync(ruleFile(), "\n<!-- bp:preserve -->\nNotes.\n<!-- bp:end-preserve -->\n");
     expect(await validatePackIntegrity(tmpDir)).toEqual([]);
+  });
+
+  it("exposes structured per-pack status through auditPackIntegrity (Stage 6)", async () => {
+    const { auditPackIntegrity } = await import("../../../src/validator/pack-integrity.js");
+
+    const clean = await auditPackIntegrity(tmpDir);
+    expect(clean.packs).toEqual([
+      expect.objectContaining({ id: "acme", version: "1.0.0", integrity: "ok", outdated: false }),
+    ]);
+
+    fs.appendFileSync(ruleFile(), "\nEdited outside preserve.\n");
+    const modified = await auditPackIntegrity(tmpDir);
+    expect(modified.packs[0]?.integrity).toBe("modified");
+
+    fs.rmSync(ruleFile());
+    const missing = await auditPackIntegrity(tmpDir);
+    expect(missing.packs[0]?.integrity).toBe("missing");
   });
 
   it("reports a corrupted lockfile as an error", async () => {

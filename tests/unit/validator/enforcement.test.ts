@@ -114,3 +114,73 @@ describe("validateEnforcement — pass after remediation", () => {
     expect(result.errors).toHaveLength(0);
   });
 });
+
+describe("validateEnforcementDetailed — structured outcomes (Stage 6)", () => {
+  it("returns one outcome per rule with status/enforcement/scope and keeps errors unchanged", async () => {
+    const { errors, summary, outcomes } = await validateEnforcementDetailed(
+      FIXTURE,
+      manifestStub()
+    );
+
+    // error path guarded: same shape and counts as before the refactor
+    expect(errors.filter((e) => e.type === "RULE_VIOLATION")).toHaveLength(2);
+    expect(errors.filter((e) => e.type === "RULE_CHECK_INVALID")).toHaveLength(1);
+    expect(errors.filter((e) => e.type === "RULE_MANUAL")).toHaveLength(1);
+    expect(summary).toEqual({ enforced: 3, violations: 2, manual: 1 });
+
+    expect(outcomes).toHaveLength(5);
+    const byId = new Map(outcomes.map((o) => [o.id, o]));
+
+    expect(byId.get("fixture-passing")).toMatchObject({
+      enforcement: "auto",
+      status: "pass",
+      severity: "hard",
+      scope: "**/*",
+    });
+    expect(byId.get("fixture-failing-hard")).toMatchObject({
+      enforcement: "auto",
+      status: "fail",
+      severity: "hard",
+    });
+    expect(byId.get("fixture-failing-soft")).toMatchObject({ status: "fail", severity: "soft" });
+    expect(byId.get("fixture-malformed")).toMatchObject({ enforcement: "auto", status: "invalid" });
+    expect(byId.get("fixture-manual")).toMatchObject({
+      enforcement: "manual",
+      status: "manual",
+      scope: "**/*.ts",
+    });
+
+    // no pack provenance on hand-written rules
+    expect(byId.get("fixture-passing")?.pack).toBeUndefined();
+  });
+
+  it("captures pack provenance from pack_id/pack_version frontmatter", async () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "bp-outcomes-"));
+    try {
+      fs.mkdirSync(path.join(tmp, ".claude/rules"), { recursive: true });
+      fs.writeFileSync(
+        path.join(tmp, ".claude/rules/pack-acme-readme.md"),
+        [
+          "---",
+          "id: readme-required",
+          'scope: "**/*"',
+          "severity: soft",
+          'action: "Keep a README"',
+          "check:",
+          "  type: file-exists",
+          '  glob: "README.md"',
+          "pack_id: acme",
+          "pack_version: 1.0.0",
+          "---",
+          "",
+          "# rule",
+        ].join("\n")
+      );
+      const { outcomes } = await validateEnforcementDetailed(tmp, manifestStub());
+      expect(outcomes).toHaveLength(1);
+      expect(outcomes[0]?.pack).toEqual({ id: "acme", version: "1.0.0" });
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+});

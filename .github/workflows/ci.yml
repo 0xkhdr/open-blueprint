@@ -144,6 +144,15 @@ jobs:
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: results.sarif
+          category: bp-verify
+      # Stage 6: per-rule governance report — annotates PRs per bp rule id.
+      - name: Run bp report and emit SARIF
+        run: node dist/cli/index.js report --sarif report.sarif --fail-on none
+      - name: Upload governance report SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: report.sarif
+          category: bp-report
 
   docs-health:
     name: Docs health (lint + links)

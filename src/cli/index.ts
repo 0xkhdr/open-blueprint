@@ -24,6 +24,7 @@ import { createMemoryCommand } from "./commands/memory.js";
 import { createMergeCommand } from "./commands/merge.js";
 import { createMigrateCommand } from "./commands/migrate.js";
 import { createPackCommand } from "./commands/pack.js";
+import { createReportCommand } from "./commands/report.js";
 import { createRuleCommand } from "./commands/rule.js";
 import { createSkillCommand } from "./commands/skill.js";
 import { createSyncCommand } from "./commands/sync.js";
@@ -50,6 +51,7 @@ program
 
 program.addCommand(createInitCommand());
 program.addCommand(createVerifyCommand());
+program.addCommand(createReportCommand());
 program.addCommand(createSyncCommand());
 program.addCommand(createConvertCommand());
 program.addCommand(createDevCommand());

@@ -25,6 +25,36 @@ jobs:
           json-report: false
 ```
 
+### Governance report with per-rule PR annotations (SARIF)
+
+Add a job that gates on hard violations and uploads the report to GitHub code
+scanning, so every PR gets per-rule annotations at the violating `file:line`
+(see [Governance Reporting](governance-reporting.md)):
+
+```yaml
+  report:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.x"
+          cache: npm
+      - run: npx @agentic/bp report --sarif report.sarif --fail-on hard
+      - name: Upload SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: report.sarif
+          category: bp-report
+```
+
+`--fail-on soft` tightens the gate to soft violations too; `--fail-on none` makes the
+job report-only. Exit codes: [troubleshooting](troubleshooting.md#bp-report-exit-codes).
+
 ---
 
 ## 2. GitLab CI/CD

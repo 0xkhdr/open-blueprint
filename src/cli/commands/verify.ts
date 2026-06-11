@@ -10,12 +10,12 @@ import { loadProjectConfig } from "../../config/project.js";
 import { loadUserConfig } from "../../config/user.js";
 import { detect } from "../../detector/index.js";
 import { BpError } from "../../errors.js";
+import { toSarif } from "../../report/sarif.js";
 import { resolveTemplatePack } from "../../templater/selector.js";
 import { normalizeError } from "../../utils/errors.js";
 import type { ValidationLevel } from "../../validator/index.js";
 import { EXIT_CODES, exitCodeForResult, runValidator } from "../../validator/index.js";
 import type { ValidationError } from "../../validator/structural.js";
-import { toSarif } from "../formatters/sarif.js";
 
 const VALID_LEVELS = [
   "structural",

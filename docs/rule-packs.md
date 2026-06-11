@@ -59,6 +59,11 @@ bp rule pack:install acme-internal-security
 bp verify --level enforcement
 ```
 
+> **Measured, not declared:** `bp rule pack:info` shows measured pass/fail/manual
+> counts for installed packs, and any static `metadata.coverage` value is labeled
+> *declared (unverified)*. Run `bp report` for the full measured posture
+> ([Governance Reporting](governance-reporting.md)).
+
 ## Pack resolution
 
 `pack:install <ref>` and `pack:info <ref>` resolve a reference in this order:

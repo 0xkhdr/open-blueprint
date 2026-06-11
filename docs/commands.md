@@ -10,6 +10,7 @@ This document provides a comprehensive reference for all 24 commands, arguments,
 |---|---|---|
 | [`bp init`](#bp-init) | Scaffolds standard blueprints for target agents | `[tool]`, `--force`, `--dry-run`, `--no-verify` |
 | [`bp verify`](#bp-verify) | Validates blueprint structural and semantic integrity | `[paths...]`, `--level`, `--fix`, `--watch` |
+| [`bp report`](#bp-report) | Measured governance posture: per-rule compliance, pack integrity, SARIF | `[path]`, `--json [file]`, `--sarif [file]`, `--fail-on`, `--framework`, `--snapshot` |
 | [`bp sync`](#bp-sync) | Checks for and resolves project structural drift | `--auto-apply`, `--report`, `--json` |
 | [`bp adopt`](#bp-adopt) | Brings user-authored rules/skills/agents under ownership tracking | `[path]`, `--status`, `--wrap`, `--dry-run`, `--json` |
 | [`bp emit`](#bp-emit) | Serializes a BlueprintIR back to governance files (round-trip) | `[path]`, `--input`, `--from`, `--force`, `--dry-run`, `--json` |
@@ -74,6 +75,22 @@ Validates blueprint structural and semantic integrity.
 * **Example**: `bp verify --level enforcement`
 * **Enforcement level**: evaluates each rule's declarative `check` against the repository (see [Check](data-models.md#check)). Failing hard-severity checks are errors (`RULE_VIOLATION`, non-zero exit); failing soft checks are warnings; rules without a check are reported as `RULE_MANUAL` (info) and never affect the exit code; malformed checks are `RULE_CHECK_INVALID` errors. The result summary reports `enforced` / `violations` / `manual` counts (included in `--json` output).
 * **Error codes**: [4](troubleshooting.md#code-4) Structural · [5](troubleshooting.md#code-5) Semantic · [6](troubleshooting.md#code-6) Drift · [1](troubleshooting.md#code-1) Unexpected error
+
+### `bp report`
+
+Measured governance posture for the repository: per-rule enforcement outcomes, per-pack measured pass/fail/manual counts (replacing static `coverage` claims), pack integrity, and machine-readable outputs for CI. See [Governance Reporting](governance-reporting.md).
+
+* **Arguments**: `[path]` (default: `.`)
+* **Options**:
+  * `--json [file]`: Emit the full `bp-report/1` JSON document (to stdout, or to `file`)
+  * `--sarif [file]`: Emit SARIF 2.1.0 — one `rules[]` entry per bp rule, one `results[]` entry per violation located at the violating evidence
+  * `--fail-on <level>`: Exit non-zero on violations: `hard` (default) | `soft` | `none`
+  * `--framework <id>`: Restrict to packs (and their rules) of one compliance framework (e.g. `gdpr`)
+  * `--snapshot`: Write `.bp/report-snapshot.json` — the baseline for manual-rule staleness detection
+* **Example**: `bp report`
+* **Example**: `bp report --sarif report.sarif --fail-on hard` (CI gate + code-scanning upload)
+* **Example**: `bp report --framework gdpr --json gdpr-report.json`
+* **Exit behavior**: hard violations and invalid checks exit `4` under the default `--fail-on hard`; soft violations only exit non-zero under `--fail-on soft`; `--fail-on none` always exits `0` (see [exit codes](troubleshooting.md#bp-report-exit-codes))
 
 ### `bp sync`
 

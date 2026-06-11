@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { toSarif } from "../../src/cli/formatters/sarif.js";
+import { toSarif } from "../../src/report/sarif.js";
 import type { ValidationError } from "../../src/validator/structural.js";
 
 describe("toSarif", () => {

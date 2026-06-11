@@ -560,7 +560,8 @@ export function exitCodeForResult(result: ValidationResult): number {
         e.type === "UNCOVERED_DIRECTORY" ||
         e.type === "DEPENDENCY_DRIFT" ||
         e.type === "PACK_FILE_MISSING" ||
-        e.type === "PACK_FILE_MODIFIED"
+        e.type === "PACK_FILE_MODIFIED" ||
+        e.type === "PACK_DRIFTED"
     );
     if (hasDriftWarnings) return EXIT_CODES.DRIFT_DETECTED;
     return EXIT_CODES.SUCCESS;
@@ -617,7 +618,8 @@ export function exitCodeForResult(result: ValidationResult): number {
       e.type === "UNCOVERED_DIRECTORY" ||
       e.type === "DEPENDENCY_DRIFT" ||
       e.type === "PACK_FILE_MISSING" ||
-      e.type === "PACK_FILE_MODIFIED"
+      e.type === "PACK_FILE_MODIFIED" ||
+      e.type === "PACK_DRIFTED"
   );
   if (hasDriftWarnings) return EXIT_CODES.DRIFT_DETECTED;
 

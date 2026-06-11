@@ -105,6 +105,21 @@ Common issues, diagnostic procedures, and the complete `bp` exit code registry. 
 
 ---
 
+### `bp report` Exit Codes {#bp-report-exit-codes}
+
+`bp report` is designed as a CI gate; its exit code depends on the `--fail-on` threshold:
+
+| Condition | `--fail-on hard` (default) | `--fail-on soft` | `--fail-on none` |
+|---|---|---|---|
+| No violations | 0 | 0 | 0 |
+| Soft violations only | 0 | 4 | 0 |
+| Hard violation or invalid rule check | 4 | 4 | 0 |
+| Report generation failed (bad path, parse error) | 1 | 1 | 1 |
+
+Manual rules and staleness flags never affect the exit code. See [Governance Reporting](governance-reporting.md).
+
+---
+
 ## Running the Doctor Diagnostic
 
 If your coding agent is ignoring rules or skipping local boundaries, run the diagnostic subcommand to scan environment configurations:

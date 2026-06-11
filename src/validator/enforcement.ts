@@ -5,6 +5,7 @@ import matter from "gray-matter";
 import type { Fingerprint } from "../detector/fingerprint.js";
 import { startSpan } from "../telemetry/tracer.js";
 import type { BackendManifest } from "../templater/selector.js";
+import type { CheckEvidence } from "./checks/evaluate.js";
 import { defaultResourceBudget, evaluateCheck } from "./checks/evaluate.js";
 import type { Check } from "./checks/schema.js";
 import { CheckSchema } from "./checks/schema.js";
@@ -25,9 +26,29 @@ export interface EnforcementSummary {
   manual: number;
 }
 
+/** Structured per-rule outcome (Stage 6) — the report builder's raw input. */
+export interface RuleOutcome {
+  /** Stable rule id (frontmatter `id`, else file basename). */
+  id: string;
+  /** Absolute path of the rule file. */
+  file: string;
+  severity: "hard" | "soft";
+  enforcement: "auto" | "manual";
+  status: "pass" | "fail" | "manual" | "invalid";
+  /** Evaluator detail (failure reason, unsupported note, …). */
+  detail?: string | undefined;
+  evidence?: CheckEvidence[] | undefined;
+  /** Provenance when the rule was materialized from an installed pack. */
+  pack?: { id: string; version: string } | undefined;
+  /** Frontmatter `scope` glob — drives manual-rule staleness checks. */
+  scope?: string | undefined;
+}
+
 export interface EnforcementResult {
   errors: ValidationError[];
   summary: EnforcementSummary;
+  /** One entry per rule file, in deterministic (sorted-path) order. */
+  outcomes: RuleOutcome[];
 }
 
 /** 1-based line of the first `<field>:` key in the frontmatter block. */
@@ -59,6 +80,7 @@ export async function validateEnforcementDetailed(
 ): Promise<EnforcementResult> {
   return startSpan("validator.enforcement", async () => {
     const errors: ValidationError[] = [];
+    const outcomes: RuleOutcome[] = [];
     const summary: EnforcementSummary = { enforced: 0, violations: 0, manual: 0 };
 
     const ruleFiles = await collectRuleFiles(projectRoot, manifest);
@@ -89,8 +111,22 @@ export async function validateEnforcementDetailed(
       const severityLine = frontmatterFieldLine(content, "severity");
       const line = checkLine ?? severityLine ?? 1;
 
+      // Pack provenance: materialized pack rules carry pack_id/pack_version.
+      const pack =
+        typeof data.pack_id === "string" && typeof data.pack_version === "string"
+          ? { id: data.pack_id, version: data.pack_version }
+          : undefined;
+      const scope = typeof data.scope === "string" ? data.scope : undefined;
+      const baseOutcome = { id: ruleId, file, severity, pack, scope } as const;
+
       if (data.check === undefined || data.check === null) {
         summary.manual++;
+        outcomes.push({
+          ...baseOutcome,
+          enforcement: "manual",
+          status: "manual",
+          detail: "no declarative check; verify manually",
+        });
         errors.push({
           file,
           line,
@@ -106,6 +142,14 @@ export async function validateEnforcementDetailed(
       const parsed = CheckSchema.safeParse(data.check);
       if (!parsed.success) {
         const issue = parsed.error.issues[0];
+        outcomes.push({
+          ...baseOutcome,
+          enforcement: "auto",
+          status: "invalid",
+          detail: issue
+            ? `${issue.path.join(".") || "(root)"}: ${issue.message}`
+            : "malformed check",
+        });
         errors.push({
           file,
           line,
@@ -122,6 +166,12 @@ export async function validateEnforcementDetailed(
 
       if (outcome.unsupported) {
         summary.manual++;
+        outcomes.push({
+          ...baseOutcome,
+          enforcement: "manual",
+          status: "manual",
+          detail: outcome.detail,
+        });
         errors.push({
           file,
           line,
@@ -134,6 +184,13 @@ export async function validateEnforcementDetailed(
       }
 
       summary.enforced++;
+      outcomes.push({
+        ...baseOutcome,
+        enforcement: "auto",
+        status: outcome.passed ? "pass" : "fail",
+        detail: outcome.detail,
+        evidence: outcome.evidence,
+      });
       if (!outcome.passed) {
         summary.violations++;
         const evidenceNote =
@@ -153,7 +210,7 @@ export async function validateEnforcementDetailed(
       }
     }
 
-    return { errors, summary };
+    return { errors, summary, outcomes };
   });
 }
 

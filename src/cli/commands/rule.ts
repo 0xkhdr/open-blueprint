@@ -834,6 +834,47 @@ function registerPackCommands(cmd: Command): void {
       console.log(`Description: ${pack.description}`);
       console.log(`Rules: ${pack.rules.length}`);
       console.log(`Tags: ${pack.tags.join(", ")}`);
+      if (pack.metadata?.coverage !== undefined) {
+        // Stage 6 honesty: static coverage is a claim, not a measurement.
+        console.log(`Coverage: ${pack.metadata.coverage}% ${chalk.dim("— declared (unverified)")}`);
+      }
+
+      // Measured posture when the pack is installed here (Stage 6).
+      try {
+        const { loadPackLock } = await import("../../packs/materialize.js");
+        const lock = await loadPackLock(process.cwd());
+        if (lock.installed.some((e) => e.id === pack.id)) {
+          const { detect } = await import("../../detector/index.js");
+          const { resolveTemplatePack } = await import("../../templater/selector.js");
+          const { validateEnforcementDetailed } = await import("../../validator/enforcement.js");
+          const { loadProjectConfig } = await import("../../config/project.js");
+          const { loadUserConfig } = await import("../../config/user.js");
+          const backend =
+            loadProjectConfig(process.cwd())?.backend ?? loadUserConfig().default_backend;
+          const fingerprint = await detect(process.cwd());
+          const templatePack = resolveTemplatePack(fingerprint, backend);
+          const result = await validateEnforcementDetailed(
+            process.cwd(),
+            templatePack.manifest,
+            fingerprint
+          );
+          const mine = result.outcomes.filter((o) => o.pack?.id === pack.id);
+          if (mine.length > 0) {
+            const passCount = mine.filter((o) => o.status === "pass").length;
+            const failCount = mine.filter(
+              (o) => o.status === "fail" || o.status === "invalid"
+            ).length;
+            const manualCount = mine.filter((o) => o.status === "manual").length;
+            console.log(
+              `Measured: ${chalk.green(`${passCount} pass`)}, ${
+                failCount > 0 ? chalk.red(`${failCount} fail`) : "0 fail"
+              }, ${chalk.dim(`${manualCount} manual`)} ${chalk.dim("(run `bp report` for detail)")}`
+            );
+          }
+        }
+      } catch {
+        // measurement is best-effort; pack metadata above is still useful
+      }
       console.log("");
       console.log(chalk.bold("Rules:"));
       for (const rule of pack.rules) {

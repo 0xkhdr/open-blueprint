@@ -177,6 +177,7 @@ These are the observability- and cost-related commands that actually ship with `
 
 ## See Also
 
+- [Governance Reporting](governance-reporting.md) — `bp report`: measured compliance posture, per-rule SARIF, pack drift (the static-governance complement to runtime telemetry)
 - [Diagnostics & Troubleshooting](troubleshooting.md) — exit codes and bp health checks
 - [Configuration System](configuration.md) — full schema for `.bp.json`
 - [CLI Reference](commands.md) — all bp commands

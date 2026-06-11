@@ -21,6 +21,8 @@
 
 By shifting governance to development-time and CI-time, `bp` keeps your production systems clean. It detects project topologies, scaffolds logic-less Handlebars templates, runs 4-layer validation gates, and translates files across agent platforms, letting you enforce strict, drift-proof constraints with absolute confidence.
 
+And the governance is *measurable*, not declarative: `bp report` evaluates every rule against the repository and publishes per-rule, per-pack, per-framework compliance — with SARIF output that annotates pull requests per rule via GitHub code scanning ([Governance Reporting](docs/governance-reporting.md)).
+
 ```text
                   ┌──────────────────────────────┐
                   │            bp CLI            │
@@ -85,6 +87,7 @@ Documentation follows a progressive-disclosure structure. Read only what you nee
 * **[Rule Packs](docs/rule-packs.md)** — Author, lint, install, and remove client-defined rule packs with lockfile-tracked materialization.
 * **[Skill Authoring](docs/skill-authoring.md)** — Create, validate, dry-run, and share skills with the canonical tool vocabulary and `kind: skills` packs.
 * **[Plugin Developer API](docs/plugin-api.md)** — Write custom TypeScript validators for company governance policies.
+* **[Governance Reporting](docs/governance-reporting.md)** — Measured per-rule compliance, SARIF PR annotations, pack integrity drift, and manual-rule staleness snapshots.
 * **[Contributor Guidelines](docs/contributing.md)** — Development setup instructions, testing steps, and Architecture Decision Records.
 * **[Template Authoring Guide](docs/template-authoring.md)** — Build, merchandise, and cryptographically sign Handlebars template packages.
 * **[Custom Backend Adapters](docs/backend-adapter.md)** — Implement target platform translation adapters using BlueprintIR.
