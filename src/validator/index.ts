@@ -36,6 +36,7 @@ import {
 } from "./layers-deep.js";
 import { validateLogical } from "./logical.js";
 import { validateOrchestrationSemantic } from "./orchestration.js";
+import { validatePackIntegrity } from "./pack-integrity.js";
 import { auditPerformance } from "./performance.js";
 import { validateRBAC } from "./rbac.js";
 import { runBackendRules } from "./rules/backend-rules.js";
@@ -377,6 +378,10 @@ async function runValidationPipeline(options: ValidatorOptions): Promise<Validat
       );
       allErrors.push(...driftErrors);
     }
+    const packIntegrityErrors = await startSpan("bp.validate.pack-integrity", () =>
+      validatePackIntegrity(projectRoot)
+    );
+    allErrors.push(...packIntegrityErrors);
   }
 
   // Layer 5: Governance (enterprise validation)
@@ -482,7 +487,9 @@ export function exitCodeForResult(result: ValidationResult): number {
         e.type === "ENTRY_POINT_DRIFT" ||
         e.type === "TEST_COMMAND_DRIFT" ||
         e.type === "UNCOVERED_DIRECTORY" ||
-        e.type === "DEPENDENCY_DRIFT"
+        e.type === "DEPENDENCY_DRIFT" ||
+        e.type === "PACK_FILE_MISSING" ||
+        e.type === "PACK_FILE_MODIFIED"
     );
     if (hasDriftWarnings) return EXIT_CODES.DRIFT_DETECTED;
     return EXIT_CODES.SUCCESS;
@@ -533,7 +540,9 @@ export function exitCodeForResult(result: ValidationResult): number {
       e.type === "ENTRY_POINT_DRIFT" ||
       e.type === "TEST_COMMAND_DRIFT" ||
       e.type === "UNCOVERED_DIRECTORY" ||
-      e.type === "DEPENDENCY_DRIFT"
+      e.type === "DEPENDENCY_DRIFT" ||
+      e.type === "PACK_FILE_MISSING" ||
+      e.type === "PACK_FILE_MODIFIED"
   );
   if (hasDriftWarnings) return EXIT_CODES.DRIFT_DETECTED;
 

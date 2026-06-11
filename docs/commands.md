@@ -20,7 +20,7 @@ This document provides a comprehensive reference for all 24 commands, arguments,
 | [`bp merge`](#bp-merge) | Three-way merge of blueprints with conflict detection | `<base> <ours> <theirs>`, `--output` |
 | [`bp template`](#bp-template) | Installs and manages templates from internal registry | `list`, `install <pkg>`, `publish <path>` |
 | [`bp doctor`](#bp-doctor) | Executes diagnostics and cost calculations | `--tool`, `--verbose`, `--cost` |
-| [`bp rule`](#bp-rule) | Lints and graphs scope dependencies for rules | `lint <file>`, `test <file>`, `graph` |
+| [`bp rule`](#bp-rule) | Lints and graphs scope dependencies for rules; manages rule packs | `lint <file>`, `test <file>`, `graph`, `pack:create`, `pack:lint`, `pack:install`, `pack:remove`, `pack:list` |
 | [`bp hook`](#bp-hook) | Generates and validates pre-execution agent scripts | `generate`, `validate <file>` |
 | [`bp config`](#bp-config) | Modifies global user CLI default variables | `get <key>`, `set <key> <value>`, `reset` |
 | [`bp update`](#bp-update) | Updates bp itself to the latest version | None |
@@ -194,7 +194,15 @@ Rule management utilities.
   * `lint <file>`: Check structural and glob scope validity for a rule, including Zod validation of any `check` frontmatter (`RULE_CHECK_INVALID` with line numbers).
   * `test <file>`: Dry-run a rule against the real repository. Prints scope-glob matches, then — when the rule has a `check` — evaluates it and prints PASS/FAIL with a detail message and up to 10 evidence locations. Exit codes: 0 on pass, validation failure (4) for a failing hard rule, 0 with a warning for a failing soft rule. Rules without a check print `manual — bp cannot evaluate this rule automatically`.
   * `graph`: Renders an ASCII rule scope dependency and directory coverage map.
+  * `pack:create <id>`: Scaffolds a commented pack template at `.bp/packs/<id>.bp-pack.yaml`. `--from-rules <glob>` harvests existing rule files' frontmatter into the pack; `--force` overwrites an existing pack file.
+  * `pack:lint <path>`: Validates a pack file — `bp-pack/1` schema (every Zod issue path listed on failure), duplicate rule ids, and per-rule `check` conditions. `--json` for machine-readable output. Exits non-zero on any error.
+  * `pack:install <ref>`: Resolves a pack (file path → project pack id → built-in id) and materializes one rule file per rule into the active backend's rules dir (`pack-<packId>-<ruleId>.md`), recording the install in `.bp/packs.lock.json`. Idempotent by default (existing files kept); `--force` replaces the pack's own generated files only; `--dry-run` previews.
+  * `pack:remove <id>`: Deletes the pack's generated rule files and lockfile entry. Refuses when files were hand-edited outside preserve blocks unless `--force`.
+  * `pack:list`: Lists built-in packs, project packs (`.bp/packs/`), and installed packs with versions.
+  * `pack:info <ref>`: Shows pack details (source, rules with severity and auto/manual enforcement).
+  * `pack:search <query>`: Searches built-in and project packs by name, description, or tags.
 * **Example**: `bp rule lint .claude/rules/01-security.md`
+* **See also**: [Rule Packs guide](rule-packs.md)
 
 ### `bp hook`
 

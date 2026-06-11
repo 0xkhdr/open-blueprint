@@ -11,6 +11,8 @@ import type { RulePack } from "./types.js";
 // ---------------------------------------------------------------------------
 
 export const GDPR_PACK: RulePack = {
+  schema: "bp-pack/1",
+  kind: "rules",
   id: "gdpr-baseline",
   name: "GDPR Compliance Baseline",
   version: "1.1.0",
@@ -103,6 +105,8 @@ export const GDPR_PACK: RulePack = {
 };
 
 export const SOC2_PACK: RulePack = {
+  schema: "bp-pack/1",
+  kind: "rules",
   id: "soc2-type2",
   name: "SOC 2 Type II Controls",
   version: "1.1.0",
@@ -183,6 +187,8 @@ export const SOC2_PACK: RulePack = {
 };
 
 export const HIPAA_PACK: RulePack = {
+  schema: "bp-pack/1",
+  kind: "rules",
   id: "hipaa-security-rule",
   name: "HIPAA Security Rule",
   version: "1.1.0",
@@ -271,7 +277,9 @@ export const HIPAA_PACK: RulePack = {
 };
 
 export const PCIDSS_PACK: RulePack = {
-  id: "pcidss-v3.2.1",
+  schema: "bp-pack/1",
+  kind: "rules",
+  id: "pcidss-v3-2-1",
   name: "PCI DSS v3.2.1 Requirements",
   version: "1.1.0",
   description: "Payment Card Industry Data Security Standard controls",

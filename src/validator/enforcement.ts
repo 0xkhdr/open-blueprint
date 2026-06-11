@@ -74,7 +74,9 @@ export async function validateEnforcementDetailed(
 
       let data: Record<string, unknown>;
       try {
-        data = matter(content).data as Record<string, unknown>;
+        // gray-matter's internal cache is a plain object, so contents like
+        // "toString" can resolve to Object.prototype members with no `.data`.
+        data = (matter(content).data ?? {}) as Record<string, unknown>;
       } catch {
         continue; // structural layer reports FRONTMATTER_PARSE_ERROR
       }

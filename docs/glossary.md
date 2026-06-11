@@ -143,3 +143,39 @@ Permalink: Violation
 
 * **Definition**: A failed rule check (`RULE_VIOLATION`). Severity follows the rule: `hard` ⇒ error (non-zero exit), `soft` ⇒ warning. The message carries the rule id, action text, and the check outcome detail with up to 10 evidence locations; the resolution comes from the rule's `rationale` when present.
 * **Where Used**: Emitted by the enforcement layer during `bp verify` and by `bp rule test`.
+
+---
+
+### Rule Pack
+
+Permalink: Rule Pack
+
+* **Definition**: A single YAML/JSON file (`*.bp-pack.{yaml,yml,json}`, schema `bp-pack/1`) bundling 1–200 related rules with identity metadata (id, semver version, framework, author, tags). Built-in compliance packs and client-authored packs share the same Zod schema; external pack data never enters the system unvalidated. See [Rule Packs](rule-packs.md).
+* **Where Used**: `bp rule pack:create | pack:lint | pack:install | pack:remove | pack:list | pack:info | pack:search`; project packs live in `.bp/packs/`.
+
+---
+
+### Pack Lockfile
+
+Permalink: Pack Lockfile
+
+* **Definition**: `.bp/packs.lock.json` (schema `bp-pack-lock/1`) — the record of installed packs: id, version, source, rule count, install timestamp, a sha256 of the pack's canonical JSON, and per-generated-file content hashes (preserve blocks excluded). The drift layer cross-checks it (`PACK_FILE_MISSING` / `PACK_FILE_MODIFIED`).
+* **Where Used**: Written by `bp rule pack:install`, consumed by `pack:remove`, `pack:list`, and `bp verify` (drift level).
+
+---
+
+### Materialization
+
+Permalink: Materialization
+
+* **Definition**: Turning a validated pack rule into an on-disk backend rule file (`pack-<packId>-<ruleId>.md` in the backend's rules dir) with full frontmatter, provenance keys, and bp-generated block markers — so installed pack rules flow through the same structural/semantic/logical/enforcement validation as scaffolded rules. Idempotent: re-installing without changes is a byte-equal no-op.
+* **Where Used**: `bp rule pack:install`; verified by `bp verify`.
+
+---
+
+### Provenance
+
+Permalink: Provenance
+
+* **Definition**: The `pack_id` and `pack_version` frontmatter keys stamped into every materialized rule file, identifying which pack (and version) generated it. Provenance is what lets `--force` re-installs and `pack:remove` touch only a pack's own files, never foreign or hand-written rules.
+* **Where Used**: Written during materialization; checked by `pack:install --force`, `pack:remove`, and the pack integrity drift check.

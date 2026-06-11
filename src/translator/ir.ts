@@ -1,11 +1,14 @@
 import { z } from "zod";
 import { CheckSchema } from "../validator/checks/schema.js";
 
-const irIdentifier = z
+export const irIdentifier = z
   .string()
   .max(64)
   .regex(/^[a-z0-9_-]+$/i);
-const irShortString = z.string().max(512);
+export const irShortString = z.string().max(512);
+/** Strict semver (major.minor.patch with optional pre-release/build). */
+export const SEMVER_RE =
+  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/;
 const _irPathField = z.string().max(256);
 const irContentField = z.string().max(2048);
 const noGlobOverrun = (s: string) => !/\*{4,}/.test(s);

@@ -8,8 +8,8 @@ import { loadProjectConfig } from "../../config/project.js";
 import { loadUserConfig } from "../../config/user.js";
 import { detect } from "../../detector/index.js";
 import { BpError } from "../../errors.js";
+import type { BackendManifest } from "../../templater/selector.js";
 import { resolveTemplatePack } from "../../templater/selector.js";
-import type { BlueprintIR } from "../../translator/ir.js";
 import { normalizeError } from "../../utils/errors.js";
 import { defaultResourceBudget, evaluateCheck } from "../../validator/checks/evaluate.js";
 import type { Check } from "../../validator/checks/schema.js";
@@ -420,119 +420,8 @@ export function createRuleCommand(): Command {
       return;
     });
 
-  // Rule pack management
-  cmd
-    .command("pack:list")
-    .description("List all available rule packs")
-    .action(async () => {
-      const { listRulePacks } = await import("../../rule-library/packs.js");
-      const packs = listRulePacks();
-      console.log(chalk.bold("Available Rule Packs:\n"));
-      for (const pack of packs) {
-        console.log(chalk.cyan(`  ${pack.id}`));
-        console.log(`    Name: ${pack.name}`);
-        console.log(`    Framework: ${pack.framework}`);
-        console.log(`    Rules: ${pack.rules.length}`);
-        console.log(`    Tags: ${pack.tags.join(", ")}`);
-        console.log("");
-      }
-    });
-
-  cmd
-    .command("pack:info <id>")
-    .description("Get information about a specific rule pack")
-    .action(async (id: string) => {
-      const { getRulePack } = await import("../../rule-library/packs.js");
-      const pack = getRulePack(id);
-      if (!pack) {
-        console.error(chalk.red(`Error: Rule pack not found: ${id}`));
-        throw new BpError("Command failed", 1, "CMD_ERROR", "");
-      }
-      console.log(chalk.bold(`${pack.name} (${pack.id})`));
-      console.log(`Version: ${pack.version}`);
-      console.log(`Framework: ${pack.framework}`);
-      console.log(`Author: ${pack.author}`);
-      console.log(`Description: ${pack.description}`);
-      console.log(`Rules: ${pack.rules.length}`);
-      console.log(`Tags: ${pack.tags.join(", ")}`);
-      console.log("");
-      console.log(chalk.bold("Rules:"));
-      for (const rule of pack.rules) {
-        console.log(`  - ${rule.id} (${rule.severity})`);
-        if (rule.rationale) {
-          console.log(`    ${rule.rationale}`);
-        }
-      }
-    });
-
-  cmd
-    .command("pack:search <query>")
-    .description("Search rule packs by name, description, or tags")
-    .action(async (query: string) => {
-      const { createRuleLibraryManager } = await import("../../rule-library/manager.js");
-      const manager = createRuleLibraryManager();
-      const results = manager.searchPacks(query);
-      if (results.length === 0) {
-        console.log(chalk.yellow(`No rule packs found matching: ${query}`));
-        return;
-      }
-      console.log(chalk.bold(`Found ${results.length} pack(s):\n`));
-      for (const pack of results) {
-        console.log(chalk.cyan(`  ${pack.id}`));
-        console.log(`    ${pack.description}`);
-      }
-    });
-
-  cmd
-    .command("pack:install <packId>")
-    .description("Install a rule pack into the blueprint")
-    .option("--input <path>", "Input blueprint file (JSON)", "blueprint.json")
-    .option("--output <path>", "Output file (default: overwrite input)")
-    .option("--merge", "Merge rules (add new, keep existing)", false)
-    .option("--force", "Replace all rules with pack rules", false)
-    .action(async (packId: string, options) => {
-      const { createRuleLibraryManager } = await import("../../rule-library/manager.js");
-      const { BlueprintIRSchema } = await import("../../translator/ir.js");
-      const manager = createRuleLibraryManager();
-
-      const inputPath = path.resolve(options.input);
-      if (!fs.existsSync(inputPath)) {
-        console.error(chalk.red(`Error: Blueprint file not found: ${options.input}`));
-        throw new BpError("Command failed", 1, "CMD_ERROR", "");
-      }
-
-      // Load blueprint
-      const content = fs.readFileSync(inputPath, "utf-8");
-      let blueprint: BlueprintIR;
-      try {
-        blueprint = BlueprintIRSchema.parse(JSON.parse(content));
-      } catch (err) {
-        console.error(chalk.red("Error: Failed to parse blueprint"));
-        if (err instanceof Error) {
-          console.error(chalk.dim(err.message));
-        }
-        throw new BpError("Command failed", 1, "CMD_ERROR", "");
-      }
-
-      // Install pack
-      const result = manager.installPack(blueprint, packId, {
-        merge: options.merge,
-        force: options.force,
-        validate: true,
-      });
-
-      if (!result.success) {
-        console.error(chalk.red(`Error: ${result.message}`));
-        throw new BpError("Command failed", 1, "CMD_ERROR", "");
-      }
-
-      // Write output
-      const outputPath = options.output || options.input;
-      fs.writeFileSync(path.resolve(outputPath), JSON.stringify(result.blueprint, null, 2));
-
-      console.log(chalk.green(`✓ ${result.message}`));
-      console.log(`  Output: ${outputPath}`);
-    });
+  // Rule pack management (Stage 2: client-authored packs, see docs/rule-packs.md)
+  registerPackCommands(cmd);
 
   cmd
     .command("install <framework>")
@@ -597,4 +486,366 @@ export function createRuleCommand(): Command {
     });
 
   return cmd;
+}
+
+// ---------------------------------------------------------------------------
+// Pack lifecycle subcommands (Stage 2)
+// ---------------------------------------------------------------------------
+
+async function resolveBackendManifest(cwd: string): Promise<BackendManifest> {
+  const projectConfig = loadProjectConfig(cwd);
+  const userConfig = loadUserConfig();
+  const backend = projectConfig?.backend ?? userConfig.default_backend;
+  const fingerprint = await detect(cwd);
+  return resolveTemplatePack(fingerprint, backend).manifest;
+}
+
+function packCreateTemplate(id: string): string {
+  const name = id
+    .split(/[-_]/)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+  return `# bp rule pack — format reference: docs/rule-packs.md
+# Lint with:    bp rule pack:lint .bp/packs/${id}.bp-pack.yaml
+# Install with: bp rule pack:install ${id}
+schema: bp-pack/1
+id: ${id}
+name: ${name}
+version: 0.1.0
+kind: rules
+framework: custom # gdpr | soc2 | hipaa | pci-dss | iso-27001 | custom
+description: Describe what this pack enforces
+author: your-team@example.com
+tags: []
+rules:
+  # One entry per rule. 'check' is optional — rules without one are manual.
+  - id: example-no-console
+    scope: "src/**/*.ts"
+    severity: soft # hard = error on violation, soft = warning
+    action: "Avoid console.log in source files"
+    rationale: "Use the structured logger instead"
+    check: # machine-evaluable condition (see docs/data-models.md)
+      type: content-absent
+      glob: "src/**/*.ts"
+      pattern: "console\\\\.log\\\\("
+`;
+}
+
+interface PackCliRule {
+  id: string;
+  scope: string;
+  severity: "hard" | "soft";
+  action: string;
+  rationale?: string;
+  tags?: string[];
+  check?: unknown;
+  enforcement?: "auto" | "manual";
+}
+
+async function harvestRulesFromGlob(cwd: string, glob: string): Promise<PackCliRule[]> {
+  const files = await fg(glob, { cwd, onlyFiles: true, dot: true, absolute: true });
+  const rules: PackCliRule[] = [];
+  for (const file of files.sort()) {
+    let data: Record<string, unknown>;
+    try {
+      data = matter(fs.readFileSync(file, "utf-8")).data as Record<string, unknown>;
+    } catch {
+      console.warn(chalk.yellow(`  ⚠ Skipping unparsable rule file: ${file}`));
+      continue;
+    }
+    const id =
+      typeof data.id === "string" ? data.id : path.basename(file, ".md").replace(/^pack-/, "");
+    if (typeof data.scope !== "string" || typeof data.action !== "string") {
+      console.warn(chalk.yellow(`  ⚠ Skipping ${file}: missing scope or action frontmatter`));
+      continue;
+    }
+    const rule: PackCliRule = {
+      id,
+      scope: data.scope,
+      severity: data.severity === "hard" ? "hard" : "soft",
+      action: data.action,
+    };
+    if (typeof data.rationale === "string") rule.rationale = data.rationale;
+    if (Array.isArray(data.tags)) rule.tags = data.tags.map(String);
+    if (data.check !== undefined && data.check !== null) rule.check = data.check;
+    if (data.enforcement === "auto" || data.enforcement === "manual")
+      rule.enforcement = data.enforcement;
+    rules.push(rule);
+  }
+  return rules;
+}
+
+function registerPackCommands(cmd: Command): void {
+  cmd
+    .command("pack:create <id>")
+    .description("Scaffold a new rule pack in .bp/packs/")
+    .option("--from-rules <glob>", "Harvest existing rule files' frontmatter into the pack")
+    .option("--force", "Overwrite an existing pack file", false)
+    .action(async (id: string, options: { fromRules?: string; force?: boolean }) => {
+      const { PROJECT_PACKS_DIR, RulePackSchema } = await import("../../rule-library/schema.js");
+      const yaml = (await import("js-yaml")).default;
+
+      if (!/^[a-z0-9_-]+$/i.test(id) || id.length > 64) {
+        console.error(chalk.red(`Error: invalid pack id '${id}' (allowed: [a-z0-9_-], max 64)`));
+        throw new BpError("Command failed", 1, "CMD_ERROR", "");
+      }
+
+      const cwd = process.cwd();
+      const target = path.join(cwd, PROJECT_PACKS_DIR, `${id}.bp-pack.yaml`);
+      if (fs.existsSync(target) && !options.force) {
+        console.error(chalk.red(`Error: pack file already exists: ${target} (use --force)`));
+        throw new BpError("Command failed", 1, "CMD_ERROR", "");
+      }
+
+      let content: string;
+      if (options.fromRules) {
+        const rules = await harvestRulesFromGlob(cwd, options.fromRules);
+        if (rules.length === 0) {
+          console.error(
+            chalk.red(`Error: no harvestable rules matched glob: ${options.fromRules}`)
+          );
+          throw new BpError("Command failed", 1, "CMD_ERROR", "");
+        }
+        const packData = {
+          schema: "bp-pack/1",
+          id,
+          name: id,
+          version: "0.1.0",
+          kind: "rules",
+          framework: "custom",
+          description: `Pack harvested from ${options.fromRules}`,
+          author: "unknown",
+          tags: [],
+          rules,
+        };
+        const parsed = RulePackSchema.safeParse(packData);
+        if (!parsed.success) {
+          console.error(chalk.red("Error: harvested rules do not form a valid pack:"));
+          for (const issue of parsed.error.issues) {
+            console.error(chalk.red(`  - ${issue.path.join(".") || "(root)"}: ${issue.message}`));
+          }
+          throw new BpError("Command failed", 1, "CMD_ERROR", "");
+        }
+        content = yaml.dump(parsed.data, { lineWidth: 120, sortKeys: false });
+      } else {
+        content = packCreateTemplate(id);
+      }
+
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.writeFileSync(target, content, "utf-8");
+      console.log(chalk.green(`✓ Created ${path.relative(cwd, target)}`));
+      console.log(
+        chalk.dim(`  Edit it, then run: bp rule pack:lint ${path.relative(cwd, target)}`)
+      );
+    });
+
+  cmd
+    .command("pack:lint <path>")
+    .description("Validate a pack file (schema, duplicate ids, per-rule checks)")
+    .option("--json", "Output result as JSON", false)
+    .action(async (packPath: string, options: { json?: boolean }) => {
+      const { loadPackFromFile } = await import("../../rule-library/store.js");
+      try {
+        const { pack } = await loadPackFromFile(packPath);
+        const summary = {
+          valid: true,
+          id: pack.id,
+          version: pack.version,
+          rules: pack.rules.length,
+          auto_enforceable: pack.rules.filter((r) => r.check !== undefined).length,
+        };
+        if (options.json) {
+          console.log(JSON.stringify(summary, null, 2));
+        } else {
+          console.log(chalk.green(`✔ [ PASS ] Pack '${pack.id}' v${pack.version} is valid.`));
+          console.log(
+            chalk.dim(
+              `  ${summary.rules} rule(s), ${summary.auto_enforceable} auto-enforceable check(s)`
+            )
+          );
+        }
+      } catch (e) {
+        const err = e instanceof BpError ? e : new BpError(String(e), 1, "PACK_INVALID", "");
+        if (options.json) {
+          console.log(
+            JSON.stringify({ valid: false, code: err.code, message: err.message }, null, 2)
+          );
+        } else {
+          console.error(chalk.red(`✗ ${err.message}`));
+          if (err.resolution) console.error(chalk.yellow(`  → ${err.resolution}`));
+        }
+        throw new BpError("Pack lint failed", 1, err.code, err.resolution);
+      }
+    });
+
+  cmd
+    .command("pack:install <ref>")
+    .description("Install a rule pack (built-in id, project pack id, or file path) as rule files")
+    .option("--force", "Replace this pack's own generated files (never touches others)", false)
+    .option("--dry-run", "Preview without writing files", false)
+    .action(async (ref: string, options: { force?: boolean; dryRun?: boolean }) => {
+      const { resolvePack, assertNoBuiltinCollision } = await import("../../rule-library/store.js");
+      const { installPackToProject } = await import("../../rule-library/materialize.js");
+
+      const cwd = process.cwd();
+      const loaded = await resolvePack(ref, cwd);
+      if (!loaded) {
+        console.error(chalk.red(`Error: rule pack not found: ${ref}`));
+        console.error(chalk.dim("  Run 'bp rule pack:list' to see available packs."));
+        throw new BpError("Command failed", 1, "PACK_NOT_FOUND", "");
+      }
+
+      if (loaded.source !== "built-in" && !options.force) {
+        assertNoBuiltinCollision(loaded.pack);
+      }
+
+      const manifest = await resolveBackendManifest(cwd);
+      const result = await installPackToProject(loaded, {
+        projectRoot: cwd,
+        manifest,
+        force: options.force ?? false,
+        dryRun: options.dryRun ?? false,
+      });
+
+      const verb = options.dryRun ? "[dry-run] Would install" : "Installed";
+      console.log(
+        chalk.green(`✓ ${verb} pack '${loaded.pack.id}' v${loaded.pack.version} (${loaded.source})`)
+      );
+      for (const f of result.written) console.log(chalk.green(`  + ${f}`));
+      for (const f of result.skipped) console.log(chalk.dim(`  = ${f} (kept existing)`));
+      for (const f of result.conflicts)
+        console.warn(chalk.yellow(`  ! ${f} belongs to another pack or is hand-written; skipped`));
+      if (!options.dryRun) console.log(chalk.dim("  Lockfile updated: .bp/packs.lock.json"));
+
+      const semanticWarnings = result.semantic.filter((e) => e.severity !== "info");
+      if (semanticWarnings.length > 0) {
+        console.warn(chalk.yellow("\n  Scope sanity findings:"));
+        for (const w of semanticWarnings) {
+          console.warn(chalk.yellow(`  ⚠ [${w.type}] ${w.file}: ${w.message}`));
+        }
+      }
+    });
+
+  cmd
+    .command("pack:remove <id>")
+    .description("Remove a pack's generated rule files and lockfile entry")
+    .option("--force", "Remove even if generated files were hand-edited", false)
+    .action(async (id: string, options: { force?: boolean }) => {
+      const { removePack } = await import("../../rule-library/materialize.js");
+      const result = await removePack(id, {
+        projectRoot: process.cwd(),
+        force: options.force ?? false,
+      });
+      console.log(chalk.green(`✓ Removed pack '${id}'`));
+      for (const f of result.removed) console.log(chalk.green(`  - ${f}`));
+      for (const f of result.missing) console.log(chalk.dim(`  ? ${f} (already missing)`));
+    });
+
+  cmd
+    .command("pack:list")
+    .description("List built-in, project, and installed rule packs")
+    .action(async () => {
+      const { BUILT_IN_PACKS } = await import("../../rule-library/packs.js");
+      const { loadProjectPacks } = await import("../../rule-library/store.js");
+      const { loadPackLock } = await import("../../rule-library/materialize.js");
+
+      const cwd = process.cwd();
+      const { packs: projectPacks, failures } = await loadProjectPacks(cwd);
+      const lock = await loadPackLock(cwd);
+      const installed = new Map(lock.installed.map((e) => [e.id, e]));
+
+      console.log(chalk.bold("Built-in packs:\n"));
+      for (const pack of BUILT_IN_PACKS) {
+        const mark = installed.has(pack.id) ? chalk.green(" [installed]") : "";
+        console.log(chalk.cyan(`  ${pack.id}`) + mark);
+        console.log(`    ${pack.name} v${pack.version} — ${pack.rules.length} rules`);
+      }
+
+      console.log(chalk.bold("\nProject packs (.bp/packs/):\n"));
+      if (projectPacks.length === 0 && failures.length === 0) {
+        console.log(chalk.dim("  (none — create one with 'bp rule pack:create <id>')"));
+      }
+      for (const { pack } of projectPacks) {
+        const mark = installed.has(pack.id) ? chalk.green(" [installed]") : "";
+        console.log(chalk.cyan(`  ${pack.id}`) + mark);
+        console.log(`    ${pack.name} v${pack.version} — ${pack.rules.length} rules`);
+      }
+      for (const failure of failures) {
+        console.warn(chalk.yellow(`  ⚠ ${failure.path}: invalid pack file`));
+      }
+
+      if (lock.installed.length > 0) {
+        console.log(chalk.bold("\nInstalled (from .bp/packs.lock.json):\n"));
+        for (const entry of lock.installed) {
+          console.log(
+            `  ${chalk.cyan(entry.id)} v${entry.version} — ${entry.rules_count} rules (${entry.source})`
+          );
+        }
+      }
+      console.log("");
+    });
+
+  cmd
+    .command("pack:info <ref>")
+    .description("Show details about a rule pack (built-in id, project id, or file path)")
+    .action(async (ref: string) => {
+      const { resolvePack } = await import("../../rule-library/store.js");
+      const loaded = await resolvePack(ref, process.cwd());
+      if (!loaded) {
+        console.error(chalk.red(`Error: Rule pack not found: ${ref}`));
+        throw new BpError("Command failed", 1, "PACK_NOT_FOUND", "");
+      }
+      const { pack } = loaded;
+      console.log(chalk.bold(`${pack.name} (${pack.id})`));
+      console.log(`Source: ${loaded.source}${loaded.path ? ` (${loaded.path})` : ""}`);
+      console.log(`Version: ${pack.version}`);
+      console.log(`Framework: ${pack.framework}`);
+      console.log(`Author: ${pack.author}`);
+      console.log(`Description: ${pack.description}`);
+      console.log(`Rules: ${pack.rules.length}`);
+      console.log(`Tags: ${pack.tags.join(", ")}`);
+      console.log("");
+      console.log(chalk.bold("Rules:"));
+      for (const rule of pack.rules) {
+        const enforce = rule.check ? "auto" : "manual";
+        console.log(`  - ${rule.id} (${rule.severity}, ${enforce})`);
+        if (rule.rationale) {
+          console.log(`    ${rule.rationale}`);
+        }
+      }
+    });
+
+  cmd
+    .command("pack:search <query>")
+    .description("Search built-in and project rule packs by name, description, or tags")
+    .action(async (query: string) => {
+      const { createRuleLibraryManager } = await import("../../rule-library/manager.js");
+      const { loadProjectPacks } = await import("../../rule-library/store.js");
+
+      const manager = createRuleLibraryManager();
+      const lowerQuery = query.toLowerCase();
+      const { packs: projectPacks } = await loadProjectPacks(process.cwd());
+
+      const results = [
+        ...manager.searchPacks(query).map((pack) => ({ pack, source: "built-in" as const })),
+        ...projectPacks
+          .filter(
+            ({ pack }) =>
+              pack.name.toLowerCase().includes(lowerQuery) ||
+              pack.description.toLowerCase().includes(lowerQuery) ||
+              pack.tags.some((tag) => tag.toLowerCase().includes(lowerQuery))
+          )
+          .map(({ pack }) => ({ pack, source: "project" as const })),
+      ];
+
+      if (results.length === 0) {
+        console.log(chalk.yellow(`No rule packs found matching: ${query}`));
+        return;
+      }
+      console.log(chalk.bold(`Found ${results.length} pack(s):\n`));
+      for (const { pack, source } of results) {
+        console.log(chalk.cyan(`  ${pack.id}`) + chalk.dim(` (${source})`));
+        console.log(`    ${pack.description}`);
+      }
+    });
 }
