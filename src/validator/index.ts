@@ -4,12 +4,17 @@ import * as path from "node:path";
 import fg from "fast-glob";
 import { EXIT_CODES } from "../constants.js";
 import type { Fingerprint } from "../detector/fingerprint.js";
-import { PluginLoadError, PluginTimeoutError } from "../errors.js";
 import { logger } from "../logger.js";
-import { loadPlugins } from "../plugins/loader.js";
+import {
+  activePluginLevels,
+  buildFileInventory,
+  type PluginRunPayload,
+} from "../plugins/context.js";
+import { loadPlugins, type PluginSpec, pluginOutcomeErrors } from "../plugins/loader.js";
 import { startSpan } from "../telemetry/tracer.js";
 import type { BackendManifest } from "../templater/selector.js";
 import { getRegisteredAdapter } from "../translator/adapters/registry.js";
+import type { BlueprintIR } from "../translator/ir.js";
 import { validateAlertingConfig } from "./alerting.js";
 import { loadCacheAsync, saveCacheAsync } from "./cache.js";
 import { validateCostConfig } from "./cost.js";
@@ -65,6 +70,8 @@ export interface ValidatorOptions {
   fingerprint?: Fingerprint;
   json?: boolean;
   failOn?: ValidationLevel;
+  /** Skip plugin validators configured in .bp.json (verify --no-plugins). */
+  noPlugins?: boolean;
 }
 
 export interface ValidationResult {
@@ -94,7 +101,7 @@ function mapLayerErrors(
   }));
 }
 
-async function collectBlueprintFiles(
+export async function collectBlueprintFiles(
   projectRoot: string,
   manifest: BackendManifest
 ): Promise<string[]> {
@@ -231,6 +238,41 @@ async function validateGovernance(
 
 function getAdapterByName(backend: string) {
   return getRegisteredAdapter(backend);
+}
+
+async function runConfiguredPlugins(
+  projectRoot: string,
+  manifest: BackendManifest,
+  fingerprint: Fingerprint | undefined,
+  files: string[],
+  levels: ReturnType<typeof activePluginLevels>,
+  specs: PluginSpec[]
+): Promise<ValidationError[]> {
+  let blueprint: BlueprintIR;
+  try {
+    blueprint = await getAdapterByName(manifest.backend).parse(projectRoot);
+  } catch (err) {
+    logger.warn({ err }, "Plugin context unavailable: blueprint parse failed");
+    return [
+      {
+        file: projectRoot,
+        type: "PLUGIN_CONTEXT_UNAVAILABLE",
+        severity: "warning",
+        message: `Plugins skipped: blueprint parse failed: ${err instanceof Error ? err.message : String(err)}`,
+        resolution: "Fix blueprint parse errors, then re-run bp verify",
+      },
+    ];
+  }
+
+  const inventory = await buildFileInventory(projectRoot, manifest, files);
+  const payload: PluginRunPayload = {
+    blueprint,
+    ...(fingerprint ? { fingerprint } : {}),
+    files: inventory,
+    levels,
+  };
+  const outcomes = await loadPlugins(specs, payload, projectRoot);
+  return outcomes.flatMap((outcome) => pluginOutcomeErrors(outcome, projectRoot));
 }
 
 async function computeContentHash(filePath: string): Promise<string> {
@@ -414,28 +456,6 @@ async function runValidationPipeline(options: ValidatorOptions): Promise<Validat
         allErrors.push(...backendErrors);
       }
 
-      // Plugin sandboxing: load and run custom validator plugins
-      if (projectConfig.plugins && projectConfig.plugins.length > 0) {
-        try {
-          const pluginResults = await loadPlugins(projectConfig.plugins);
-          for (const result of pluginResults) {
-            allErrors.push(...result.errors);
-          }
-        } catch (err) {
-          if (err instanceof PluginLoadError || err instanceof PluginTimeoutError) {
-            allErrors.push({
-              file: projectRoot,
-              type: err instanceof PluginTimeoutError ? "PLUGIN_TIMEOUT" : "PLUGIN_LOAD_ERROR",
-              severity: "error",
-              message: err.message,
-              resolution: err.resolution,
-            });
-          } else {
-            logger.warn({ err }, "Plugin loading failed unexpectedly");
-          }
-        }
-      }
-
       // Workspace blueprint coverage check
       if (fingerprint?.workspacePackages && fingerprint.workspacePackages.length > 0) {
         for (const pkg of fingerprint.workspacePackages) {
@@ -452,6 +472,21 @@ async function runValidationPipeline(options: ValidatorOptions): Promise<Validat
           }
         }
       }
+    }
+  }
+
+  // Plugin validators (Stage 4): client plugins run against the parsed IR +
+  // file inventory, grouped by the levels active for this run.
+  const pluginLevels = activePluginLevels(level);
+  if (!structuralHardFail && !options.noPlugins && pluginLevels.length > 0) {
+    const { loadProjectConfigAsync } = await import("../config/project.js");
+    const pluginConfig = await loadProjectConfigAsync(projectRoot);
+    const specs: PluginSpec[] = pluginConfig?.plugins ?? [];
+    if (specs.length > 0) {
+      const pluginErrors = await startSpan("bp.validate.plugins", () =>
+        runConfiguredPlugins(projectRoot, manifest, fingerprint, files, pluginLevels, specs)
+      );
+      allErrors.push(...pluginErrors);
     }
   }
 

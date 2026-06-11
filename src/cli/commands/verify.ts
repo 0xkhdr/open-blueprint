@@ -146,6 +146,7 @@ export function createVerifyCommand(): Command {
     .option("--watch", "Re-validate on file change (debounced 300ms)", false)
     .option("--fail-on <level>", "Exit non-zero only at this severity level", "logical")
     .option("--entropy-scan", "Enable entropy-based secret detection", false)
+    .option("--no-plugins", "Skip plugin validators configured in .bp.json")
     .action(
       async (
         pathsArg: string[] | undefined,
@@ -157,6 +158,7 @@ export function createVerifyCommand(): Command {
           watch: boolean;
           failOn: string;
           entropyScan: boolean;
+          plugins: boolean;
         }
       ) => {
         const paths = pathsArg && pathsArg.length > 0 ? pathsArg : ["."];
@@ -231,6 +233,7 @@ export function createVerifyCommand(): Command {
                 ...(VALID_LEVELS.includes(opts.failOn as ValidationLevel)
                   ? { failOn: opts.failOn as ValidationLevel }
                   : {}),
+                ...(opts.plugins === false ? { noPlugins: true } : {}),
               });
 
               // Apply fixes before reporting
@@ -257,6 +260,7 @@ export function createVerifyCommand(): Command {
                     projectRoot: absolutePath,
                     manifest: pack.manifest,
                     fingerprint,
+                    ...(opts.plugins === false ? { noPlugins: true } : {}),
                   });
                   Object.assign(result, reResult);
                 }

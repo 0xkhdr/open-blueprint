@@ -66,6 +66,7 @@ Validates blueprint structural and semantic integrity.
   * `--watch`: Watch files and re-validate on change
   * `--fail-on <level>`: Severity level to trigger non-zero exit code
   * `--entropy-scan`: Enable entropy-based high-entropy string detection (opt-in; also configurable via `scan.entropyEnabled: true` in `.bp.json`)
+  * `--no-plugins`: Skip plugin validators configured in `.bp.json` (see [Plugin API](plugin-api.md))
 * **Example**: `bp verify --level all --watch`
 * **Example**: `bp verify --entropy-scan`
 * **Example**: `bp verify --level enforcement`
@@ -135,6 +136,9 @@ Live reload dev server with real-time validation and browser dashboard.
   * `--port <port>`: Port for browser dashboard (default: `3456`)
   * `--dashboard`: Serve browser dashboard instead of terminal output
 * **Example**: `bp dev --dashboard --port 4000`
+* **Subcommands**:
+  * `bp dev plugin:scaffold <name>`: Scaffold a runnable validator plugin (`plugins/<name>.mjs` by default; `--dir <dir>` to change). Refuses to overwrite existing files. See [Plugin API](plugin-api.md).
+  * `bp dev plugin:test <pluginPath>`: Run a single plugin against the current repository and print its diagnostics. `--mode isolated|inline` (default `isolated`). Exits non-zero if the plugin reports errors.
 
 ### `bp docs`
 

@@ -8,10 +8,14 @@ import { loadUserConfig } from "../../config/user.js";
 import { detect } from "../../detector/index.js";
 import { startDevServer } from "../../dx/dev-server.js";
 import { BpError } from "../../errors.js";
+import { activePluginLevels, buildFileInventory } from "../../plugins/context.js";
+import { loadPlugins, type PluginMode, pluginOutcomeErrors } from "../../plugins/loader.js";
+import { PLUGIN_NAME_RE, pluginScaffoldSource } from "../../plugins/scaffold.js";
 import { resolveTemplatePack } from "../../templater/selector.js";
+import { parseBlueprint } from "../../translator/index.js";
 import { normalizeError } from "../../utils/errors.js";
 import type { ValidationLevel } from "../../validator/index.js";
-import { EXIT_CODES, runValidator } from "../../validator/index.js";
+import { collectBlueprintFiles, EXIT_CODES, runValidator } from "../../validator/index.js";
 import type { ValidationError } from "../../validator/structural.js";
 
 function formatError(err: ValidationError, cwd: string): string {
@@ -176,6 +180,83 @@ export function createDevCommand(): Command {
         watcher.close();
         return;
       });
+    });
+
+  cmd
+    .command("plugin:scaffold <name>")
+    .description("Scaffold a runnable validator plugin (.mjs) using @agentic/bp/plugin")
+    .option("--dir <dir>", "Output directory relative to the project root", "plugins")
+    .action(async (name: string, opts: { dir: string }) => {
+      if (!PLUGIN_NAME_RE.test(name) || name.length > 64) {
+        console.error(chalk.red(`Invalid plugin name "${name}": must match [a-z0-9_-]+ (max 64)`));
+        throw new BpError("Command failed", EXIT_CODES.GENERAL_ERROR, "CMD_ERROR", "");
+      }
+      const outDir = path.resolve(process.cwd(), opts.dir);
+      const outFile = path.join(outDir, `${name}.mjs`);
+      if (fs.existsSync(outFile)) {
+        console.error(chalk.red(`Refusing to overwrite existing file: ${outFile}`));
+        throw new BpError("Command failed", EXIT_CODES.GENERAL_ERROR, "CMD_ERROR", "");
+      }
+      fs.mkdirSync(outDir, { recursive: true });
+      fs.writeFileSync(outFile, pluginScaffoldSource(name), "utf-8");
+      const relFile = path.relative(process.cwd(), outFile);
+      console.log(chalk.green(`✔ Created ${relFile}`));
+      console.log(
+        chalk.dim(
+          `\nEnable it in .bp.json:\n` +
+            `  "plugins": [{ "path": "./${relFile}", "mode": "isolated" }]\n\n` +
+            `Try it: bp dev plugin:test ./${relFile}`
+        )
+      );
+    });
+
+  cmd
+    .command("plugin:test <pluginPath>")
+    .description("Run a plugin against the current repository and print its diagnostics")
+    .option("--mode <mode>", "Execution mode: isolated | inline", "isolated")
+    .action(async (pluginPath: string, opts: { mode: string }) => {
+      if (opts.mode !== "isolated" && opts.mode !== "inline") {
+        console.error(chalk.red(`Invalid mode "${opts.mode}". Valid: isolated, inline`));
+        throw new BpError("Command failed", EXIT_CODES.GENERAL_ERROR, "CMD_ERROR", "");
+      }
+      const cwd = process.cwd();
+      const projectConfig = loadProjectConfig(cwd);
+      const userConfig = loadUserConfig();
+      const backend = projectConfig?.backend ?? userConfig.default_backend;
+
+      const fingerprint = await detect(cwd);
+      const pack = resolveTemplatePack(fingerprint, backend);
+      const blueprint = await parseBlueprint(cwd, backend);
+      const files = await collectBlueprintFiles(cwd, pack.manifest);
+      const inventory = await buildFileInventory(cwd, pack.manifest, files);
+
+      const spec = { path: pluginPath, mode: opts.mode as PluginMode };
+      const [outcome] = await loadPlugins(
+        [spec],
+        { blueprint, fingerprint, files: inventory, levels: activePluginLevels("all") },
+        cwd
+      );
+      const diagnostics = outcome ? pluginOutcomeErrors(outcome, cwd) : [];
+
+      if (diagnostics.length === 0) {
+        console.log(chalk.green(`✔ Plugin ${pluginPath} ran clean (no diagnostics)`));
+        return;
+      }
+      for (const diag of diagnostics) {
+        console.log(formatError(diag, cwd));
+        console.log(chalk.dim(`  → ${diag.resolution}`));
+      }
+      const errorCount = diagnostics.filter((d) => d.severity === "error").length;
+      const warningCount = diagnostics.filter((d) => d.severity === "warning").length;
+      console.log(chalk.dim(`\n${errorCount} error(s), ${warningCount} warning(s)`));
+      if (errorCount > 0) {
+        throw new BpError(
+          "Plugin reported errors",
+          EXIT_CODES.GENERAL_ERROR,
+          "PLUGIN_TEST_FAILED",
+          "Fix the reported issues or the plugin itself"
+        );
+      }
     });
 
   return cmd;

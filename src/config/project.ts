@@ -3,6 +3,18 @@ import * as fsPromises from "node:fs/promises";
 import * as path from "node:path";
 import { z } from "zod";
 
+// Stage 4: plugins accept a bare path (defaults to isolated mode) or an
+// object entry { path, mode }. Both normalize to the object form.
+const PluginEntrySchema = z.union([
+  z.string().transform((p) => ({ path: p, mode: "isolated" as const })),
+  z.object({
+    path: z.string().min(1),
+    mode: z.enum(["isolated", "inline"]).default("isolated"),
+  }),
+]);
+
+export type PluginEntry = z.infer<typeof PluginEntrySchema>;
+
 const BackendConfigOverrideSchema = z.object({
   delivery_mode: z.enum(["skills_and_commands", "skills_only", "commands_only"]).optional(),
   workflows: z.array(z.string()).optional(),
@@ -24,7 +36,7 @@ const ProjectConfigSchemaRaw = z.object({
     })
     .optional(),
   exclude: z.array(z.string()).default([]),
-  plugins: z.array(z.string()).default([]),
+  plugins: z.array(PluginEntrySchema).default([]),
   scan: z
     .object({
       entropyEnabled: z.boolean().optional(),

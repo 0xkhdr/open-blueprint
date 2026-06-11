@@ -67,7 +67,7 @@ Permalink: Project Schema Properties
 | `extends` | `string` | Name of a template pack or internal organization policy base to inherit. | No |
 | `overrides` | `object` | Customize or soften validation severities defined in the base template. | No |
 | `exclude` | `array` | Glob patterns of directories to completely skip during file verification. | No |
-| `plugins` | `array` | Package names or file paths of custom validators to inject into the pipeline. | No |
+| `plugins` | `array` | Validator plugins to run during `bp verify`. Entries are either a path string (runs in `isolated` mode) or `{ "path": "...", "mode": "isolated" \| "inline" }`. Paths must stay inside the project root. See [Plugin API](plugin-api.md). | No |
 
 **Example .bp.json:**
 
@@ -86,7 +86,8 @@ Permalink: Project Schema Properties
     "dist/"
   ],
   "plugins": [
-    "@myorg/bp-validate-rationale"
+    "./plugins/validate-rationale.mjs",
+    { "path": "./plugins/fast-check.mjs", "mode": "inline" }
   ]
 }
 ```
