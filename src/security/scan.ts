@@ -1,7 +1,7 @@
 import type { Dirent } from "node:fs";
 import * as fsPromises from "node:fs/promises";
 import * as path from "node:path";
-import type { ValidationError } from "../validator/structural.js";
+import type { ValidationError } from "../types/validation.js";
 
 const SECRET_PATTERNS = [
   {

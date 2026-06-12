@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import fg from "fast-glob";
 import matter from "gray-matter";
-import type { BlueprintAdapter } from "../index.js";
+import type { BlueprintAdapter } from "../adapter.js";
 import type { BlueprintIR, Hook, MCPServer, Persona, Rule, Skill } from "../ir.js";
 import { parseSkillMarkdown, renderSkillMarkdown, skillFileName } from "../skill-file.js";
 import { generateAgentsMD } from "./agents-md.js";

@@ -1,10 +1,7 @@
+import type { BlueprintAdapter } from "./adapter.js";
 import type { BlueprintIR } from "./ir.js";
 
-export interface BlueprintAdapter {
-  parse(projectRoot: string): Promise<BlueprintIR>;
-  render(ir: BlueprintIR, projectRoot: string): Promise<string[]>;
-}
-
+export type { BlueprintAdapter } from "./adapter.js";
 export type { BlueprintIR };
 
 export class UnsupportedBackendError extends Error {

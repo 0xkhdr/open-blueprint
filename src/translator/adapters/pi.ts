@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import fg from "fast-glob";
 import matter from "gray-matter";
-import type { BlueprintAdapter } from "../index.js";
+import type { BlueprintAdapter } from "../adapter.js";
 import type { BlueprintIR, Hook, Persona, Rule, Skill } from "../ir.js";
 import { generateAgentsMD } from "./agents-md.js";
 import { generateChainsYaml } from "./chains-yaml.js";

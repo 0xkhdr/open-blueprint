@@ -3,7 +3,7 @@ import * as path from "node:path";
 import fg from "fast-glob";
 import matter from "gray-matter";
 import type { BackendConfig } from "../../../backends/registry.js";
-import type { BlueprintAdapter } from "../../index.js";
+import type { BlueprintAdapter } from "../../adapter.js";
 import type { BlueprintIR, Rule, Skill } from "../../ir.js";
 import { generateAgentsMD } from "../agents-md.js";
 

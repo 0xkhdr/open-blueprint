@@ -1,4 +1,4 @@
-import type { BlueprintAdapter } from "../index.js";
+import type { BlueprintAdapter } from "../adapter.js";
 import { AntigravityAdapter } from "./antigravity.js";
 import { ClaudeAdapter } from "./claude.js";
 import { CodexAdapter } from "./codex.js";

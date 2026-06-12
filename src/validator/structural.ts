@@ -4,16 +4,12 @@ import remarkParse from "remark-parse";
 import { unified } from "unified";
 import { scanForSecrets } from "../security/scan.js";
 import type { BackendManifest } from "../templater/selector.js";
+import type { ValidationError } from "../types/validation.js";
 import { normalizeError } from "../utils/errors.js";
 
-export interface ValidationError {
-  file: string;
-  line?: number;
-  type: string;
-  severity: "error" | "warning" | "info";
-  message: string;
-  resolution: string;
-}
+// Moved to types/validation.ts (broke the structural ↔ security/scan cycle);
+// re-exported so existing import sites keep working.
+export type { ValidationError } from "../types/validation.js";
 
 interface FrontmatterSchema {
   required: string[];

@@ -1,7 +1,7 @@
 import * as crypto from "node:crypto";
 import * as fsPromises from "node:fs/promises";
 import * as path from "node:path";
-import { keysDir } from "./trust.js";
+import { keysDir } from "./paths.js";
 
 export function generateKeyPair(): { publicKey: string; privateKey: string } {
   const { publicKey, privateKey } = crypto.generateKeyPairSync("rsa", {

@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import type { BackendConfig } from "../../../backends/registry.js";
 import { CommandSyntaxAdapter } from "../../../backends/syntax.js";
-import type { BlueprintAdapter } from "../../index.js";
+import type { BlueprintAdapter } from "../../adapter.js";
 import type { BlueprintIR, Skill } from "../../ir.js";
 import { generateAgentsMD } from "../agents-md.js";
 

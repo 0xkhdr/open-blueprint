@@ -10,10 +10,10 @@
 
 import * as crypto from "node:crypto";
 import * as fsPromises from "node:fs/promises";
-import * as os from "node:os";
 import * as path from "node:path";
 import { z } from "zod";
 import { BpError } from "../errors.js";
+import { keysDir, trustStorePath } from "./paths.js";
 import { generateKeyPair } from "./signer.js";
 
 export const TRUST_SCHEMA_VERSION = "bp-trust/1";
@@ -35,18 +35,9 @@ export const TrustStoreSchema = z.object({
 export type TrustedKey = z.infer<typeof TrustedKeySchema>;
 export type TrustStore = z.infer<typeof TrustStoreSchema>;
 
-/** Base bp home directory; `BP_HOME` overrides for tests and sandboxes. */
-export function bpHome(): string {
-  return process.env.BP_HOME ?? path.join(os.homedir(), ".bp");
-}
-
-export function trustStorePath(): string {
-  return path.join(bpHome(), "trust.json");
-}
-
-export function keysDir(): string {
-  return path.join(bpHome(), "keys");
-}
+// Path helpers moved to ./paths.js (broke the signer ↔ trust runtime cycle);
+// re-exported here so existing consumers keep their import site.
+export { bpHome, keysDir, trustStorePath } from "./paths.js";
 
 export function createEmptyTrustStore(): TrustStore {
   return { schema: TRUST_SCHEMA_VERSION, keys: [], policy: { require_signature: true } };

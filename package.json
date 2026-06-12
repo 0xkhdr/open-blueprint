@@ -36,7 +36,7 @@
     "lint:no-require": "! grep -rn 'require(' src/ --include='*.ts' | grep -v '//' | grep -v 'packs.ts' | grep -v 'lsp/server.ts' && echo 'lint:no-require PASS'",
     "lint:custom": "npm run lint:no-sync-fs && npm run lint:no-interior-exit && npm run lint:no-require",
     "typecheck": "tsc --noEmit",
-    "ci": "npm run typecheck && npm run lint && npm run lint:custom && npm run test:coverage",
+    "ci": "npm run typecheck && npm run lint && npm run lint:custom && npm run check:circular && npm run test:coverage",
     "sbom": "cyclonedx-npm --output-format json --output-file sbom.json"
   },
   "repository": {
