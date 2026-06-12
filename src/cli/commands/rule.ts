@@ -15,7 +15,7 @@ import type { Check } from "../../validator/checks/schema.js";
 import { CheckSchema } from "../../validator/checks/schema.js";
 import { EXIT_CODES } from "../../validator/index.js";
 import { validateSemantic } from "../../validator/semantic.js";
-import type { ValidationError } from "../../validator/structural.js";
+import type { ValidationError } from "../../types/validation.js";
 import { validateStructural } from "../../validator/structural.js";
 import { installArtifactRef } from "../pack-install.js";
 import { resolveBackendManifest } from "../resolve-backend.js";

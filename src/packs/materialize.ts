@@ -22,7 +22,7 @@ import type { Rule, Skill } from "../translator/ir.js";
 import { patternToDir } from "../translator/serialize.js";
 import { renderSkillMarkdown, skillId } from "../translator/skill-file.js";
 import { validateSemantic } from "../validator/semantic.js";
-import type { ValidationError } from "../validator/structural.js";
+import type { ValidationError } from "../types/validation.js";
 import {
   createEmptyPackLock,
   PACK_LOCK_FILE,

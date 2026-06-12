@@ -5,7 +5,7 @@
  */
 import * as path from "node:path";
 import { PluginLoadError, PluginTimeoutError } from "../errors.js";
-import type { ValidationError } from "../validator/structural.js";
+import type { ValidationError } from "../types/validation.js";
 import { diagnosticType, type PluginRunPayload } from "./context.js";
 import { executePluginModule, type PluginExecutionResult } from "./runner.js";
 import { runPluginInWorker, type WorkerRunOptions } from "./worker-host.js";

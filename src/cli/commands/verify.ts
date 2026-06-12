@@ -15,7 +15,7 @@ import { resolveTemplatePack } from "../../templater/selector.js";
 import { normalizeError } from "../../utils/errors.js";
 import type { ValidationLevel } from "../../validator/index.js";
 import { EXIT_CODES, exitCodeForResult, runValidator } from "../../validator/index.js";
-import type { ValidationError } from "../../validator/structural.js";
+import type { ValidationError } from "../../types/validation.js";
 
 const VALID_LEVELS = [
   "structural",

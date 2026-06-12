@@ -12,7 +12,7 @@ import { resolveTemplatePack } from "../../templater/selector.js";
 import { normalizeError } from "../../utils/errors.js";
 import { FINGERPRINT_FILE, storeFingerprint, validateDrift } from "../../validator/drift.js";
 import { EXIT_CODES } from "../../validator/index.js";
-import type { ValidationError } from "../../validator/structural.js";
+import type { ValidationError } from "../../types/validation.js";
 import { validateStructuralBatch } from "../../validator/structural.js";
 
 // ---------------------------------------------------------------------------

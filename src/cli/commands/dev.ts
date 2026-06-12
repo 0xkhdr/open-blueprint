@@ -16,7 +16,7 @@ import { parseBlueprint } from "../../translator/index.js";
 import { normalizeError } from "../../utils/errors.js";
 import type { ValidationLevel } from "../../validator/index.js";
 import { collectBlueprintFiles, EXIT_CODES, runValidator } from "../../validator/index.js";
-import type { ValidationError } from "../../validator/structural.js";
+import type { ValidationError } from "../../types/validation.js";
 
 function formatError(err: ValidationError, cwd: string): string {
   const loc = err.line ? `:${err.line}` : "";

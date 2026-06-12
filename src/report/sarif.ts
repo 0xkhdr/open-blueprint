@@ -9,7 +9,7 @@
  * file itself).
  */
 
-import type { ValidationError } from "../validator/structural.js";
+import type { ValidationError } from "../types/validation.js";
 import type { GovernanceReport } from "./model.js";
 
 export const SARIF_SCHEMA_URI =
