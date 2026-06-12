@@ -1,14 +1,10 @@
 # 🏗️ System Architecture & Concepts
 
-Permalink: System Architecture & Concepts
-
 This document provides a deep dive into the underlying concepts, architectural layers, and system engines that power **open-blueprint (`bp`)**.
 
 ---
 
 ## 🗺️ Artifact Flow Diagram
-
-Permalink: Artifact Flow Diagram
 
 The lifecycle of repository configuration under `bp` follows a clean, single-direction pipeline that preserves custom developer inputs:
 
@@ -23,9 +19,7 @@ Repository ──► Detector ──► Fingerprint ──► Templater ──�
 
 ## 🗂️ The 5 Blueprint Layers
 
-Permalink: The 5 Blueprint Layers
-
-`bp` structures repository governance into five discrete, logical layers:
+`bp` structures repository governance into five core layers (the `BlueprintIR` additionally carries optional `settings`, `commands`, `mcp_servers`, and enterprise sections — see [Backend Adapters](backend-adapter.md)):
 
 | Layer | Name | Target File Pattern (Claude) | Core Purpose |
 | :--- | :--- | :--- | :--- |
@@ -39,8 +33,6 @@ Permalink: The 5 Blueprint Layers
 
 ## ⚙️ The 4 Internal Engines
 
-Permalink: The 4 Internal Engines
-
 `bp` features a decoupled pipeline architecture consisting of four core engines:
 
 ```mermaid
@@ -50,9 +42,11 @@ graph TD
     C -->|Handlebars Compilation| D[Output Blueprint Files]
     D --> E(Engine 3: Validator)
     E -->|1. Structural| E1[Frontmatter & Markdown syntax]
-    E -->|2. Semantic| E2[Scope globs & tool references]
+    E -->|2. Semantic| E2[Scope globs, tool references, skills]
     E -->|3. Logical| E3[Tarjan's SCC & Glob intersections]
-    E -->|4. Drift| E4[Fingerprint delta & dependency shifts]
+    E -->|4. Enforcement| E4[Declarative rule checks]
+    E -->|5. Drift| E5[Fingerprint delta & pack integrity]
+    E -->|6. Governance| E6[Agents, MCP, teams, chains, memory]
     D --> F(Engine 4: Translator)
     F -->|Parse to IR| G[BlueprintIR]
     G -->|Render| H[Target Backend: Claude / Cursor / OpenDev / Generic]
@@ -61,8 +55,6 @@ graph TD
 ---
 
 ### 1. Detector Engine
-
-Permalink: Detector Engine
 
 The **Detector** performs rapid, non-invasive static analysis of the repository. It makes **zero network calls, zero build-tool invocations, and runs zero shell commands**, completing in milliseconds.
 
@@ -118,8 +110,6 @@ The **Detector** performs rapid, non-invasive static analysis of the repository.
 
 ### 2. Templater Engine
 
-Permalink: Templater Engine
-
 The **Templater** maps the detected `Fingerprint` to template packs utilizing highly secure, logic-less **Handlebars** templates.
 
 * **Template Fallback Chain**:
@@ -146,27 +136,31 @@ On subsequent runs of `bp init`, the generated block is safely overwritten, whil
 
 ### 3. Validator Engine
 
-Permalink: Validator Engine
-
-The **Validator** passes blueprints through a 4-layer validation pipeline. A failure in an early layer halts execution for that specific file but allows others to proceed.
+The **Validator** runs blueprints through six validation levels
+(`bp verify --level <level>`, default `all`). A hard structural failure
+short-circuits the deeper levels for that run.
 
 ```text
-[Blueprint Files] ──► Structural ──► Semantic ──► Logical ──► Drift ──► [Green CI / Clean Local]
+[Blueprint Files] ──► Structural ──► Semantic ──► Logical ──► Enforcement ──► Drift ──► Governance
 ```
 
-1. **Structural Layer**: Validates YAML frontmatter formatting, file size thresholds, markdown structural hierarchy (unclosed code fences, broken header structures), and UTF-8 encoding.
-2. **Semantic Layer**: Resolves rule scope globs against the actual filesystem (warning on zero-match scopes), verifies that `tools_required` exist in the target agent's allowlist, and guarantees that skills referenced by rules exist.
-3. **Logical Layer**:
-   * **Circular Skill Dependencies**: Performs a topological sort using **Tarjan's strongly connected components algorithm (`O(V+E)`)** to block circular skill imports.
-   * **Rule Scope Overlap & Contradictions**: Evaluates scope overlaps. If two `hard` severity rules cover matching files (e.g. `src/services/**` vs `src/services/legacy/**`) and issue conflicting actions, a critical overlap error is thrown.
+1. **Structural**: Validates YAML frontmatter formatting, file size thresholds, markdown structural hierarchy (unclosed code fences, broken header structures), and UTF-8 encoding.
+2. **Semantic**: Resolves rule scope globs against the actual filesystem (warning on zero-match scopes), verifies that `tools_required` exist in the target agent's allowlist, guarantees that skills referenced by rules exist, and runs the full [skill validation table](skill-authoring.md#validation).
+3. **Logical**:
+   * **Circular Skill Dependencies**: Topological sort via **Tarjan's strongly connected components algorithm (`O(V+E)`)** to block circular skill imports.
+   * **Rule Scope Overlap & Contradictions**: If two `hard` severity rules cover matching files (e.g. `src/services/**` vs `src/services/legacy/**`) and issue conflicting actions, a critical overlap error is thrown.
    * **Precedence Checking**: Validates that all rules are accounted for in the meta-rule precedence declarations.
-4. **Drift Layer**: Compares current repository topology against `.bp-fingerprint.json` to detect unmapped dependencies, modified entry points, altered test commands, or untracked directories lacking rule coverage.
+4. **Enforcement**: Evaluates each rule's declarative [`check`](data-models.md#check) against the repository — pure static reads, no network, no shell, no code execution. Failing hard checks are errors; rules without a check are reported as `RULE_MANUAL` (info), never as passing.
+5. **Drift**: Compares current repository topology against `.bp-fingerprint.json` (unmapped dependencies, modified entry points, altered test commands) and cross-checks installed packs against `.bp/packs.lock.json` (`PACK_FILE_MODIFIED`, `PACK_FILE_MISSING`). Drift findings are advisory unless explicitly requested via `--level drift` or `--fail-on drift`.
+6. **Governance**: Validates the orchestration layers — agent registry entries, MCP server risk/auth scopes, team configurations, chain DAGs, and cross-layer consistency.
+
+Plugin validators configured in `.bp.json` run after the built-in checks for their
+declared level (`structural`, `semantic`, `logical`, or `enforcement`) — see
+[Plugin API](plugin-api.md).
 
 ---
 
 ### 4. Translator Engine
-
-Permalink: Translator Engine
 
 The **Translator** converts blueprints between different agent targets by parsing raw documents into a unified, Zod-validated intermediate schema (`BlueprintIR`), and rendering the IR through target-specific adapters.
 

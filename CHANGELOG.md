@@ -37,30 +37,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 - All previously silent `catch {}` blocks in `detector/index.ts`, `validator/drift.ts`, `validator/cache.ts` now emit Pino `warn`.
 - Dynamic adapter import registry in `translator/index.ts` replaces hardcoded 31-import `buildAdapterMap`.
 
----
+### Documentation
 
-### Added
-
-- `agents.md` at repo root — authoritative agent lifecycle, protocols, state, error handling, and extension points reference
-- `docs/style-guide.md` — authoring standards enforced by CI markdownlint
-- `CHANGELOG.md` (this file)
-- `docs-health` CI job: markdownlint + lychee link validation on every PR
-
-### Changed
-
-- Documentation filenames: numeric prefixes (`01-` through `19-`) replaced with semantic slugs (e.g., `getting-started.md`)
-- Root `README.md` is now the sole navigation index; `docs/README.md` and `docs/00-README.md` removed
-- `docs/observability.md`: stripped internal phase-tracking metadata, trimmed to reference format
-- `docs/troubleshooting.md`: merged `docs/10-troubleshooting.md` and `docs/18-errors.md` into a single exit-code and troubleshooting reference
-
-### Removed
-
-- `docs/README.md` (content migrated to root `README.md`)
-- `docs/00-README.md` (content migrated to root `README.md`)
-- `docs/10-troubleshooting.md` (merged into `docs/troubleshooting.md`)
-- `docs/18-errors.md` (merged into `docs/troubleshooting.md`)
-
-> **Migration note:** If you have bookmarks to the old numeric-prefixed doc URLs, see the new filenames above. The content is unchanged — only filenames were updated.
+- Full documentation accuracy overhaul: every doc audited against the code and CLI
+  `--help` output. Fixed fabricated/stale content (wrong `Fingerprint`/`ValidationResult`
+  shapes, nonexistent subcommands and flags, "4-layer" validation claims — the
+  validator has six levels, wrong adapter-registration instructions, broken
+  `docs/errors.md` references) and removed boilerplate cruft.
+- `AGENTS.md` rewritten as an honest contributor/agent guide for this codebase
+  (commands, architecture map, CI-enforced conventions, stable contracts),
+  replacing the earlier speculative "agent lifecycle/protocols" reference.
+- New `docs/README.md` index organized by audience; new `docs/errors.md` stub so
+  legacy `docs/errors.md#code-N` resolution links resolve.
+- Earlier docs work (same release): semantic doc filenames replacing numeric
+  prefixes, `docs/style-guide.md`, this `CHANGELOG.md`, and the `docs-health` CI
+  job (markdownlint + lychee).
 
 ---
 

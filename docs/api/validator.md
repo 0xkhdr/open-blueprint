@@ -1,19 +1,29 @@
 # Validator Engine API
 
-The Validator engine runs a four-layer validation pipeline against a blueprint directory.
+The Validator engine (`src/validator/index.ts`) runs a blueprint directory through
+six validation levels.
 
-## Validation Layers
+## Validation Levels
 
-| Layer | Module | Description |
-|-------|--------|-------------|
-| **Structural** | `src/validator/structural.ts` | File presence, front-matter schema, required field completeness |
-| **Semantic** | `src/validator/semantic.ts` | Rule logic coherence, persona constraint conflicts, tool scope overlaps |
-| **Logical** | `src/validator/logical.ts` | Cross-rule dependency ordering, circular reference detection |
-| **Drift** | `src/validator/drift.ts` | Hash comparison between blueprint snapshot and current disk state |
+| Level | Module(s) | Description |
+|-------|-----------|-------------|
+| **Structural** | `src/validator/structural.ts` | Frontmatter schema, markdown structure, encoding, file size |
+| **Semantic** | `src/validator/semantic.ts`, `src/validator/skills.ts` | Scope glob resolution, tool references, skill validation |
+| **Logical** | `src/validator/logical.ts` | Circular skill dependencies (Tarjan SCC), rule scope overlap/contradictions, precedence |
+| **Enforcement** | `src/validator/enforcement.ts`, `src/validator/checks/` | Declarative rule `check` evaluation (static reads only) |
+| **Drift** | `src/validator/drift.ts`, `src/validator/pack-integrity.ts` | Fingerprint delta vs `.bp-fingerprint.json`; pack integrity vs `.bp/packs.lock.json` |
+| **Governance** | `src/validator/orchestration.ts`, `src/validator/cross-layer.ts`, … | Agents, MCP servers, teams, chain DAGs, memory, cross-layer consistency |
 
-## `ValidationResult` Types
+Plugin validators from `.bp.json` run after the built-in checks for their declared
+level (see [Plugin API](../plugin-api.md)).
+
+## Types
 
 ```typescript
+type ValidationLevel =
+  | "structural" | "semantic" | "logical"
+  | "enforcement" | "drift" | "governance" | "all";
+
 type ValidationSeverity = "error" | "warning" | "info";
 
 interface ValidationError {
@@ -29,37 +39,42 @@ interface ValidationResult {
   passed: boolean;
   errors: ValidationError[];
   warnings: ValidationError[];
-  layer: "structural" | "semantic" | "logical" | "drift" | "all";
-  durationMs: number;
+  infos: ValidationError[];
+  level: ValidationLevel;
+  filesChecked: number;
+  enforcement?: { enforced: number; violations: number; manual: number };
 }
 ```
 
-## Exit Code Mappings
+## Resource Limits
+
+Validation aborts (fail-loud) when limits are exceeded — all overridable by
+environment variable:
+
+| Limit | Default | Env var |
+|---|---|---|
+| Max blueprint files | 1000 | `BP_MAX_VALIDATION_FILES` |
+| Max total bytes | 50 MB | `BP_MAX_VALIDATION_BYTES` |
+| Pipeline timeout | 30 s | `BP_VALIDATION_TIMEOUT_MS` |
+
+## Exit Code Mapping
 
 | Exit Code | Condition |
 |-----------|-----------|
-| `0` | All layers passed |
+| `0` | All requested levels passed |
 | `4` | Structural validation failure |
-| `5` | Semantic validation failure |
-| `6` | Drift detected |
+| `5` | Semantic/logical validation failure |
+| `6` | Drift detected — only when explicitly requested via `--level drift` or `--fail-on drift`; otherwise drift findings are advisory warnings |
 | `1` | Unexpected error in validator |
 
-## Drift State Machine
+## Drift Detection
+
+Drift compares SHA-256 hashes of tracked files against the fingerprint snapshot
+`.bp-fingerprint.json` (written by `bp init`, refreshed by `bp sync`):
 
 ```text
-              ┌──────────────┐
-              │    CLEAN     │  ← initial state after bp init
-              └──────┬───────┘
-                     │ file modified outside bp
-                     ▼
-              ┌──────────────┐
-              │   DRIFTED    │  ← exit 6
-              └──────┬───────┘
-                     │ bp sync --auto-apply
-                     ▼
-              ┌──────────────┐
-              │   SYNCED     │  ← snapshot hash updated
-              └──────────────┘
+CLEAN (after bp init) ──file modified outside bp──► DRIFTED ──bp sync --auto-apply──► SYNCED
 ```
 
-Drift is detected by comparing SHA-256 hashes of tracked files against the `.bp-lock` snapshot. Any mismatch transitions to DRIFTED state.
+Pack-managed files are additionally cross-checked against `.bp/packs.lock.json`
+(`PACK_FILE_MODIFIED` / `PACK_FILE_MISSING` / aggregate `PACK_DRIFTED`).

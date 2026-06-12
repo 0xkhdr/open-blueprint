@@ -63,7 +63,7 @@ Common issues, diagnostic procedures, and the complete `bp` exit code registry. 
 ### Code 6 — Drift Detected {#code-6}
 
 **Name**: `DRIFT_DETECTED`
-**Description**: Blueprint files have been modified outside of `bp` — hash mismatch with `.bp-lock` snapshot.
+**Description**: Blueprint files have been modified outside of `bp` — hash mismatch with the `.bp-fingerprint.json` snapshot.
 **Example trigger**: Manual edit to `CLAUDE.md` after `bp init`.
 **Resolution**: Run `bp sync --auto-apply` to resync, or `bp verify --level drift` to inspect what changed.
 **Note**: Drift findings are advisory warnings. A passing `bp verify` exits `0` even when drift warnings are present; code `6` is returned only when drift checking is explicitly requested via `--level drift` or `--fail-on drift`.
@@ -84,7 +84,7 @@ Common issues, diagnostic procedures, and the complete `bp` exit code registry. 
 **Name**: `NETWORK_ERROR`
 **Description**: Registry or marketplace fetch failed after retry attempts.
 **Example trigger**: `bp template install <pack>` when registry is unreachable.
-**Resolution**: Check network connectivity. Retry with `BP_LOG_LEVEL=debug` to see HTTP response details. Use `--offline` flag if available for local-only operation.
+**Resolution**: Check network connectivity. Retry with `BP_LOG_LEVEL=debug` to see HTTP response details. Set `BP_OFFLINE=1` to skip advisory registry lookups in `bp verify`.
 
 ---
 
@@ -92,7 +92,7 @@ Common issues, diagnostic procedures, and the complete `bp` exit code registry. 
 
 **Name**: `PERMISSION_ERROR`
 **Description**: Path traversal attempt blocked, non-HTTPS URL rejected, or write to disallowed directory.
-**Example trigger**: `bp init --output ../../etc/passwd` (path traversal).
+**Example trigger**: a `--output`/path argument that escapes the project root (e.g. `bp convert --output ../../etc`), or a non-HTTPS registry URL.
 **Resolution**: Use paths within the current project directory. Ensure registry URLs use `https://`.
 
 ---
@@ -150,28 +150,47 @@ bp:  Running diagnostics...
 
 ### "Cost estimates seem high or low"
 
-**Cause**: Cost factors based on project complexity (languages, APIs, auth).
-**Fix**: Adjust `cost_per_token_usd` based on real usage:
+**Cause**: bp does not meter live token usage — cost figures are computed from the
+values configured in the blueprint's `cost` section (`cost_per_token_usd`,
+`estimated_monthly_tokens`, budgets).
+**Fix**: Wire real numbers from your provider's billing into those fields, then
+re-run `bp cost report` or `bp doctor --cost`.
+
+### "My agent ignores the rules"
+
+**Cause**: The backend isn't reading the scaffolded files (wrong path, drifted
+files, or an unsupported layer for that backend).
+**Fix**: Run `bp doctor --tool <backend> --verbose`, then `bp verify --level drift`.
+Check the [backend parity matrix](backend-parity.md) for layer support.
+
+### "Pack install fails with PACK_SIGNATURE_INVALID or PACK_UNSIGNED"
+
+**Cause**: The artifact's signature doesn't verify against your trust keyring, or
+the artifact is unsigned.
+**Fix**: `bp trust add <publisher> <pubkey.pem>` with the publisher's real key. For
+unsigned artifacts you explicitly accept the risk with `--allow-unsigned` (recorded
+in the lockfile). A *present-but-invalid* signature is never bypassable — that is
+tamper evidence. See [Pack Distribution](pack-distribution.md).
+
+---
+
+## Automated Recovery Pattern
+
+For scripts (or agents) reacting to non-zero `bp verify` exits:
 
 ```bash
-bp doctor --cost --actual-usage
+if ! bp verify --json > /tmp/bp-result.json; then
+  exit_code=$?
+  case $exit_code in
+    4) bp verify --fix ;;          # attempt structural auto-correction
+    6) bp sync --auto-apply ;;     # resync after drift
+  esac
+  bp verify                        # final re-check; surface failures to a human
+fi
 ```
 
-### "No anomalies detected but I see cost spikes"
-
-**Cause**: Not enough baseline samples (minimum 10 recommended).
-**Fix**: Increase `min_baseline_samples` and collect 1–2 weeks of data.
-
-### "Slack webhook returns 403"
-
-**Cause**: Invalid webhook URL or expired token.
-**Fix**: Regenerate webhook in Slack app, then test:
-
-```bash
-curl -X POST -H 'Content-type: application/json' \
-  --data '{"blocks":[{"type":"section","text":{"type":"plain_text","text":"Test"}}]}' \
-  <slack-webhook-url>
-```
+Parse `--json` output for the `errors[].type` / `errors[].resolution` fields rather
+than scraping terminal text.
 
 ---
 
@@ -179,4 +198,4 @@ curl -X POST -H 'Content-type: application/json' \
 
 - [Observability & Cost Governance](observability.md) — telemetry, budgets, alerting
 - [CLI Reference](commands.md) — all `bp` commands with options
-- [Agent Reference](../AGENTS.md) — error handling and recovery patterns
+- [AGENTS.md](../AGENTS.md) — guide for agents/contributors working on this codebase

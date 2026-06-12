@@ -2,7 +2,7 @@
 
 **Generated:** 2026-05-28 · **Version:** open-blueprint v1.0
 
-This matrix shows which IR layers each backend adapter reads and writes.
+This matrix shows which IR layers each backend adapter reads and writes. Fidelity figures are the floors asserted by `tests/integration/backends/round-trip.test.ts`; backends not listed in the round-trip table are functional but carry no tested fidelity guarantee (see the [production audit](production-audit.md)).
 
 | Feature      | Claude | Cursor | Codex | PI | Kiro | Antigravity | Copilot | Gemini | OpenDev | Generic |
 |--------------|--------|--------|-------|----|------|-------------|---------|--------|---------|---------|
@@ -76,9 +76,9 @@ All 10 backends generate `AGENTS.md` at the project root (universal output for C
 
 | Path | Rules | Skills | Agents | Hooks | MCP |
 |------|-------|--------|--------|-------|-----|
-| claude → cursor → claude | ✅ ≥98% | ✅ ≥98% | ✅ | ❌ (cursor drops) | ✅ |
+| claude → cursor → claude | ✅ ≥95% | ✅ ≥95% | ✅ | ❌ (cursor drops) | ✅ |
 | claude → codex → claude | ✅ ≥95% | ✅ ≥95% | ✅ | ✅ | ❌ |
-| cursor → generic → cursor | ✅ ≥98% | ✅ ≥98% | ✅ | ❌ (cursor drops) | ❌ |
+| cursor → generic → cursor | ✅ ≥95% | ✅ ≥95% | ✅ | ❌ (cursor drops) | ❌ |
 
 ## Backend File Layout Summary
 

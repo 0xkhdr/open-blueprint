@@ -6,7 +6,7 @@ Integrating `bp` into your CI/CD pipelines ensures that changes to rules, spatia
 
 ## 1. GitHub Actions
 
-Use the official composite action in your workflow file (e.g. `.github/workflows/blueprint-verify.yml`):
+The repository ships a composite action at `.github/actions/verify`. The `uses: ./.github/actions/verify` form below works for workflows inside this repository; in your own repository either reference it remotely (`uses: 0xkhdr/open-blueprint/.github/actions/verify@main`) or simply run `npx @agentic/bp verify` directly:
 
 ```yaml
 name: Blueprint Integrity
@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: ./actions/verify
+      - uses: ./.github/actions/verify
         with:
           backend: claude
           level: all

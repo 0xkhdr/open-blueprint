@@ -1,42 +1,64 @@
 # Data Models
 
-Core data types shared across all four engines.
+Core data types shared across all four engines. Canonical sources are the Zod
+schemas in the codebase — file paths are given per model.
 
 ---
 
 ## `Fingerprint`
 
-Repository detection output from the Detector engine.
+Repository detection output from the Detector engine. Canonical schema:
+`FingerprintSchema` in `src/detector/fingerprint.ts` (`version: "1.0"`).
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `language` | `string` | Yes | Primary language (`"typescript"`, `"python"`, `"go"`) |
-| `framework` | `string` | No | Detected framework (`"next.js"`, `"express"`, `"fastapi"`) |
-| `runtime` | `string` | No | Runtime environment (`"node"`, `"bun"`, `"python"`) |
-| `hasTests` | `boolean` | Yes | Test files detected |
-| `hasCICD` | `boolean` | Yes | CI/CD config detected |
-| `hasDocker` | `boolean` | Yes | Dockerfile detected |
-| `hasMonorepo` | `boolean` | Yes | Monorepo markers detected |
-| `riskTier` | `"low" \| "medium" \| "high" \| "critical"` | No | Calculated risk classification |
-| `tooling` | `string[]` | Yes | Detected dev tools |
-| `projectRoot` | `string` | Yes | Absolute scan root |
-| `detectedBackends` | `string[]` | Yes | Existing bp backend directories |
+| Field | Type | Description |
+|-------|------|-------------|
+| `version` | `"1.0"` | Schema version |
+| `detected_at` | ISO datetime string | When detection ran |
+| `project` | object | `name`, `root`, `type` (`monorepo \| polyrepo \| library \| application \| service`), `git_workflow` (`github-flow \| trunk-based \| gitflow \| unknown`) |
+| `languages[]` | array | `{ name, confidence (0–1), primary }`; `name` is one of: typescript, javascript, python, go, rust, java, ruby, dart, cpp, csharp, swift, php |
+| `frameworks[]` | array | `{ name, confidence (0–1) }` |
+| `entry_points[]` | array | `{ path, type: cli \| server \| library \| ui }` |
+| `tooling` | object | Optional `package_manager`, `test_runner`, `test_command`, `build_tool`, `linter`, `formatter`, `ci_system` |
+| `directory_topology` | object | `src_dirs[]`, `test_dirs[]`, `config_dirs[]`, `package_dirs[]` |
+| `security_signals` | object | `has_auth`, `has_external_apis`, `has_secrets_manager`, `has_docker`; optional `has_data_sensitive`, `has_financial_data`, `has_pii`, `has_encryption` |
+| `workspacePackages[]` | `string[]` | Monorepo workspace package paths (optional, defaults `[]`) |
 
 **JSON example:**
 
 ```json
 {
-  "language": "typescript",
-  "framework": "next.js",
-  "runtime": "node",
-  "hasTests": true,
-  "hasCICD": true,
-  "hasDocker": false,
-  "hasMonorepo": false,
-  "riskTier": "medium",
-  "tooling": ["eslint", "prettier", "vitest"],
-  "projectRoot": "/home/user/myapp",
-  "detectedBackends": ["claude"]
+  "version": "1.0",
+  "detected_at": "2026-06-12T10:00:00Z",
+  "project": {
+    "name": "my-express-service",
+    "root": "/home/user/my-service",
+    "type": "application",
+    "git_workflow": "trunk-based"
+  },
+  "languages": [
+    { "name": "typescript", "confidence": 1.0, "primary": true }
+  ],
+  "frameworks": [{ "name": "express", "confidence": 1.0 }],
+  "entry_points": [{ "path": "src/index.ts", "type": "server" }],
+  "tooling": {
+    "package_manager": "npm",
+    "test_runner": "vitest",
+    "test_command": "npm run test",
+    "linter": "biome",
+    "ci_system": "github-actions"
+  },
+  "directory_topology": {
+    "src_dirs": ["src"],
+    "test_dirs": ["tests"],
+    "config_dirs": ["."],
+    "package_dirs": []
+  },
+  "security_signals": {
+    "has_auth": true,
+    "has_external_apis": false,
+    "has_secrets_manager": false,
+    "has_docker": true
+  }
 }
 ```
 
@@ -44,7 +66,11 @@ Repository detection output from the Detector engine.
 
 ## `BlueprintIR`
 
-Neutral intermediate representation shared across adapters.
+Neutral intermediate representation shared across adapters. Canonical schema:
+`BlueprintIRSchema` in `src/translator/ir.ts` (`version: "2.0"`). Beyond the core
+layers below, the schema also defines optional `commands[]`, `mcp_servers[]`,
+`identity`, `audit`, and `compliance` sections — see
+[Backend Adapters](backend-adapter.md) for the full field listing.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -100,15 +126,21 @@ Neutral intermediate representation shared across adapters.
 
 ## `ValidationResult`
 
-Output from a single validation layer run.
+Output of a validation run. Canonical source: `ValidationResult` in
+`src/validator/index.ts`.
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `passed` | `boolean` | True if no errors |
 | `errors` | `ValidationError[]` | Blocking violations |
 | `warnings` | `ValidationError[]` | Non-blocking issues |
-| `layer` | `string` | Layer name: `structural`, `semantic`, `logical`, `drift`, `all` |
-| `durationMs` | `number` | Layer execution time |
+| `infos` | `ValidationError[]` | Informational findings (e.g. `RULE_MANUAL`) |
+| `level` | `ValidationLevel` | `structural \| semantic \| logical \| enforcement \| drift \| governance \| all` |
+| `filesChecked` | `number` | Number of blueprint files examined |
+| `enforcement?` | `EnforcementSummary` | `enforced` / `violations` / `manual` counts (enforcement level) |
+
+Each `ValidationError` carries `file`, `type`, `severity` (`error \| warning \| info`),
+`message`, `resolution`, and optionally `line`.
 
 **JSON example:**
 
@@ -117,55 +149,32 @@ Output from a single validation layer run.
   "passed": false,
   "errors": [
     {
-      "file": "CLAUDE.md",
-      "type": "MISSING_REQUIRED_SECTION",
+      "file": ".claude/rules/example.md",
+      "type": "MISSING_FRONTMATTER",
       "severity": "error",
-      "message": "Required ## Rules section missing",
-      "resolution": "Add a '## Rules' section with at least one rule entry"
+      "message": "Rule file is missing required frontmatter",
+      "resolution": "Add frontmatter with scope, severity, and action fields"
     }
   ],
   "warnings": [],
-  "layer": "structural",
-  "durationMs": 42
+  "infos": [],
+  "level": "structural",
+  "filesChecked": 12
 }
 ```
 
 ---
 
-## `RulePack`
+## Rule & Skill Packs (`bp-pack/1`)
 
-A named, versioned collection of governance rules distributed via the marketplace.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `name` | `string` | Yes | Pack identifier (`"security-baseline"`) |
-| `version` | `string` | Yes | Semver version string |
-| `description` | `string` | Yes | Human-readable description |
-| `author` | `string` | No | Publisher name |
-| `rules` | `Rule[]` | Yes | Rules included in this pack |
-| `tags` | `string[]` | No | Searchable tags |
-| `verified` | `boolean` | No | Publisher-verified status |
-
-**JSON example:**
-
-```json
-{
-  "name": "owasp-baseline",
-  "version": "1.2.0",
-  "description": "OWASP Top 10 governance rules for agentic AI tools",
-  "author": "open-blueprint",
-  "rules": [
-    {
-      "id": "no-path-traversal",
-      "scope": "**",
-      "severity": "hard",
-      "action": "Reject path inputs containing '..' segments"
-    }
-  ],
-  "tags": ["security", "owasp"],
-  "verified": true
-}
-```
+Packs are single YAML/JSON files (`*.bp-pack.yaml|yml|json`) conforming to the
+`bp-pack/1` schema: `schema`, `id`, `name`, `version` (strict semver), `kind`
+(`rules` or `skills`), `framework` (`gdpr | soc2 | hipaa | pci-dss | iso-27001 |
+custom`), `description`, `author`, `tags`, and either `rules[]` (1–200) or
+`skills[]`. The full format reference with examples lives in
+[Rule Packs](rule-packs.md) and [Skill Authoring](skill-authoring.md); the install
+lockfile (`bp-pack-lock/1`, `.bp/packs.lock.json`) and signed artifact format
+(`bp-artifact/1`) are documented in [Pack Distribution](pack-distribution.md).
 
 ---
 

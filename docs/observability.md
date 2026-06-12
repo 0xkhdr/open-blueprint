@@ -29,7 +29,7 @@ telemetry:
 | **Prometheus** | `prometheus.yaml` | Metrics-only, Kubernetes-native |
 | **CloudWatch** | `cloudwatch-config.json` | AWS-native logging & metrics |
 
-Run `bp convert --target <backend>` to auto-generate provider configs.
+Run `bp telemetry detect` to identify the platform from your dependencies and `bp telemetry init --platform <p>` to generate the config snippet.
 
 ---
 

@@ -30,3 +30,6 @@ MD060: false
 
 # Allow inline HTML (used for shields.io badges in README)
 MD033: false
+
+# First-line-H1 — disabled: README opens with a centered branding block (HTML), H1 follows
+MD041: false

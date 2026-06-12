@@ -1,14 +1,10 @@
 # 🍳 Practical Recipes & Use Cases
 
-Permalink: Practical Recipes & Use Cases
-
 This document compiles the most common developer recipes, CI/CD templates, and advanced configuration patterns for **open-blueprint (`bp`)**.
 
 ---
 
 ## 🧭 Recipe Selector
-
-Permalink: Recipe Selector
 
 Use this quick-scan matrix to find the exact setup for your current needs:
 
@@ -24,13 +20,9 @@ Use this quick-scan matrix to find the exact setup for your current needs:
 
 ## 📝 Recipes Detailed
 
-Permalink: Recipes Detailed
-
 ---
 
 ### 1. Bootstrapping a New TypeScript Repository
-
-Permalink: Bootstrapping a New TypeScript Repository
 
 Prepare a new repository for a Claude Code agent in under 10 seconds.
 
@@ -54,8 +46,6 @@ npx @agentic/bp verify --level all
 ---
 
 ### 2. CI Verification & Drift Protection
-
-Permalink: CI Verification & Drift Protection
 
 Enforce governance checks on every pull request using GitHub Actions. Create the following workflow file under `.github/workflows/blueprint-verify.yml`:
 
@@ -90,8 +80,6 @@ jobs:
 ---
 
 ### 2b. Governance Report & Per-Rule PR Annotations
-
-Permalink: Governance Report & Per-Rule PR Annotations
 
 Go beyond pass/fail: `bp report` measures every governance rule against the repository
 and emits SARIF that GitHub code scanning turns into per-rule PR annotations at the
@@ -129,8 +117,6 @@ exit codes: [troubleshooting](troubleshooting.md#bp-report-exit-codes).
 
 ### 3. Cross-Compile Claude Code to Cursor
 
-Permalink: Cross-Compile Claude Code to Cursor
-
 If your team uses both Claude Code and Cursor, you can translate the workspace configuration instantly:
 
 ```bash
@@ -145,8 +131,6 @@ bp verify ./.cursor --level structural
 
 ### 4. Enterprise Private Template Inheritance
 
-Permalink: Enterprise Private Template Inheritance
-
 Configure all microservices in your organization to inherit security constraints from a central package.
 
 1. **Global Configuration Setup**:
@@ -160,7 +144,8 @@ Configure all microservices in your organization to inherit security constraints
 
    ```json
    {
-     "backend": "claude",
+     "backends": ["claude"],
+     "primary_backend": "claude",
      "extends": "@myorg/blueprint-base",
      "overrides": {
        "rules": {

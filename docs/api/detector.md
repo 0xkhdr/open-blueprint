@@ -4,35 +4,56 @@ The Detector engine fingerprints a repository and returns a `Fingerprint` object
 
 ## `Fingerprint` Zod Schema
 
-```typescript
-import { z } from "zod";
+Canonical source: `FingerprintSchema` in `src/detector/fingerprint.ts`
+(`version: "1.0"`) — abridged:
 
+```typescript
 const FingerprintSchema = z.object({
-  language: z.string(),                    // primary language: "typescript" | "python" | "go" | ...
-  framework: z.string().optional(),        // detected framework: "next.js" | "express" | "fastapi" | ...
-  runtime: z.string().optional(),          // runtime: "node" | "bun" | "deno" | "python" | ...
-  hasTests: z.boolean(),
-  hasCICD: z.boolean(),
-  hasDocker: z.boolean(),
-  hasMonorepo: z.boolean(),
-  riskTier: z.enum(["low", "medium", "high", "critical"]).optional(),
-  tooling: z.array(z.string()),            // detected tools: ["eslint", "prettier", ...]
-  projectRoot: z.string(),
-  detectedBackends: z.array(z.string()),   // found bp backends: ["claude", "cursor", ...]
+  version: z.literal("1.0"),
+  detected_at: z.string().datetime(),
+  project: z.object({
+    name: z.string(),
+    root: z.string(),
+    type: z.enum(["monorepo", "polyrepo", "library", "application", "service"]),
+    git_workflow: z.enum(["github-flow", "trunk-based", "gitflow", "unknown"]),
+  }),
+  languages: z.array(z.object({
+    name: LanguageNameSchema,          // typescript | javascript | python | go | rust | ...
+    confidence: z.number().min(0).max(1),
+    primary: z.boolean(),
+  })),
+  frameworks: z.array(z.object({ name: z.string(), confidence: z.number() })),
+  entry_points: z.array(z.object({
+    path: z.string(),
+    type: z.enum(["cli", "server", "library", "ui"]),
+  })),
+  tooling: z.object({ /* package_manager, test_runner, test_command, build_tool,
+                         linter, formatter, ci_system — all optional */ }),
+  directory_topology: z.object({ /* src_dirs, test_dirs, config_dirs, package_dirs */ }),
+  security_signals: z.object({ /* has_auth, has_external_apis, has_secrets_manager,
+                                  has_docker, + optional pii/financial/encryption */ }),
+  workspacePackages: z.array(z.string()).optional().default([]),
 });
 
 type Fingerprint = z.infer<typeof FingerprintSchema>;
 ```
 
-## Detection Algorithm Inputs
+See [Data Models](../data-models.md#fingerprint) for the full field table.
+
+## Detection Inputs
 
 | Input | Source | Description |
 |-------|--------|-------------|
-| `projectRoot` | `process.cwd()` or `--dir` arg | Absolute path to scan |
-| `maxDepth` | hardcoded `3` | Directory traversal depth limit |
-| File patterns | `src/detector/frameworks.ts` | Glob patterns per framework |
+| `projectRoot` | caller-supplied path | Absolute path to scan |
+| Framework patterns | `src/detector/frameworks.ts` | Manifest/dependency markers per framework |
 | Language markers | `src/detector/languages.ts` | File extensions and config files |
-| Security signals | `src/detector/security.ts` | Presence of auth, secrets, external API patterns |
+| Tooling markers | `src/detector/tooling.ts` | Lockfiles, linter/formatter/CI configs |
+| Security signals | `src/detector/security.ts` | Presence of auth, secrets manager, Docker, external API patterns |
+| Enterprise signals | `src/detector/enterprise-signals.ts` | RBAC / audit / DLP indicators |
+| Workspace layout | `src/detector/workspace-parser.ts` | Monorepo workspace packages |
+
+Detection is pure static analysis: no network calls, no build-tool invocation,
+no shell commands.
 
 ## Usage Examples
 
