@@ -68,7 +68,7 @@ signed with a detached `index.sig` served alongside it.
 
 ## Trust model & threat model
 
-**What signatures protect against**
+### What signatures protect against
 
 - *Tampering in transit or at rest*: every file's sha256 must match the signed
   manifest; one flipped byte aborts the install with `PACK_HASH_MISMATCH`.
@@ -80,7 +80,7 @@ signed with a detached `index.sig` served alongside it.
   and hardlinks (`PACK_EXTRACT_UNSAFE`); everything is staged and verified
   before any project file is written, so failed installs leave no partial files.
 
-**What signatures do NOT protect against**
+### What signatures do NOT protect against
 
 - *A malicious-but-trusted publisher.* A signature proves who published, not
   that the content is benign. Review packs — and especially plugins, which

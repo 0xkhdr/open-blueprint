@@ -17,7 +17,7 @@ schema: "bp-pack/1"                # required, exactly this value
 id: acme-internal-security        # ^[a-z0-9_-]+$, max 64 chars
 name: ACME Internal Security
 version: 1.2.0                    # strict semver
-kind: rules                       # "rules" today; skill packs arrive later
+kind: rules                       # "rules" or "skills" (see skill-authoring.md)
 framework: custom                 # gdpr | soc2 | hipaa | pci-dss | iso-27001 | custom
 description: House security constraints for ACME repos
 author: platform-team@acme.com
@@ -78,7 +78,7 @@ A project pack whose `id` collides with a built-in is rejected at install time (
 
 Installing renders one rule file per pack rule into the active backend's rules directory:
 
-```
+```text
 .claude/rules/pack-<packId>-<ruleId>.md
 ```
 
@@ -128,4 +128,4 @@ When a generated file was edited outside preserve blocks (hash mismatch). Move y
 Put additions inside a `<!-- bp:preserve -->` … `<!-- bp:end-preserve -->` block; they survive re-installs and don't trip integrity checks. Any other edit is flagged as `PACK_FILE_MODIFIED`.
 
 **How do I share packs across repos?**
-Today: commit the pack file and install from a path or `.bp/packs/`. Remote fetch, publishing, and signature-gated installs are planned (Stage 5).
+Commit the pack file and install from a path or `.bp/packs/` — or publish a signed artifact to any static host and install it by URL/`github:` ref/registry id with signature verification. See [Pack Distribution](pack-distribution.md).

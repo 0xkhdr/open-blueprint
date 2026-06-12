@@ -16,7 +16,7 @@ Decoupled translation flow:
 
 ---
 
-## 2. Structure of `BlueprintIRSchema` (v1.0)
+## 2. Structure of `BlueprintIRSchema` (IR version 2.0)
 
 Every custom adapter maps configurations to/from the `BlueprintIRSchema` defined in `src/translator/ir.ts`. The schema covers core developer and advanced enterprise layers:
 
@@ -225,33 +225,32 @@ export class MyToolAdapter {
 
 ## 4. Registering the Adapter
 
-To register your adapter, add it to the adapter selector switch-case inside `src/validator/index.ts` under the `getAdapterByName` function:
+Register your adapter in `src/translator/adapters/registry.ts` by adding it to the
+`adapterRegistryObject` map (and the `KnownBackend` union):
 
 ```typescript
 // 1. Import your custom adapter
-import { MyToolAdapter } from "../translator/adapters/mytool.js";
+import { MyToolAdapter } from "./mytool.js";
 
-// 2. Register within the selector
-function getAdapterByName(backend: string) {
-  switch (backend) {
-    case "claude":
-      return new ClaudeAdapter();
-    case "cursor":
-      return new CursorAdapter();
-    case "mytool":
-      return new MyToolAdapter(); // <--- Registered
-    // ...
-    default:
-      return new GenericAdapter();
-  }
-}
+// 2. Add the backend id to the KnownBackend union, then register the factory
+const adapterRegistryObject: Record<KnownBackend, () => BlueprintAdapter> = {
+  claude: () => new ClaudeAdapter(),
+  cursor: () => new CursorAdapter(),
+  // ...
+  mytool: () => new MyToolAdapter(), // <--- registered
+};
 ```
+
+Backends without a registered adapter fall back to `GenericAdapter`
+(`getRegisteredAdapter`). If the new tool also needs scaffolding support, add an
+entry to `src/backends/registry.ts` (paths, command syntax) and a template
+directory under `templates/`.
 
 ---
 
 ## 5. Verifying Adapter Round-Trip Fidelity
 
-All custom adapters must preserve governance semantics. Write a unit test verifying round-trip equivalence ($98\%$ or higher structural matching) inside `tests/unit/translator/`:
+All custom adapters must preserve governance semantics. Write a unit test verifying round-trip equivalence inside `tests/unit/translator/` (the core adapters assert ≥ 95% fidelity in `tests/integration/backends/round-trip.test.ts`):
 
 ```typescript
 import { test, expect } from "vitest";

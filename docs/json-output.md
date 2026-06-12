@@ -1,6 +1,6 @@
 # JSON Output Reference
 
-All `bp` CLI commands support `--json` for machine-readable output. When `--json` is passed, all spinner and color output is suppressed from stdout.
+Most `bp` commands support `--json` for machine-readable output (see [commands.md](commands.md) for the per-command flag list). When `--json` is passed, all spinner and color output is suppressed from stdout.
 
 ## bp init --json
 
@@ -90,7 +90,7 @@ With errors:
 }
 ```
 
-## bp drift --json
+## bp drift backends --json
 
 ```json
 {
@@ -119,6 +119,6 @@ With errors:
 | Status | Meaning |
 |---|---|
 | `in sync` | Backend files match baseline |
-| `drifted` | Backend files changed since last `bp drift baseline` |
+| `drifted` | Backend files changed since the last `bp drift backends --save-baseline` |
 | `missing` | Backend is configured in `.bp.json` but files do not exist |
 | `orphaned` | Backend files exist but backend is not configured in `.bp.json` |

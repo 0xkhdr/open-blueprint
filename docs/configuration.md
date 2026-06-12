@@ -1,14 +1,10 @@
 # ⚙️ Configuration System
 
-Permalink: Configuration System
-
 This document outlines the configuration structure, options, and schemas used by **open-blueprint (`bp`)**.
 
 ---
 
 ## 🗂️ Configuration Scopes
-
-Permalink: Configuration Scopes
 
 `bp` utilizes two distinct levels of configuration to balance global developer preferences with project-specific rules:
 
@@ -19,13 +15,9 @@ Permalink: Configuration Scopes
 
 ## 🌐 1. Global User Configuration
 
-Permalink: 1. Global User Configuration
-
 The global configuration defines system-wide defaults across all repository scaffolds. It is stored at `~/.bp/config.json`.
 
 ### Global Schema Properties
-
-Permalink: Global Schema Properties
 
 | Key | Type | Description | Default |
 |---|---|---|---|
@@ -35,7 +27,11 @@ Permalink: Global Schema Properties
 | `auto_verify_on_init` | `boolean` | Instantly trigger `bp verify` upon a successful `bp init`. | `true` |
 | `auto_fix_level` | `string` | Severity level of anomalies that `bp` should automatically resolve. | `"structural"` |
 | `ci_mode` | `boolean` | Optimizes logging output and sets terminal behaviors for CI environments. | `false` |
+| `codex_home` | `string` | Overrides `$CODEX_HOME` for the `codex` backend's global command path. | *(unset)* |
 | `registry_url` | `string` | Signed static-host pack registry index URL (Stage 5). Set via `bp config set registry.url <url>` — the dotted form is an alias for this key. See [pack-distribution.md](pack-distribution.md). | *(unset)* |
+
+Canonical schema: `UserConfigSchema` in `src/config/user.ts`. `auto_fix_level`
+accepts `structural | semantic | logical`.
 
 **Example config.json:**
 
@@ -54,50 +50,52 @@ Permalink: Global Schema Properties
 
 ## 📁 2. Project Configuration
 
-Permalink: 2. Project Configuration
-
 The project configuration controls how `bp` scaffolds, validates, and translates configurations within a single repository. It must be checked into the source control system as `.bp.json` at the root of the project.
 
 ### Project Schema Properties
 
-Permalink: Project Schema Properties
+Canonical schema: `ProjectConfigSchema` in `src/config/project.ts`. The current
+(v2) schema uses a `backends` array; the legacy v1 single `backend` string is
+still accepted and normalized to `backends: [backend]` + `primary_backend`.
+Upgrade in place with `bp migrate config`.
 
 | Key | Type | Description | Required |
 |---|---|---|---|
-| `backend` | `string` | Target backend for active governance (`claude`, `cursor`, `opendev`, `generic`). | Yes |
-| `extends` | `string` | Name of a template pack or internal organization policy base to inherit. | No |
-| `overrides` | `object` | Customize or soften validation severities defined in the base template. | No |
-| `exclude` | `array` | Glob patterns of directories to completely skip during file verification. | No |
-| `plugins` | `array` | Validator plugins to run during `bp verify`. Entries are either a path string (runs in `isolated` mode) or `{ "path": "...", "mode": "isolated" \| "inline" }`. Paths must stay inside the project root. See [Plugin API](plugin-api.md). | No |
+| `backends` | `string[]` | Backend IDs under active governance (see [Supported Tools](supported-tools.md)). | Yes (or legacy `backend`) |
+| `primary_backend` | `string` | Which configured backend `bp` treats as primary; must be in `backends`. | No (defaults to first) |
+| `backend` | `string` | **Legacy v1**: single backend; normalized to the v2 fields on load. | — |
+| `backend_configs` | `object` | Per-backend overrides: `delivery_mode` (`skills_and_commands \| skills_only \| commands_only`) and `workflows` (string array). | No |
+| `extends` | `string` | Template pack or organization policy base to inherit. | No |
+| `overrides` | `object` | Validation severity overrides, e.g. `{ "rules": { "severity_defaults": "hard \| soft \| info" } }`. | No |
+| `exclude` | `string[]` | Glob patterns to skip during verification (default `[]`). | No |
+| `plugins` | `array` | Validator plugins for `bp verify`: a path string (runs `isolated`) or `{ "path", "mode": "isolated" \| "inline" }`. Paths must stay inside the project root. See [Plugin API](plugin-api.md). | No |
+| `scan` | `object` | `{ "entropyEnabled": true }` enables entropy-based secret detection (same as `bp verify --entropy-scan`). | No |
 
 **Example .bp.json:**
 
 ```json
 {
-  "backend": "claude",
+  "backends": ["claude", "cursor"],
+  "primary_backend": "claude",
+  "backend_configs": {
+    "cursor": { "delivery_mode": "skills_only" }
+  },
   "extends": "@myorg/blueprint-base",
   "overrides": {
-    "rules": {
-      "severity_defaults": "soft"
-    }
+    "rules": { "severity_defaults": "soft" }
   },
-  "exclude": [
-    "legacy/",
-    "vendor/",
-    "dist/"
-  ],
+  "exclude": ["legacy/", "vendor/", "dist/"],
   "plugins": [
     "./plugins/validate-rationale.mjs",
     { "path": "./plugins/fast-check.mjs", "mode": "inline" }
-  ]
+  ],
+  "scan": { "entropyEnabled": false }
 }
 ```
 
 ---
 
 ## 🏛️ Template Inheritance
-
-Permalink: Template Inheritance
 
 When utilizing the `extends` property in `.bp.json`:
 

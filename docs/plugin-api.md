@@ -1,14 +1,10 @@
 # 🔌 Plugin / Extension API
 
-Permalink: Plugin / Extension API
-
 This document explains how to extend **open-blueprint (`bp`)** with custom validator plugins that run inside the `bp verify` pipeline.
 
 ---
 
 ## 🎨 Plugin Architecture & Lifecycle
-
-Permalink: Plugin Architecture & Lifecycle
 
 Plugins are configured in `.bp.json` and executed by the Validator Engine after the built-in checks for the requested level:
 
@@ -23,8 +19,6 @@ A misbehaving plugin never takes down the run: a crash inside a validator is rep
 ---
 
 ## 💻 Writing a Custom Validator
-
-Permalink: Writing a Custom Validator
 
 The public API lives at the `@agentic/bp/plugin` subpath export. The fastest start is the scaffolder:
 
@@ -79,13 +73,11 @@ All context data is deeply frozen — validators cannot mutate the blueprint or 
 
 ## ⚙️ Registration & Configuration
 
-Permalink: Registration & Configuration
-
 List plugins in the `plugins` array of `.bp.json`. Paths must resolve **inside the project root** (paths escaping the root are rejected with `PLUGIN_PATH_ESCAPE`):
 
 ```json
 {
-  "backend": "claude",
+  "backends": ["claude"],
   "plugins": [
     "./plugins/company-checks.mjs",
     { "path": "./plugins/fast-check.mjs", "mode": "inline" }
@@ -108,10 +100,8 @@ Skip all plugins for a run with `bp verify --no-plugins`.
 
 ## 🔐 Trust Model
 
-Permalink: Trust Model
-
 **Plugins run with your user's privileges. Only run plugins you trust.**
 
 Isolated mode is a *resource* boundary, not a *security* boundary: worker threads cap runtime and memory and keep plugin state out of the validator process, but a plugin can still read and write files, open network connections, and do anything else your user account can do. Treat adding a plugin to `.bp.json` exactly like adding a dependency to `package.json` — review the code or its source first.
 
-Roadmap: Stage 5 adds signed plugin distribution and verification for team-wide rollout.
+For team-wide rollout, distribute plugins as signed artifacts and install them with `bp pack plugin:install` — see [Pack Distribution](pack-distribution.md).

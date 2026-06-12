@@ -1,421 +1,337 @@
-# 💻 CLI Command Reference
+# CLI Command Reference
 
-This document provides a comprehensive reference for all 31 commands, arguments, and options available in the **open-blueprint (`bp`)** Command Line Interface (CLI).
-
----
-
-## 📊 Command Quick Reference
-
-| Command | Primary Purpose | Common Options / Arguments |
-|---|---|---|
-| [`bp init`](#bp-init) | Scaffolds standard blueprints for target agents | `[tool]`, `--force`, `--dry-run`, `--no-verify` |
-| [`bp verify`](#bp-verify) | Validates blueprint structural and semantic integrity | `[paths...]`, `--level`, `--fix`, `--watch` |
-| [`bp report`](#bp-report) | Measured governance posture: per-rule compliance, pack integrity, SARIF | `[path]`, `--json [file]`, `--sarif [file]`, `--fail-on`, `--framework`, `--snapshot` |
-| [`bp sync`](#bp-sync) | Checks for and resolves project structural drift | `--auto-apply`, `--report`, `--json` |
-| [`bp adopt`](#bp-adopt) | Brings user-authored rules/skills/agents under ownership tracking | `[path]`, `--status`, `--wrap`, `--dry-run`, `--json` |
-| [`bp emit`](#bp-emit) | Serializes a BlueprintIR back to governance files (round-trip) | `[path]`, `--input`, `--from`, `--force`, `--dry-run`, `--json` |
-| [`bp convert`](#bp-convert) | Translates rules and tools across agent platforms | `--from`, `--to`, `--output` |
-| [`bp dev`](#bp-dev) | Live reload dev server with real-time validation | `--watch`, `--level`, `--port`, `--dashboard` |
-| [`bp docs`](#bp-docs) | Generate governance documentation from blueprint | `--format`, `--output` |
-| [`bp diff`](#bp-diff) | Show semantic diff between two blueprints | `<file1> <file2>`, `--format`, `--ignore-metadata` |
-| [`bp merge`](#bp-merge) | Three-way merge of blueprints with conflict detection | `<base> <ours> <theirs>`, `--output` |
-| [`bp template`](#bp-template) | Installs and manages templates from internal registry | `list`, `install <pkg>`, `publish <path>` |
-| [`bp doctor`](#bp-doctor) | Executes diagnostics and cost calculations | `--tool`, `--verbose`, `--cost` |
-| [`bp health`](#bp-health) | Environment/CI health checks (config, engines, registry reachability) | `--json` |
-| [`bp rule`](#bp-rule) | Lints and graphs scope dependencies for rules; manages rule packs | `lint <file>`, `test <file>`, `graph`, `pack:create`, `pack:lint`, `pack:install` (`--allow-unsigned` for remote artifacts), `pack:remove`, `pack:list` |
-| [`bp skill`](#bp-skill) | Authors, validates, dry-runs, and shares skills; manages skill packs | `new <name>`, `lint [glob]`, `list`, `test <file>`, `pack:create`, `pack:lint`, `pack:install` (`--allow-unsigned` for remote artifacts), `pack:remove`, `pack:list` |
-| [`bp pack`](#bp-pack) | Publishes signed pack artifacts and installs plugin artifacts (see [docs/pack-distribution.md](pack-distribution.md)) | `keygen <name>`, `publish <file> --key <pem>`, `index:build <dir> --key <pem>`, `plugin:install <ref>` |
-| [`bp trust`](#bp-trust) | Manages the local keyring for verifying signed pack artifacts | `add <name> <pub.pem>`, `list`, `remove <name>` |
-| [`bp hook`](#bp-hook) | Generates and validates pre-execution agent scripts | `generate`, `validate <file>` |
-| [`bp config`](#bp-config) | Modifies global user CLI default variables | `get <key>`, `set <key> <value>`, `reset` |
-| [`bp update`](#bp-update) | Updates bp itself to the latest version | None |
-| [`bp migrate`](#bp-migrate) | Migrates blueprint between backends/schema versions | `--from`, `--to`, `--schema-only` |
-| [`bp agent`](#bp-agent) | Manages local agent registration | `list`, `register <name>`, `remove <name>` |
-| [`bp mcp`](#bp-mcp) | Manages MCP server configurations | `list`, `add <name>`, `remove <name>` |
-| [`bp team`](#bp-team) | Manages agent team configurations | `create`, `list`, `invite` |
-| [`bp chain`](#bp-chain) | Manages agent chain configurations | `create`, `list`, `run` |
-| [`bp memory`](#bp-memory) | Audits and governs persistent memory directories | `audit`, `prune`, `backup` |
-| [`bp telemetry`](#bp-telemetry) | Configures and validates telemetry settings | `enable`, `disable`, `status` |
-| [`bp cost`](#bp-cost) | Tracks and manages budgets and costs | `report`, `budget <limit>`, `attribution` |
-| [`bp drift`](#bp-drift) | Run advanced semantic drift detection checks | `--level`, `--json`, `--report-only` |
-| [`bp marketplace`](#bp-marketplace) | Discover blueprint template packages on npm | `search` |
+Complete reference for every `bp` command, generated against the actual CLI
+(`bp <command> --help` is always authoritative). Exit codes referenced below are
+documented in the [exit code registry](troubleshooting.md#exit-code-registry).
 
 ---
 
-## 🚀 Commands Detailed
+## Quick Reference
 
-### `bp init`
+| Command | Purpose |
+|---|---|
+| [`bp init`](#bp-init) | Scaffold a blueprint for the current repository |
+| [`bp verify`](#bp-verify) | Validate blueprint integrity (6 levels) |
+| [`bp report`](#bp-report) | Measured governance posture: per-rule compliance, SARIF/JSON |
+| [`bp sync`](#bp-sync) | Detect and resolve repository drift |
+| [`bp convert`](#bp-convert) | Translate a blueprint between backends |
+| [`bp dev`](#bp-dev) | Live-reload validation server + plugin scaffold/test |
+| [`bp docs`](#bp-docs) | Generate governance documentation from the blueprint |
+| [`bp diff`](#bp-diff) | Semantic diff between two blueprints |
+| [`bp merge`](#bp-merge) | Three-way blueprint merge with conflict resolution |
+| [`bp template`](#bp-template) | List, install, publish template packs |
+| [`bp doctor`](#bp-doctor) | Diagnostics: backend config, secrets, compliance, cost |
+| [`bp health`](#bp-health) | Environment/CI health checks |
+| [`bp rule`](#bp-rule) | Rule utilities + rule pack management |
+| [`bp skill`](#bp-skill) | Skill authoring, validation, skill packs |
+| [`bp hook`](#bp-hook) | Hook generation, listing, removal, safety validation |
+| [`bp config`](#bp-config) | User-level configuration (`~/.bp/config.json`) |
+| [`bp update`](#bp-update) | Self-update bp |
+| [`bp migrate`](#bp-migrate) | Cross-backend migration + `.bp.json` schema upgrade |
+| [`bp agent`](#bp-agent) | Agent registry: list, validate, add |
+| [`bp mcp`](#bp-mcp) | MCP servers: list, validate, risk report |
+| [`bp team`](#bp-team) | Agent teams: list, validate |
+| [`bp chain`](#bp-chain) | Agent chains: list, validate DAGs |
+| [`bp memory`](#bp-memory) | Memory directory audit and cleanup |
+| [`bp telemetry`](#bp-telemetry) | Detect telemetry platform, generate config snippet |
+| [`bp cost`](#bp-cost) | Cost dashboard, budget, attribution |
+| [`bp drift`](#bp-drift) | Multi-backend file drift + behavioral drift from metrics |
+| [`bp adopt`](#bp-adopt) | Bring user-authored files under ownership tracking |
+| [`bp emit`](#bp-emit) | Serialize a BlueprintIR back to governance files |
+| [`bp marketplace`](#bp-marketplace) | Search npm for blueprint template packages |
+| [`bp pack`](#bp-pack) | Publish signed pack artifacts; install plugin artifacts |
+| [`bp trust`](#bp-trust) | Manage the local trust keyring |
 
-Scaffolds a blueprint for the current repository based on detected framework topologies.
+---
 
-* **Arguments**: `[tool]` — any of the 31 registered backend IDs, e.g. `claude`, `cursor`, `opendev`, `generic` (full list: [Supported Tools](supported-tools.md))
-* **Options**:
-  * `--tool <backend>`: Override positional backend tool
-  * `--tools <ids>`: Comma-separated backend IDs to scaffold in one pass, or `all`
-  * `--template <name>`: Force specific template pack
-  * `--interactive`: Interactive setup wizard (prompts for backend, risk tier, options)
-  * `--json`: Machine-readable JSON output
-  * `--force`: Overwrite existing files
-  * `--dry-run`: Preview changes without writing
-  * `--no-verify`: Skip post-init validation
-* **Example**: `bp init claude`
-* **Error codes**: [2](troubleshooting.md#code-2) Unsupported backend · [3](troubleshooting.md#code-3) Config error · [9](troubleshooting.md#code-9) Path traversal · [1](troubleshooting.md#code-1) Unexpected error
+## `bp init`
 
-### `bp verify`
+Scaffold a blueprint for the current repository based on the detected topology.
 
-Validates blueprint structural and semantic integrity.
+- **Arguments**: `[tool]` — a backend ID (see [Supported Tools](supported-tools.md))
+- **Options**:
+  - `--tool <backend>` — alias for the positional argument
+  - `--tools <ids>` — comma-separated backend IDs, or `all`
+  - `--template <name>` — use a specific template pack
+  - `--force` — overwrite existing blueprint files
+  - `--dry-run` — show a diff of what would be generated
+  - `--no-verify` — skip post-init validation
+  - `--interactive` — interactive setup wizard
+  - `--confirm-global` — confirm writes to global paths (e.g. `$CODEX_HOME`) without prompting; needed for `codex` in CI
+  - `--json` — machine-readable output
+- **Examples**: `bp init claude` · `bp init --tools claude,cursor,windsurf` · `bp init --tools all`
+- **Exit codes**: [2](troubleshooting.md#code-2) unknown backend · [3](troubleshooting.md#code-3) config error · [9](troubleshooting.md#code-9) path traversal · [1](troubleshooting.md#code-1) unexpected
 
-* **Arguments**: `[paths...]`
-* **Options**:
-  * `--level <level>`: Validation depth (`structural`, `semantic`, `logical`, `enforcement`, `drift`, `governance`, `all`, default: `all`)
-  * `--json`: Print machine-readable JSON (default: `false`)
-  * `--fix`: Attempt auto-correction of structural anomalies
-  * `--watch`: Watch files and re-validate on change
-  * `--fail-on <level>`: Severity level to trigger non-zero exit code
-  * `--entropy-scan`: Enable entropy-based high-entropy string detection (opt-in; also configurable via `scan.entropyEnabled: true` in `.bp.json`)
-  * `--no-plugins`: Skip plugin validators configured in `.bp.json` (see [Plugin API](plugin-api.md))
-* **Example**: `bp verify --level all --watch`
-* **Example**: `bp verify --entropy-scan`
-* **Example**: `bp verify --level enforcement`
-* **Enforcement level**: evaluates each rule's declarative `check` against the repository (see [Check](data-models.md#check)). Failing hard-severity checks are errors (`RULE_VIOLATION`, non-zero exit); failing soft checks are warnings; rules without a check are reported as `RULE_MANUAL` (info) and never affect the exit code; malformed checks are `RULE_CHECK_INVALID` errors. The result summary reports `enforced` / `violations` / `manual` counts (included in `--json` output).
-* **Error codes**: [4](troubleshooting.md#code-4) Structural · [5](troubleshooting.md#code-5) Semantic · [6](troubleshooting.md#code-6) Drift · [1](troubleshooting.md#code-1) Unexpected error
+## `bp verify`
 
-### `bp report`
+Validate blueprint integrity across six levels: `structural`, `semantic`,
+`logical`, `enforcement`, `drift`, `governance` (default `all`).
 
-Measured governance posture for the repository: per-rule enforcement outcomes, per-pack measured pass/fail/manual counts (replacing static `coverage` claims), pack integrity, and machine-readable outputs for CI. See [Governance Reporting](governance-reporting.md).
+- **Arguments**: `[paths...]` — one or more repository paths
+- **Options**:
+  - `--level <level>` — `structural | semantic | logical | enforcement | drift | governance | all`
+  - `--json` — machine-readable JSON output
+  - `--format <format>` — `json | sarif`
+  - `--fix` — auto-correct unambiguous structural issues
+  - `--watch` — re-validate on file change (debounced 300 ms)
+  - `--fail-on <level>` — exit non-zero only at this severity level (default `logical`)
+  - `--entropy-scan` — enable entropy-based secret detection (also `scan.entropyEnabled` in `.bp.json`)
+  - `--no-plugins` — skip plugin validators configured in `.bp.json`
+- **Enforcement level**: evaluates each rule's declarative [`check`](data-models.md#check)
+  against the repository. Failing hard checks → errors (`RULE_VIOLATION`); failing soft
+  checks → warnings; rules without a check → `RULE_MANUAL` (info, never affects exit
+  code); malformed checks → `RULE_CHECK_INVALID` errors.
+- **Examples**: `bp verify` · `bp verify --level enforcement` · `bp verify --format sarif > out.sarif`
+- **Exit codes**: [4](troubleshooting.md#code-4) structural · [5](troubleshooting.md#code-5) semantic · [6](troubleshooting.md#code-6) drift (only when explicitly requested) · [1](troubleshooting.md#code-1) unexpected
 
-* **Arguments**: `[path]` (default: `.`)
-* **Options**:
-  * `--json [file]`: Emit the full `bp-report/1` JSON document (to stdout, or to `file`)
-  * `--sarif [file]`: Emit SARIF 2.1.0 — one `rules[]` entry per bp rule, one `results[]` entry per violation located at the violating evidence
-  * `--fail-on <level>`: Exit non-zero on violations: `hard` (default) | `soft` | `none`
-  * `--framework <id>`: Restrict to packs (and their rules) of one compliance framework (e.g. `gdpr`)
-  * `--snapshot`: Write `.bp/report-snapshot.json` — the baseline for manual-rule staleness detection
-* **Example**: `bp report`
-* **Example**: `bp report --sarif report.sarif --fail-on hard` (CI gate + code-scanning upload)
-* **Example**: `bp report --framework gdpr --json gdpr-report.json`
-* **Exit behavior**: hard violations and invalid checks exit `4` under the default `--fail-on hard`; soft violations only exit non-zero under `--fail-on soft`; `--fail-on none` always exits `0` (see [exit codes](troubleshooting.md#bp-report-exit-codes))
+## `bp report`
 
-### `bp sync`
+Measured governance posture: per-rule enforcement outcomes, per-pack measured
+pass/fail/manual counts, pack integrity, SARIF for code scanning. See
+[Governance Reporting](governance-reporting.md).
 
-Detects and resolves repository structural drift.
+- **Arguments**: `[path]` (default `.`)
+- **Options**: `--json [file]` · `--sarif [file]` · `--fail-on hard|soft|none` (default `hard`) · `--framework <id>` · `--snapshot` (writes `.bp/report-snapshot.json`)
+- **Exit codes**: see [bp report exit codes](troubleshooting.md#bp-report-exit-codes)
 
-* **Options**:
-  * `--auto-apply`: Automatically apply safe structural/drift fixes
-  * `--report`: Print the drift report only and exit
-  * `--json`: Emit the drift report as machine-readable JSON
-* **Example**: `bp sync --auto-apply`
-* **Error codes**: [6](troubleshooting.md#code-6) Drift detected · [1](troubleshooting.md#code-1) Unexpected error
+## `bp sync`
 
-### `bp adopt`
+Detect and resolve repository drift.
 
-Brings existing user-authored rules, skills, and agents under bp ownership tracking
-(records them in `.bp/manifest.json`) so later commands can tell managed files from
-developer-modified or untracked ones.
+- **Options**: `--auto-apply` (apply all safe fixes) · `--report` (report only, no changes) · `--json`
+- **Exit codes**: [6](troubleshooting.md#code-6) drift · [1](troubleshooting.md#code-1) unexpected
 
-* **Arguments**: `[path]` — project path (default: `.`)
-* **Options**:
-  * `--status`: Report managed/modified/untracked status without making changes
-  * `--wrap`: Wrap adopted file bodies in `bp:preserve` markers
-  * `--dry-run`: Preview changes without writing
-  * `--json`: Machine-readable JSON output
-* **Example**: `bp adopt --status`
-* **Error codes**: [1](troubleshooting.md#code-1) Unexpected error
+## `bp convert`
 
-### `bp emit`
+Translate a blueprint between backends through the `BlueprintIR`.
 
-Serializes a `BlueprintIR` back to the backend's governance files (round-trip), honoring
-`bp:preserve` markers, `.blueprintignore`, path safety, and ownership.
+- **Options**: `--from <backend>` · `--to <backend>` · `--input <path>` (default `.`) · `--output <path>` (default: same as input) · `--json`
+- **Example**: `bp convert --from claude --to cursor --output ./.cursor`
+- **Exit codes**: [7](troubleshooting.md#code-7) translation · [9](troubleshooting.md#code-9) path traversal
 
-* **Arguments**: `[path]` — project path (default: `.`)
-* **Options**:
-  * `--input <file>`: Read IR from a JSON file instead of parsing the project
-  * `--from <backend>`: Backend to parse the current project as
-  * `--force`: Overwrite files that lack bp markers
-  * `--dry-run`: Preview writes without modifying disk
-  * `--json`: Machine-readable JSON output
-* **Example**: `bp emit --from claude --dry-run`
-* **Error codes**: [1](troubleshooting.md#code-1) Unexpected error (path-safety violations in the writer are caught and reported as a general command failure)
+## `bp dev`
 
-### `bp convert`
+Live-reload dev server with real-time validation and optional browser dashboard.
 
-Translates blueprint governance configurations between backends.
+- **Options**: `--watch <path>` (default `.`) · `--level <level>` (`structural|semantic|logical|drift|all`) · `--port <port>` (default `3456`) · `--dashboard`
+- **Subcommands**:
+  - `plugin:scaffold <name>` — scaffold a runnable validator plugin (`plugins/<name>.mjs`; `--dir <dir>` to change). Refuses to overwrite. See [Plugin API](plugin-api.md).
+  - `plugin:test <pluginPath>` — run one plugin against the current repository; `--mode isolated|inline` (default `isolated`). Exits non-zero if the plugin reports errors.
 
-* **Options**:
-  * `--from <backend>`: Source backend (`claude`, `cursor`, `generic`)
-  * `--to <backend>`: Target backend (`claude`, `cursor`, `generic`)
-  * `--input <path>`: Source directory containing blueprints (default: `.`)
-  * `--output <path>`: Target directory for translated outputs
-* **Example**: `bp convert --from claude --to cursor --output ./translated-rules`
-* **Error codes**: [7](troubleshooting.md#code-7) Translation error · [9](troubleshooting.md#code-9) Path traversal · [1](troubleshooting.md#code-1) Unexpected error
+## `bp docs`
 
-### `bp dev`
+Generate governance documentation from the blueprint.
 
-Live reload dev server with real-time validation and browser dashboard.
+- **Subcommand**: `generate` — `--output <path>` (default `./blueprint-docs`) · `--json`
+- **Example**: `bp docs generate --output ./blueprint-docs`
 
-* **Options**:
-  * `--watch <path>`: Directory to watch (default: `.`)
-  * `--level <level>`: Validation level (structural|semantic|logical|drift|all, default: `all`)
-  * `--port <port>`: Port for browser dashboard (default: `3456`)
-  * `--dashboard`: Serve browser dashboard instead of terminal output
-* **Example**: `bp dev --dashboard --port 4000`
-* **Subcommands**:
-  * `bp dev plugin:scaffold <name>`: Scaffold a runnable validator plugin (`plugins/<name>.mjs` by default; `--dir <dir>` to change). Refuses to overwrite existing files. See [Plugin API](plugin-api.md).
-  * `bp dev plugin:test <pluginPath>`: Run a single plugin against the current repository and print its diagnostics. `--mode isolated|inline` (default `isolated`). Exits non-zero if the plugin reports errors.
+## `bp diff`
 
-### `bp docs`
+Semantic diff between two blueprint files.
 
-Generate governance documentation from blueprint.
+- **Arguments**: `<file1> <file2>`
+- **Options**: `-f, --format text|json|markdown` (default `text`) · `--ignore-metadata` · `--ignore-order`
 
-* **Options**:
-  * `--format <format>`: Output format (markdown|html, default: `markdown`)
-  * `--output <path>`: Target output file path
-* **Example**: `bp docs --format markdown --output docs/GOVERNANCE.md`
+## `bp merge`
 
-### `bp diff`
+Three-way merge of blueprints with conflict detection.
 
-Show semantic diff between two blueprints.
+- **Arguments**: `<base> <ours> <theirs>`
+- **Options**: `-o, --output <file>` · `-s, --strategy ours|theirs|deep|interactive` (default `deep`) · `--allow-partial`
+- **Example**: `bp merge base.json ours.json theirs.json -o merged.json`
 
-* **Arguments**: `<file1>` `<file2>`
-* **Options**:
-  * `-f, --format <format>`: Output format: text, json, markdown (default: `text`)
-  * `--ignore-metadata`: Ignore metadata and optional layers
-  * `--ignore-order`: Ignore array order
-* **Example**: `bp diff base-blueprint.json target-blueprint.json --format markdown`
-
-### `bp merge`
-
-Three-way merge of blueprints with conflict detection and resolution.
-
-* **Arguments**: `<base>` `<ours>` `<theirs>`
-* **Options**:
-  * `--output <path>`: Path to write the merged blueprint
-* **Example**: `bp merge base.json ours.json theirs.json --output merged.json`
-
-### `bp template`
+## `bp template`
 
 Manage template packs.
 
-* **Subcommands**:
-  * `list`: List all official and locally installed template packs.
-  * `install <pkg>`: Download, verify cryptographic signatures, and install a package.
-  * `publish <path>`: Packages, cryptographically signs, and uploads a template pack.
-* **Example**: `bp template install @bp-templates/fastapi`
-* **Error codes**: [8](troubleshooting.md#code-8) Network error · [9](troubleshooting.md#code-9) Path traversal
+- **Subcommands**:
+  - `list` — list available packs; `--registry <url>` (default `https://registry.npmjs.org`). Enumerates the template packs bundled with bp on disk plus registry results.
+  - `install <pkg>` — install a template pack; `--registry <url>`
+  - `publish <path>` — package and sign a template pack; `--name <name>`, `--ver <version>`, `--private-key <key>` (all required), `--registry <url>`, `--token <token>`
+- **Honest limitation**: there is no live bp-hosted template registry. `publish`
+  signs with real RSA crypto but the legacy in-memory registry path is test-only
+  (enabled by `BP_REGISTRY_MOCK=1`). For distributing rule/skill/plugin packs, use
+  [`bp pack`](#bp-pack) with a static host — see [Pack Distribution](pack-distribution.md).
+- **Exit codes**: [8](troubleshooting.md#code-8) network · [9](troubleshooting.md#code-9) path traversal
 
-### `bp doctor`
+## `bp doctor`
 
-Diagnostic mode for troubleshooting agent ignores or configurations.
+Diagnostics for backend configuration and project posture.
 
-* **Options**:
-  * `--tool <backend>`: Test configurations for a specific backend
-  * `--verbose`: Output timing, path checks, and detailed trace logs
-  * `--cost`: Include cost estimation report
-* **Example**: `bp doctor --verbose --cost`
-* **Error codes**: [3](troubleshooting.md#code-3) Config error · [1](troubleshooting.md#code-1) Unexpected error
+- **Options**:
+  - `--tool <backend>` — diagnose one backend
+  - `--all` — diagnose all backends configured in `.bp.json`
+  - `--verbose` — full diagnostic trace with timing
+  - `--secret-scan` — scan project files for leaked secrets
+  - `--compliance-report [framework]` — compliance gap report (`gdpr`, `soc2`, `hipaa`)
+  - `--risk-audit` — risk tier classification and escalation runbook
+  - `--env-template` — generate `.env.template` from `process.env` references
+  - `--cost` — include cost estimation report (configuration-driven; bp does not meter live token usage)
+  - `--json`
+- **Exit codes**: [3](troubleshooting.md#code-3) config · [1](troubleshooting.md#code-1) unexpected
 
-### `bp health`
+## `bp health`
 
-Runs environment health checks for CI and diagnostics: project config parseability, engine module importability, registry reachability, and config conflicts.
+Environment/CI health checks: config parseability, engine importability, registry
+reachability, config conflicts.
 
-* **Options**:
-  * `--json`: Output results as JSON (`{ status, checks[], version, correlationId }`)
-* **Example**: `bp health --json`
-* **Exit behavior**: exits `0` when all checks pass; any failing check exits with the health-check failure code
-* **Error codes**: [10](troubleshooting.md#code-10) Health check failure · [1](troubleshooting.md#code-1) Unexpected error
+- **Options**: `--json` — `{ status, checks[], version, correlationId }`
+- **Exit codes**: 0 all pass · [10](troubleshooting.md#code-10) any check failed
 
-### `bp rule`
+## `bp rule`
 
-Rule management utilities.
+Rule utilities and rule pack management. See [Rule Packs](rule-packs.md).
 
-* **Subcommands**:
-  * `lint <file>`: Check structural and glob scope validity for a rule, including Zod validation of any `check` frontmatter (`RULE_CHECK_INVALID` with line numbers).
-  * `test <file>`: Dry-run a rule against the real repository. Prints scope-glob matches, then — when the rule has a `check` — evaluates it and prints PASS/FAIL with a detail message and up to 10 evidence locations. Exit codes: 0 on pass, validation failure (4) for a failing hard rule, 0 with a warning for a failing soft rule. Rules without a check print `manual — bp cannot evaluate this rule automatically`.
-  * `graph`: Renders an ASCII rule scope dependency and directory coverage map.
-  * `pack:create <id>`: Scaffolds a commented pack template at `.bp/packs/<id>.bp-pack.yaml`. `--from-rules <glob>` harvests existing rule files' frontmatter into the pack; `--force` overwrites an existing pack file.
-  * `pack:lint <path>`: Validates a pack file — `bp-pack/1` schema (every Zod issue path listed on failure), duplicate rule ids, and per-rule `check` conditions. `--json` for machine-readable output. Exits non-zero on any error.
-  * `pack:install <ref>`: Resolves a pack (file path → project pack id → built-in id) and materializes one rule file per rule into the active backend's rules dir (`pack-<packId>-<ruleId>.md`), recording the install in `.bp/packs.lock.json`. Idempotent by default (existing files kept); `--force` replaces the pack's own generated files only; `--dry-run` previews.
-  * `pack:remove <id>`: Deletes the pack's generated rule files and lockfile entry. Refuses when files were hand-edited outside preserve blocks unless `--force`.
-  * `pack:list`: Lists built-in packs, project packs (`.bp/packs/`), and installed packs with versions.
-  * `pack:info <ref>`: Shows pack details (source, rules with severity and auto/manual enforcement).
-  * `pack:search <query>`: Searches built-in and project packs by name, description, or tags.
-* **Example**: `bp rule lint .claude/rules/01-security.md`
-* **See also**: [Rule Packs guide](rule-packs.md)
+- **Subcommands**:
+  - `test <file>` — dry-run a rule against the repository: prints scope-glob matches; when the rule has a `check`, evaluates it and prints PASS/FAIL with evidence (up to 10 locations). Exit 0 on pass, 4 for a failing hard rule, 0 + warning for a failing soft rule; rules without a check print `manual`.
+  - `lint <file>` — validate rule syntax, scope pattern, and `check` frontmatter (Zod, line-precise `RULE_CHECK_INVALID`).
+  - `graph` — ASCII map of rule scope coverage.
+  - `install <framework>` — install a built-in compliance pack (`gdpr`, `soc2`, `hipaa`); `--dry-run`, `--json`.
+  - `pack:create <id>` — scaffold `.bp/packs/<id>.bp-pack.yaml`; `--from-rules <glob>` harvests existing rules, `--force` overwrites.
+  - `pack:lint <path>` — validate a pack file (schema, duplicate ids, per-rule checks); `--json`.
+  - `pack:install <ref>` — install from built-in id, project pack id, file path, `https`/`github:` artifact ref, or registry id; `--force`, `--dry-run`, `--allow-unsigned` (remote artifacts).
+  - `pack:remove <id>` — delete the pack's generated files + lockfile entry; refuses on hand-edits unless `--force`.
+  - `pack:list` · `pack:info <ref>` · `pack:search <query>`
 
-### `bp skill`
+## `bp skill`
 
-Skill authoring and governance (layer 4). Skills use the canonical format (SkillSchema frontmatter + procedure body) and flow through the same validation `bp verify` runs.
+Author, validate, and share skills (governance layer 4). See [Skill Authoring](skill-authoring.md).
 
-* **Subcommands**:
-  * `new <name>`: Scaffolds a skill into the active backend's skills directory. Flags: `--description <text>`, `--tools <a,b>` (canonical vocabulary), `--risk low|medium|high`, `--backend <b>`. Refuses name collisions; the output passes `bp skill lint` by construction.
-  * `lint [glob]`: Runs the skill validation table (schema, collisions, unknown tools, procedure quality, vague triggers, stale paths) over the matched files (default: the backend's skills dir). `--json` for machine output. Exits 3 on errors.
-  * `list`: Table of skills with name, risk, tools, provenance (`scaffolded | pack:<id> | manual`), and file path. `--json` supported.
-  * `test <file>`: Static dry-run — prints canonical → backend tool resolution, runs the validation checks against the target backend's capability list, and round-trips the skill through the translator (`--backend cursor` etc.), reporting any fidelity loss explicitly.
-  * `pack:create <id>`: Scaffolds a `kind: skills` pack at `.bp/packs/<id>.bp-pack.yaml`.
-  * `pack:lint <path>`: Validates a skill pack (schema, kind, duplicate skill ids). `--json` supported.
-  * `pack:install <ref>`: Materializes one skill file per entry (`pack-<packId>-<skillId>.md`) into the backend's skills dir and records the install in `.bp/packs.lock.json`. `--force`, `--dry-run`, `--backend` as for rule packs.
-  * `pack:remove <id>`: Deletes the pack's generated skill files and lockfile entry (hash-guarded; `--force` to override).
-  * `pack:list`: Lists project and installed skill packs.
-* **Example**: `bp skill new deploy-check --tools read_file,run_command --risk low`
-* **Error codes**: [5](troubleshooting.md#code-5) Semantic failure · [1](troubleshooting.md#code-1) Unexpected error
-* **See also**: [Skill Authoring guide](skill-authoring.md)
+- **Subcommands**:
+  - `new <name>` — scaffold into the active backend's skills dir; `--description`, `--tools <a,b>` (canonical vocabulary), `--risk low|medium|high`, `--backend`.
+  - `lint [glob]` — validate skill files (schema, collisions, unknown tools, procedure quality, vague triggers, stale paths); `--json`, `--backend`.
+  - `list` — skills with risk, tools, provenance (`scaffolded | pack:<id> | manual`); `--json`, `--backend`.
+  - `test <file>` — static dry-run: tool resolution, capability check, translator round-trip; `--backend <b>`.
+  - `pack:create <id>` · `pack:lint <path>` · `pack:install <ref>` · `pack:remove <id>` · `pack:list` — skill-pack (`kind: skills`) equivalents of the rule pack commands, same flags.
 
-### `bp hook`
+## `bp hook`
 
-Hook management.
+Hook management for the active backend.
 
-* **Subcommands**:
-  * `generate`: Scaffolds hook script stubs for the current active backend.
-  * `validate <file>`: Runs advisory static analysis on hook scripts. The checks are a pattern-based denylist (process execution, network, dynamic code execution, secret leaks — including ESM/`node:` imports and dynamic `import()`), not a sandbox: a passing result raises confidence but cannot prove a script is safe against deliberate obfuscation.
-* **Example**: `bp hook generate`
-* **Error codes**: [1](troubleshooting.md#code-1) Hook safety failure (general command failure) · [9](troubleshooting.md#code-9) Path traversal
+- **Subcommands**:
+  - `generate` — scaffold hook stubs.
+  - `list` — hooks with trigger, command, enabled status; `--json`.
+  - `remove <name>` — delete a hook file; `-y, --yes` skips confirmation.
+  - `validate [file]` — advisory static safety analysis (pattern-based denylist: process execution, network, dynamic code, secret leaks). Not a sandbox — passing raises confidence, it cannot prove safety against deliberate obfuscation. `--cycle-check` runs hook dependency cycle detection instead.
 
-### `bp config`
+## `bp config`
 
-Configuration management.
+User-level configuration in `~/.bp/config.json` (see [Configuration](configuration.md)).
 
-* **Subcommands**:
-  * `get <key>`: View a configuration property.
-  * `set <key> <value>`: Modify a configuration property.
-  * `reset`: Revert all settings to system defaults.
-* **Example**: `bp config set default_backend cursor`
+- **Subcommands**: `get <key>` · `set <key> <value>` · `reset`
+- **Example**: `bp config set registry.url https://packs.example.com/index.json`
 
-### `bp update`
+## `bp update`
 
 Update bp itself to the latest version.
 
-* **Example**: `bp update`
+## `bp migrate`
 
-### `bp migrate`
+Cross-backend migration or `.bp.json` schema upgrade.
 
-Migrate blueprint between backends or upgrade schema version.
+- **Options**: `--from <backend>` · `--to <backend>` (claude|cursor|codex|pi|kiro|antigravity|copilot|gemini|opendev|generic) · `--input <path>` · `--output <path>` · `--report` (write markdown migration report) · `--json` (migration plan)
+- **Subcommand**: `config` — upgrade `.bp.json` from v1 (`backend` string) to v2 (`backends` array + `primary_backend`); `--dry-run`, `--json`.
 
-* **Options**:
-  * `--from <backend>`: Source backend platform
-  * `--to <backend>`: Target backend platform
-  * `--schema-only`: Only migrate configuration schemas, not backend conventions
-* **Example**: `bp migrate --from claude --to cursor`
+## `bp agent`
 
-### `bp agent`
+Agent registry management (entries live in the blueprint).
 
-Manage local agent registry.
+- **Subcommands**:
+  - `list` — registered agents; `--json`
+  - `validate` — validate registry entries; `--json`, `--dry-run`
+  - `add <name>` — add an agent; `--owner <owner>`, `--purpose <purpose>`, `--risk-tier low|medium|high|critical`, `--dry-run`, `--json`
 
-* **Subcommands**:
-  * `list`: List all registered agents.
-  * `register <name> <path>`: Add an agent configuration path.
-  * `remove <name>`: Deregister an agent.
-* **Example**: `bp agent list`
+## `bp mcp`
 
-### `bp mcp`
+MCP server configuration governance.
 
-Manage MCP server configurations.
+- **Subcommands**: `list` · `validate` (risk scores and auth scopes) · `risk-report` — all support `--json`; `validate`/`risk-report` support `--dry-run`
 
-* **Subcommands**:
-  * `list`: List active MCP configurations.
-  * `add <name>`: Add an MCP server config.
-  * `remove <name>`: Remove an MCP server configuration.
-* **Example**: `bp mcp list`
+## `bp team`
 
-### `bp team`
+Agent team configurations.
 
-Manage agent team configurations.
+- **Subcommands**: `list` · `validate` — `--json`, `--dry-run`
 
-* **Subcommands**:
-  * `create <name>`: Create a new agent team.
-  * `list`: List agent teams.
-  * `invite <agent>`: Invite an agent to join the active team.
-* **Example**: `bp team list`
+## `bp chain`
 
-### `bp chain`
+Agent chain configurations.
 
-Manage agent chain configurations.
+- **Subcommands**: `list` · `validate` (detects cycles and unresolved references in chain DAGs) — `--json`, `--dry-run`
 
-* **Subcommands**:
-  * `create <name>`: Instantiate a new chain.
-  * `list`: View all registered chains.
-  * `run <name>`: Execute the designated chain.
-* **Example**: `bp chain run research-and-write`
-
-### `bp memory`
+## `bp memory`
 
 Audit and govern persistent memory directories.
 
-* **Subcommands**:
-  * `audit`: Scan memory directories for structural safety.
-  * `prune`: Clean up orphaned or stale memory files.
-  * `backup`: Back up memory indices.
-* **Example**: `bp memory audit`
+- **Subcommands**:
+  - `audit` — size, retention, encryption compliance; `--dir <path>` (default `.claude/memory`), `--max-size <mb>` (default `100`), `--retention session|day|week|persistent` (default `week`), `--require-encryption`, `--json`, `--dry-run`
+  - `cleanup` — remove files exceeding the retention policy; `--dir`, `--retention`, `--json`, `--dry-run`
 
-### `bp telemetry`
+## `bp telemetry`
 
-Telemetry configuration commands.
+Telemetry configuration helpers (bp does not transmit telemetry itself).
 
-* **Subcommands**:
-  * `enable`: Turn on global telemetry transmission.
-  * `disable`: Turn off telemetry transmission.
-  * `status`: View active provider status.
-* **Example**: `bp telemetry status`
+- **Subcommands**:
+  - `detect [project-root]` — auto-detect telemetry platform from project dependencies; `--json`
+  - `init [project-root]` — generate a telemetry config snippet; `--platform <platform>` overrides detection; `--json`
 
-### `bp cost`
+## `bp cost`
 
-Cost tracking and budget commands.
+Cost tracking and budgets. Figures are computed from values configured in the
+blueprint's `cost` section — bp does not meter live token usage.
 
-* **Subcommands**:
-  * `report`: Display current month usage estimates.
-  * `budget <limit>`: Set monthly cost budget limits.
-  * `attribution <level>`: Configure cost tracking attribution (agent|skill|rule).
-* **Example**: `bp cost report`
+- **Subcommands**:
+  - `report [project-root]` — cost dashboard; `--json`, `--output <file>` (markdown)
+  - `budget [limit] [project-root]` — show or set monthly budget; `--json`
+  - `attribution [level] [project-root]` — show or set attribution (`agent|skill|rule`); `--json`
 
-### `bp drift`
+## `bp drift`
 
-Semantic drift detection commands.
+Drift detection. (File-fingerprint drift also runs inside `bp verify --level drift`.)
 
-* **Options**:
-  * `--level <level>`: Set drift sensitivity level (low|medium|high)
-  * `--json`: Format drift report as JSON
-  * `--report-only`: Print report and skip auto-resolving drift
-* **Example**: `bp drift --level high`
+- **Subcommands**:
+  - `backends` — detect file drift across all backends in `.bp.json`; `--save-baseline` records the current state; `--json`
+  - `baseline` — build a behavioral baseline from real runtime metrics; `--metrics <ndjson>` (required), `--window <days>` (default `7`), `--json`
+  - `behavioral` — compare current metrics against a baseline; `--baseline <file>` and `--current <file>` (required), `--threshold <0-1>` (default `0.15`), `--json`
+  - `semantic` — hidden, deprecated alias for `behavioral`
 
-### `bp marketplace`
+## `bp adopt`
 
-Discover blueprint template packages published on the public npm registry.
-Template packs are ordinary npm packages tagged with `backend:`, `framework:`,
-`risk:`, and `compliance:` keywords.
+Bring existing user-authored rules/skills/agents under bp ownership tracking
+(`.bp/manifest.json`).
 
-* **Subcommands**:
-  * `search [query]`: Search npm for blueprint template packages. Supports
-    `--backend`, `--framework`, `--risk-tier`, `--compliance`, `--official`, and
-    `--json` filters. Network/registry errors are surfaced, not silently swallowed.
-* **Example**: `bp marketplace search fastapi --official`
-* **Note**: Installing and publishing template packs is handled by
-  [`bp template`](#bp-template), not `bp marketplace`.
-* **Error codes**: [8](troubleshooting.md#code-8) Network error · [9](troubleshooting.md#code-9) Path traversal
+- **Arguments**: `[path]` (default `.`)
+- **Options**: `--status` (classify managed/modified/untracked, no changes) · `--wrap` (wrap adopted bodies in `bp:preserve` markers) · `--dry-run` · `--json`
 
-### `bp pack`
+## `bp emit`
 
-Publish and install signed pack artifacts (Stage 5 — see
-[docs/pack-distribution.md](pack-distribution.md)).
+Serialize a `BlueprintIR` back to governance files (round-trip), honoring
+`bp:preserve` markers, ownership, and path safety.
 
-* **Subcommands**:
-  * `keygen <name>`: Generate an RSA signing keypair under `~/.bp/keys/`
-    (private key written with `0600`; refuses to overwrite).
-  * `publish <file> --key <private.pem> [--out <dir>]`: Validate a pack file
-    (or `.mjs` plugin bundle with `--id`, `--version`, `--publisher`), build the
-    signed `bp-artifact/1` tarball, and write an `index-entry.json` snippet.
-  * `index:build <dir> --key <private.pem> [--base-url <url>]`: Assemble the
-    published index entries in a directory into a signed `index.json`/`index.sig`.
-  * `plugin:install <ref>`: Install a plugin artifact from an https URL,
-    `github:` ref, local `.bp-pack.tgz`, or registry id. Unsigned plugins
-    require `--allow-unsigned` and print a security warning (plugins execute code).
-* **Example**: `bp pack publish .bp/packs/security.bp-pack.yaml --key ~/.bp/keys/acme.pem --out dist/`
+- **Arguments**: `[path]` (default `.`)
+- **Options**: `--input <file>` (read IR from JSON) · `--from <backend>` · `--force` (overwrite files lacking bp markers) · `--dry-run` · `--json`
 
-### `bp trust`
+## `bp marketplace`
 
-Manage the local trust keyring (`~/.bp/trust.json`) used to verify signed
-artifacts and registry indexes.
+Discover blueprint template packages on the public npm registry (packages tagged
+with `backend:`, `framework:`, `risk:`, `compliance:` keywords).
 
-* **Subcommands**:
-  * `add <name> <pubkey.pem>`: Trust a publisher's public key.
-  * `list [--json]`: Show the configured keys and signature policy.
-  * `remove <name>`: Stop trusting a key.
-* **Example**: `bp trust add acme-platform ./acme-platform.pub`
+- **Subcommand**: `search [query]` — `--backend`, `--framework`, `--risk-tier`, `--compliance`, `--official` (only the `@bp-templates` scope — an honest namespace check, not an audit), `--json`
+- Installing/publishing is handled by [`bp template`](#bp-template), not `bp marketplace`.
+
+## `bp pack`
+
+Publish and manage signed pack artifacts (rules, skills, plugins). See
+[Pack Distribution](pack-distribution.md).
+
+- **Subcommands**:
+  - `keygen <name>` — RSA keypair under `~/.bp/keys/` (private key `0600`, never overwritten)
+  - `publish <file>` — build a signed `.bp-pack.tgz` from a pack file or plugin `.mjs` bundle; `--key <private.pem>` (required), `--out <dir>`, `--id`/`--version`/`--publisher` (plugin publishes)
+  - `index:build <dir>` — assemble `*.index-entry.json` snippets into a signed `index.json`/`index.sig`; `--key <private.pem>` (required), `--base-url <url>`
+  - `plugin:install <ref>` — install a plugin artifact (https URL, `github:` ref, `.bp-pack.tgz` path, or registry id); `--allow-unsigned` (prints a security warning — plugins execute code), `--dry-run`
+
+## `bp trust`
+
+Manage the local trust keyring (`~/.bp/trust.json`) for signed artifacts.
+
+- **Subcommands**: `add <name> <pubkeyPath>` · `list [--json]` · `remove <name>`

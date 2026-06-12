@@ -1,221 +1,100 @@
-# Agent Reference
+# AGENTS.md — Working on open-blueprint
 
-Authoritative reference for agent definitions, lifecycle, communication protocols, state management, error handling, and extension points across all supported backends.
+Instructions for AI coding agents (and new contributors) working on this repository.
+For *user-facing* documentation of the `bp` CLI, see [docs/README.md](docs/README.md).
 
----
+## What this project is
 
-## Agent Lifecycle
+`@agentic/bp` is a zero-runtime CLI that scaffolds, validates, and translates
+governance files (rules, skills, agents, hooks) for 31 agentic AI coding tools.
+It is a Node.js ≥20 / Bun ≥1.0 ESM TypeScript project. The published binary is `bp`
+(`dist/cli/index.js`).
 
-Agents in open-blueprint pass through four stages: **scaffold → activate → execute → teardown**.
-
-### Scaffold
-
-`bp init <backend>` detects the project topology and writes backend-specific governance files to the appropriate directory. No runtime code is added — the scaffold is declarative configuration only.
-
-```bash
-# Scaffold for Claude Code backend
-bp init claude
-
-# Scaffold for Cursor backend
-bp init cursor
-```
-
-See [CLI Reference](docs/commands.md) for all `bp init` options.
-
-### Activate
-
-Activation occurs when the agent runtime (e.g., Claude Code, Cursor) reads the scaffold files on session start. For Claude Code this is `.claude/CLAUDE.md`; for Cursor this is `.cursorrules`. The agent picks up rules, skills, and hooks declared in those files.
-
-### Execute
-
-During execution, the agent invokes tools and skills as defined in the blueprint. Each tool invocation follows a standard call/response contract (see [Communication Protocols](#communication-protocols)). `bp verify` can be run at any point to confirm blueprint integrity:
+## Commands
 
 ```bash
-bp verify --level all
+npm install              # install deps
+npm run build            # tsc → dist/
+npm run dev -- <args>    # run the CLI from source via tsx (e.g. npm run dev -- verify)
+npm test                 # vitest, excludes tests/e2e/**
+npm run test:e2e         # e2e tests only
+npm run test:coverage    # coverage run (CI enforces thresholds in vitest.config.ts)
+npm run lint             # biome check src/
+npm run lint:fix         # biome check --write src/
+npm run typecheck        # tsc --noEmit
+npm run lint:custom      # project-specific greps (see "Hard conventions")
+npm run ci               # typecheck + lint + lint:custom + coverage (run before PR)
 ```
 
-### Teardown
+Run a single test file: `npx vitest run tests/unit/validator/structural.test.ts`.
 
-Teardown happens when the agent session ends or `bp sync` detects a clean state. The `.bp-fingerprint.json` file is updated to reflect the post-session hash of all governed files.
+## Architecture map
 
----
+Four core engines plus supporting modules, all under `src/`:
 
-## Communication Protocols
+| Path | Role |
+|---|---|
+| `src/cli/` | Commander-based CLI. `index.ts` is the only file allowed to call `process.exit`. One file per command in `cli/commands/`. |
+| `src/detector/` | Repo fingerprinting (languages, frameworks, tooling, security signals). Output: Zod `Fingerprint` (`fingerprint.ts`). No network, no shell. |
+| `src/templater/` | Handlebars scaffolding with block-level merge (`bp-generated` / `bp:preserve` markers). Writes `.bp-fingerprint.json`. |
+| `src/validator/` | Six validation levels: `structural`, `semantic`, `logical`, `enforcement`, `drift`, `governance` (`index.ts` orchestrates). Rule `check` evaluation in `checks/`. |
+| `src/translator/` | Backend-neutral `BlueprintIR` (`ir.ts`, Zod, version `"2.0"`) + per-backend adapters in `translator/adapters/` (31 backends; shared bases in `adapters/base/`). |
+| `src/backends/` | Backend registry (`registry.ts`) — ids, paths, command syntax per tool. |
+| `src/packs/`, `src/registry/`, `src/cli/pack-install.ts` | Rule/skill pack format (`bp-pack/1`), lockfile (`.bp/packs.lock.json`), signed artifact publish/install (RSA, trust keyring in `~/.bp/trust.json`). |
+| `src/plugin/` | Public plugin API (`@agentic/bp/plugin` subpath export, `definePlugin`). |
+| `src/plugins/` | Plugin loader/runner internals (worker-thread isolation). |
+| `src/report/` | `bp report` model (`bp-report/1`) and shared SARIF serializer. |
+| `src/config/` | `.bp.json` project config (`project.ts`) and `~/.bp/config.json` user config (`user.ts`). |
+| `src/errors.ts`, `src/constants.ts` | `BpError` hierarchy and the stable exit-code contract (see below). |
 
-### Tool Invocation Format
+Tests live in `tests/` (`unit/`, `integration/`, `e2e/`, plus property tests via
+fast-check). Templates shipped with the package live in `templates/`.
 
-Agents call tools using a name + parameters envelope. The agent runtime resolves the tool name against the registered skill set and invokes the handler:
+## Hard conventions (CI-enforced)
 
-```json
-{
-  "name": "bp_verify",
-  "parameters": {
-    "level": "semantic",
-    "json": true
-  }
-}
-```
+These are checked by `npm run lint:custom` and CI — violations fail the build:
 
-Response schema:
+- **No sync fs** (`readFileSync` etc.) in the hot-path files listed in the
+  `lint:no-sync-fs` script in `package.json`. Use `node:fs/promises`.
+- **No `process.exit`** anywhere except `src/cli/index.ts`. Throw a `BpError`
+  subclass instead; the CLI entry maps it to an exit code.
+- **No `require()`** in `src/` (ESM only; exceptions listed in the script).
+- **No circular imports** (`npm run check:circular`, madge).
+- Lint/format is Biome (`biome.json`); do not introduce ESLint/Prettier config.
 
-```json
-{
-  "exitCode": 0,
-  "summary": "All checks passed",
-  "details": []
-}
-```
+## Stable contracts — do not break casually
 
-On non-zero exit, `details` contains an array of validation findings. See [Error Handling](#error-handling) for exit code semantics.
+- **Exit codes 0–10** (`src/constants.ts` `EXIT_CODES`) are public API since v1.0.0.
+  The numbering, the `BpError` subclasses in `src/errors.ts`, and the registry in
+  [docs/troubleshooting.md](docs/troubleshooting.md) must always agree.
+- **Schema versions**: `Fingerprint` `"1.0"`, `BlueprintIR` `"2.0"`, packs
+  `bp-pack/1`, lockfile `bp-pack-lock/1`, artifacts `bp-artifact/1`, report
+  `bp-report/1`. Version bumps need migration support (`bp migrate`).
+- **`@agentic/bp/plugin` subpath export** is the public plugin API surface.
+- Error `resolution` strings in `src/` link to `docs/troubleshooting.md#code-N`
+  (some legacy strings reference `docs/errors.md#code-N`; that file is a stub that
+  forwards to troubleshooting — keep its anchors alive if you touch it).
 
-### Inter-Agent Delegation
+## Project values (apply them to code you write)
 
-One agent delegates to another by invoking a skill registered in the blueprint. For Claude Code, this is a skill invocation via `.claude/skills/<skill-name>/SKILL.md`. The parent agent passes context through the skill's input parameters; the sub-agent returns its result through the standard response schema.
+- **Honest output over impressive output.** This codebase had a production audit
+  ([docs/production-audit.md](docs/production-audit.md)) removing features that
+  fabricated data (synthetic drift numbers, fake registry catalogs, invented cost
+  estimates). Do not reintroduce that pattern: if a value cannot be measured, report
+  it as unavailable/manual — never invent it.
+- **Fail loud**: errors carry file, line where possible, and an actionable
+  `resolution`. No silent catch-and-continue.
+- **Static analysis only** in detector and rule enforcement: no network, no shell,
+  no code execution.
+- **Idempotency**: re-running `bp init`/pack installs must not duplicate or destroy
+  user content — respect `bp:preserve` blocks and the `.bp/manifest.json`
+  ownership model.
 
-```yaml
-# .claude/skills/review/SKILL.md frontmatter
-name: review
-description: Delegate a code review to the review sub-agent
-```
+## Documentation rules
 
-Sub-agent spawning via the Claude Code Agent tool follows the same envelope: the delegating agent supplies a `prompt` and optional `subagent_type`; the runtime returns the sub-agent's response as a single message.
-
----
-
-## State Management
-
-### `.bp-fingerprint.json`
-
-`bp` tracks agent-relevant state in `.bp-fingerprint.json` at the repo root. This file records the SHA-256 hashes of all governed blueprint files, the backend in use, and the schema version.
-
-Key fields:
-
-```json
-{
-  "schema_version": "2.0",
-  "backend": "claude",
-  "governed_files": {
-    ".claude/CLAUDE.md": "sha256:abc123...",
-    ".claude/rules/01-style.md": "sha256:def456..."
-  },
-  "last_synced": "2026-05-28T10:00:00Z"
-}
-```
-
-When `bp verify --level drift` runs, it recomputes hashes and diffs them against this file. Any mismatch triggers exit code 6 (`DRIFT_DETECTED`).
-
-### Session Scope vs Persistent Scope
-
-- **Session scope**: Values computed during a single `bp verify` or `bp init` run. Not persisted after the command exits.
-- **Persistent scope**: Written to `.bp-fingerprint.json` and survives re-runs. Reset only by `bp sync --auto-apply`.
-
-### `bp:preserve` Blocks
-
-Sections of governed files that should survive a `bp init --force` re-run are wrapped in `bp:preserve` / `bp:end-preserve` markers. `bp` reads these markers before overwriting and re-injects the preserved content into the new scaffold.
-
-```markdown
-<!-- bp:preserve -->
-## My Custom Rules
-
-These rules are preserved across re-inits.
-<!-- bp:end-preserve -->
-```
-
-Any content outside a `bp:preserve` block is treated as scaffold-owned and will be overwritten by `bp init --force`.
-
----
-
-## Error Handling
-
-### Exit Code Semantics
-
-All `bp` commands exit with a code from the [exit code registry](docs/troubleshooting.md). Codes relevant to agent-triggered failures:
-
-| Code | Name | Meaning |
-|------|------|---------|
-| `0` | `SUCCESS` | All checks passed |
-| `2` | `INVALID_ARGS` | Missing or conflicting CLI arguments |
-| `3` | `CONFIG_ERROR` | `.bp.json` schema validation failed |
-| `4` | `STRUCTURAL_VALIDATION_FAILED` | Blueprint file structure invalid |
-| `5` | `SEMANTIC_VALIDATION_FAILED` | Rules logically inconsistent |
-| `6` | `DRIFT_DETECTED` | File hashes diverge from fingerprint |
-| `10` | `HEALTH_ERROR` | `bp health` check(s) failed |
-
-See [Diagnostics & Troubleshooting](docs/troubleshooting.md) for the full registry with resolution steps.
-
-### Recovery Pattern
-
-When an agent receives a non-zero exit from `bp verify`, the recommended pattern is:
-
-1. Parse the JSON output (`bp verify --json`) to extract `details[].code` and `details[].message`.
-2. Map the exit code to a recovery action using the table above.
-3. For codes 4 and 5: invoke `bp verify --fix` to attempt auto-correction, then re-verify.
-4. For code 6 (drift): invoke `bp sync --auto-apply`, then re-verify.
-5. If exit code persists after auto-recovery, surface the error to the user with the full `details` array.
-
-```bash
-# Agent recovery script pattern
-if ! bp verify --json > /tmp/bp-result.json; then
-  exit_code=$?
-  case $exit_code in
-    4|5) bp verify --fix ;;
-    6)   bp sync --auto-apply ;;
-  esac
-  bp verify  # final re-check
-fi
-```
-
----
-
-## Extension Points
-
-### Plugin API
-
-Custom validators are written in TypeScript and registered via the Plugin API. A validator receives the `BlueprintIR` and returns an array of `ValidationFinding` objects.
-
-See [Plugin Developer API](docs/plugin-api.md) for the full interface and a walkthrough example.
-
-### Backend Adapters
-
-Custom backend adapters translate `BlueprintIR` to and from a new target platform's file format. Implement the `BackendAdapter` interface exported from `@agentic/bp/adapters`.
-
-See [Custom Backend Adapters](docs/backend-adapter.md) for the adapter contract and integration steps.
-
-### Hook Scripts
-
-The hooks layer (`.claude/hooks/`) provides shell or Node.js scripts that the agent runtime executes before or after specific events (e.g., `pre_tool_use`, `post_tool_use`). Hooks receive event context as JSON on stdin and can block execution by exiting non-zero.
-
-```javascript
-// .claude/hooks/pre_tool_use.js
-const event = JSON.parse(process.stdin.read());
-if (event.tool_name === "Write" && event.path.includes("/etc/")) {
-  process.stderr.write("Write to /etc/ blocked by hook\n");
-  process.exit(1);
-}
-```
-
-`bp hook generate` scaffolds a hook template for the current backend. `bp hook validate <file>` lints hook scripts against the expected event schema.
-
----
-
-## Backend Compatibility
-
-The table below shows which agent feature layers are supported per backend. For the full matrix including individual IR features, see [Backend Feature Parity Matrix](docs/backend-parity.md).
-
-| Feature | Claude | Cursor | Codex | PI | Kiro | Antigravity | Copilot | Gemini | OpenDev | Generic |
-|---------|--------|--------|-------|----|------|-------------|---------|--------|---------|---------|
-| **Agents layer** | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
-| **Skills layer** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Hooks layer** | ✅ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
-| **Rules layer** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ |
-| **MCP layer** | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-
----
-
-## See Also
-
-- [CLI Reference](docs/commands.md) — all `bp` commands
-- [Diagnostics & Troubleshooting](docs/troubleshooting.md) — exit codes 0–10 with resolution steps
-- [Plugin Developer API](docs/plugin-api.md) — custom validators
-- [Custom Backend Adapters](docs/backend-adapter.md) — new platform support
-- [Backend Feature Parity Matrix](docs/backend-parity.md) — full feature matrix
+- `docs/troubleshooting.md` is the canonical exit-code registry; its `{#code-N}`
+  anchors are referenced from source — never rename them.
+- Follow [docs/style-guide.md](docs/style-guide.md) (language-tagged code fences,
+  heading discipline).
+- Documented behavior must match `--help` output and the code. When you change a
+  command's flags, update `docs/commands.md` in the same PR.

@@ -1,7 +1,5 @@
 # Skill Authoring
 
-Permalink: Skill Authoring
-
 Stage 3 (GAP-3) makes skills — governance layer 4 — a first-class, client-authored
 artifact. Skills are written once in a canonical, backend-neutral format, validated by the
 same engine `bp verify` runs, translated to any backend through the IR, and shared as
@@ -49,12 +47,12 @@ Notes:
 
 ## Lifecycle
 
-```console
-$ bp skill new deploy-check --tools read_file,run_command --risk low
-$ bp skill lint                          # validate all skills (or pass a glob)
-$ bp skill list                          # name, risk, tools, provenance
-$ bp skill test .claude/skills/deploy-check.md --backend cursor
-$ bp verify                              # skill checks run at the semantic level
+```bash
+bp skill new deploy-check --tools read_file,run_command --risk low
+bp skill lint                          # validate all skills (or pass a glob)
+bp skill list                          # name, risk, tools, provenance
+bp skill test .claude/skills/deploy-check.md --backend cursor
+bp verify                              # skill checks run at the semantic level
 ```
 
 `bp skill new` scaffolds directly into the active backend's skills directory (resolved
@@ -82,7 +80,7 @@ backs `bp skill lint`. Checks:
 | `when_to_use` empty or repeating `description` verbatim | `SKILL_VAGUE_TRIGGER` | warning |
 | Procedure references a backticked `path/with/slash` that doesn't exist | `SKILL_STALE_PATH` | warning |
 
-`SKILL_*` errors exit with code 3 (semantic failure).
+`SKILL_*` errors exit with code 5 (`SEMANTIC_FAILURE`).
 
 ---
 
@@ -116,12 +114,12 @@ entries (procedure body included) instead of rules. Store resolution, the lockfi
 (`.bp/packs.lock.json`), idempotent materialization, hash-guarded removal, and the
 drift-level integrity check are all shared with rule packs.
 
-```console
-$ bp skill pack:create my-skills         # scaffold .bp/packs/my-skills.bp-pack.yaml
-$ bp skill pack:lint .bp/packs/my-skills.bp-pack.yaml
-$ bp skill pack:install my-skills        # materializes pack-<packId>-<skillId>.md
-$ bp skill pack:list
-$ bp skill pack:remove my-skills
+```bash
+bp skill pack:create my-skills         # scaffold .bp/packs/my-skills.bp-pack.yaml
+bp skill pack:lint .bp/packs/my-skills.bp-pack.yaml
+bp skill pack:install my-skills        # materializes pack-<packId>-<skillId>.md
+bp skill pack:list
+bp skill pack:remove my-skills
 ```
 
 Materialized files land in the backend's skills directory with provenance frontmatter

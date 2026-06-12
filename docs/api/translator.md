@@ -37,11 +37,16 @@ See `src/translator/ir.ts` for the complete Zod schema with all optional enterpr
 | `cursor` | `CursorAdapter` | `.cursorrules` |
 | `codex` | `CodexAdapter` | `CODEX.md` |
 | `pi` | `PIAdapter` | `PI.md` |
-| `opendev` | `OpenDevAdapter` | `opendev.yaml` |
-| `generic` | `GenericAdapter` | `BLUEPRINT.md` |
 | `copilot` | `CopilotAdapter` | `.github/copilot-instructions.md` |
 | `gemini` | `GeminiAdapter` | `GEMINI.md` |
-| `memory` | `MemoryAdapter` | `.bp/memory/` |
+| `kiro` | `KiroAdapter` | `.kiro/` steering docs |
+| `antigravity` | `AntigravityAdapter` | `.antigravity/` |
+| *(any other id)* | `GenericAdapter` (fallback) | `BLUEPRINT.md` |
+
+Canonical registry: `src/translator/adapters/registry.ts` — eight named adapters
+plus the `GenericAdapter` fallback for every other backend id. Additional
+markdown-family backends share the base adapters in
+`src/translator/adapters/base/` (see [Backend Adapters](../backend-adapter.md)).
 
 ## Round-Trip Conversion Example
 

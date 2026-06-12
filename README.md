@@ -14,154 +14,117 @@
   <a href="https://github.com/0xkhdr/open-blueprint/actions"><img src="https://img.shields.io/github/actions/workflow/status/0xkhdr/open-blueprint/ci.yml?branch=main" alt="Build Status"></a>
   <a href="vitest.config.ts"><img src="https://img.shields.io/badge/Coverage-%E2%89%A575%25%20CI--enforced-brightgreen" alt="Coverage"></a>
   <a href="https://bun.sh"><img src="https://img.shields.io/badge/Bun-Supported-orange?logo=bun" alt="Bun Supported"></a>
-  <a href="src/lsp"><img src="https://img.shields.io/badge/LSP-Integrate-blueviolet" alt="LSP Enabled"></a>
 </p>
 
-**open-blueprint (`bp`)** is a zero-runtime-overhead development and CI command-line utility that prepares software repositories for agentic AI tools (such as Claude Code, Cursor, OpenDev, and Goose) by scaffolding standardized governance structures, verifying their integrity, and actively detecting configuration drift.
+**open-blueprint (`bp`)** is a development- and CI-time CLI that prepares repositories
+for agentic AI coding tools (Claude Code, Cursor, Codex, Gemini CLI, and 27 others).
+It detects your project's topology, scaffolds standardized governance files (rules,
+skills, agents, hooks), validates them across six levels, detects drift, and translates
+the whole structure between backends through a neutral intermediate representation.
 
-By shifting governance to development-time and CI-time, `bp` keeps your production systems clean. It detects project topologies, scaffolds logic-less Handlebars templates, runs 4-layer validation gates, and translates files across agent platforms, letting you enforce strict, drift-proof constraints with absolute confidence.
+`bp` adds **zero runtime overhead**: it generates the native config files your tools
+already understand, then gets out of the way — you can uninstall it and the governance
+keeps working.
 
-And the governance is *measurable*, not declarative: `bp report` evaluates every rule against the repository and publishes per-rule, per-pack, per-framework compliance — with SARIF output that annotates pull requests per rule via GitHub code scanning ([Governance Reporting](docs/governance-reporting.md)).
+Governance is **measured, not declared**: `bp report` evaluates every rule against the
+repository and publishes per-rule, per-pack, per-framework compliance — including SARIF
+output that annotates pull requests via GitHub code scanning. Rules that cannot be
+machine-checked are reported as *manual*, never silently counted as passing.
 
 ```text
                   ┌──────────────────────────────┐
                   │            bp CLI            │
                   └──────────────┬───────────────┘
                                  │
-          ┌───────────────────────┼───────────────────────┐
-          ▼                       ▼                       ▼
+          ┌──────────────────────┼───────────────────────┐
+          ▼                      ▼                       ▼
   ┌──────────────┐        ┌──────────────┐        ┌──────────────┐
   │   DETECTOR   │        │  TEMPLATER   │        │  VALIDATOR   │
-  │  (Repo MRI)  ├───────►│ (Handlebars) ├───────►│ (4-Layer QA) │
-  └──────────────┘        └──────────────┘        └──────────────┘
-                                                          │
-                                                          ▼
+  │  (Repo MRI)  ├───────►│ (Handlebars) ├───────►│  (6 levels)  │
+  └──────────────┘        └──────────────┘        └──────┬───────┘
+                                                         ▼
                                                   ┌──────────────┐
                                                   │  TRANSLATOR  │
-                                                  │(Backend Sync)│
+                                                  │(BlueprintIR) │
                                                   └──────────────┘
 ```
 
----
-
 ## Quick Start
 
-Initialize your repository and verify blueprint rules instantly:
-
 ```bash
-# 1. Scaffolding-only init (TypeScript, Go, Python frameworks auto-detected)
+# Scaffold governance for Claude Code (frameworks auto-detected)
 npx @agentic/bp init claude
 
-# 2. Run 4-layer integrity verification
+# Validate: structural, semantic, logical, enforcement, drift, governance
 npx @agentic/bp verify
+
+# Measure compliance and gate CI on hard violations
+npx @agentic/bp report --sarif report.sarif --fail-on hard
 ```
 
----
+Requires Node.js ≥ 20 or Bun ≥ 1.0. Full walkthrough (including Docker usage):
+[Getting Started](docs/getting-started.md).
 
 ## Documentation
 
-Documentation follows a progressive-disclosure structure. Read only what you need.
+Full index: **[docs/README.md](docs/README.md)**. Highlights:
 
-### Core Guides
-
-* **[Getting Started](docs/getting-started.md)** — Install, scaffold, and configure your first blueprint in 5 minutes.
-* **[Core Philosophy](docs/philosophy.md)** — The 5 core pillars of open-blueprint.
-* **[Workflows & Guides](docs/workflows.md)** — Integration workflows for solo devs, team patterns, and enterprise setups.
-* **[Diagnostics & Troubleshooting](docs/troubleshooting.md)** — Exit codes 0–10 decoder and agent troubleshooting guide.
-* **[Agent Reference](AGENTS.md)** — Agent lifecycle, communication protocols, state management, error handling, and extension points.
-
-### Conceptual & Reference
-
-* **[System Architecture](docs/concepts.md)** — Inside the 5 Blueprint Layers and the 4 internal execution engines.
-* **[Data Models Reference](docs/data-models.md)** — Zod structure definitions and JSON details for Fingerprint and BlueprintIR schemas.
-* **[Observability & Cost Governance](docs/observability.md)** — Telemetry configurations, budget thresholds, and semantic drift triggers.
-* **[CLI Reference](docs/commands.md)** — Detailed option syntax blocks and examples for every CLI subcommand.
-* **[Configuration System](docs/configuration.md)** — Schema definitions for global and repository settings files.
-* **[Practical Recipes](docs/recipes.md)** — Copy-paste scripts and GitHub Action YAML CI/CD patterns.
-* **[Terminology Index](docs/glossary.md)** — Term dictionary covering Fingerprints, IR, Block Merges, and Drift.
-* **[Non-Functional Requirements](docs/nfrs.md)** — Latency budgets, reliability targets, and OWASP safety statements.
-* **[Documentation Style Guide](docs/style-guide.md)** — Authoring standards for contributing to this documentation.
-
-### Advanced Customization
-
-* **[Rule Packs](docs/rule-packs.md)** — Author, lint, install, and remove client-defined rule packs with lockfile-tracked materialization.
-* **[Skill Authoring](docs/skill-authoring.md)** — Create, validate, dry-run, and share skills with the canonical tool vocabulary and `kind: skills` packs.
-* **[Plugin Developer API](docs/plugin-api.md)** — Write custom TypeScript validators for company governance policies.
-* **[Governance Reporting](docs/governance-reporting.md)** — Measured per-rule compliance, SARIF PR annotations, pack integrity drift, and manual-rule staleness snapshots.
-* **[Contributor Guidelines](docs/contributing.md)** — Development setup instructions, testing steps, and Architecture Decision Records.
-* **[Template Authoring Guide](docs/template-authoring.md)** — Build, merchandise, and cryptographically sign Handlebars template packages.
-* **[Custom Backend Adapters](docs/backend-adapter.md)** — Implement target platform translation adapters using BlueprintIR.
-* **[Backend Feature Parity Matrix](docs/backend-parity.md)** — Compatibility matrix outlining read/write support across all supported backend platforms.
-* **[CI/CD Integration Guide](docs/ci-integration.md)** — Best practices for deploying verification rules on PR build gates.
-
-### Architecture Decision Records
-
-* **[ADR-001: TypeScript](docs/adr/ADR-001-typescript.md)** — Why TypeScript over JavaScript.
-* **[ADR-002: Vitest](docs/adr/ADR-002-vitest.md)** — Test framework selection.
-* **[ADR-003: Pino](docs/adr/ADR-003-pino.md)** — Structured logging with Pino.
-* **[ADR-004: Commander](docs/adr/ADR-004-commander.md)** — CLI framework selection.
-* **[ADR-005: Zod](docs/adr/ADR-005-zod.md)** — Schema validation with Zod.
-* **[ADR-006: Handlebars](docs/adr/ADR-006-handlebars.md)** — Template engine selection.
-
-### API Reference
-
-* **[Detector API](docs/api/detector.md)** — Repo topology detection interface.
-* **[Templater API](docs/api/templater.md)** — Handlebars template rendering interface.
-* **[Translator API](docs/api/translator.md)** — Backend translation adapter interface.
-* **[Validator API](docs/api/validator.md)** — 4-layer validation engine interface.
-
----
+| | |
+|---|---|
+| [Getting Started](docs/getting-started.md) | Install, scaffold, and verify in five minutes |
+| [Concepts & Architecture](docs/concepts.md) | The 5 governance layers, 4 engines, 6 validation levels |
+| [CLI Reference](docs/commands.md) | Every command, subcommand, and flag |
+| [Configuration](docs/configuration.md) | `.bp.json`, `~/.bp/config.json`, environment variables |
+| [Supported Tools](docs/supported-tools.md) | All 31 backends: paths, syntax, limitations |
+| [Governance Reporting](docs/governance-reporting.md) | `bp report`, SARIF PR annotations, measured coverage |
+| [Rule Packs](docs/rule-packs.md) · [Skill Authoring](docs/skill-authoring.md) | Author and share governance content |
+| [Plugin API](docs/plugin-api.md) | Custom validators via `@agentic/bp/plugin` |
+| [Pack Distribution](docs/pack-distribution.md) | Signed artifacts, trust keyring, static-host registry |
+| [Troubleshooting](docs/troubleshooting.md) | Exit codes 0–10 and diagnostics |
+| [AGENTS.md](AGENTS.md) | Guide for AI agents and contributors working on this codebase |
 
 ## Supported Backends
 
-`bp` supports 31 AI coding backends. See [docs/supported-tools.md](docs/supported-tools.md) for the full reference including paths, syntax, and limitations.
-
-| Backend ID | Tool | Type | Command Syntax |
-|---|---|---|---|
-| `claude` | Claude Code | Standard | `/bp:<workflow>` |
-| `cursor` | Cursor | Standard | `/bp-<workflow>` |
-| `codex` | OpenAI Codex CLI | Global path | `/bp:<workflow>` |
-| `github-copilot` | GitHub Copilot | IDE-only | `/bp-<workflow>` |
-| `kiro` | Kiro | Standard | `/bp-<workflow>` |
-| `gemini` | Gemini CLI | TOML | `bp-<workflow>` |
-| `windsurf` | Windsurf | Standard | `/bp-<workflow>` |
-| `cline` | Cline | Standard | `/bp-<workflow>` |
-| `kilocode` | Kilo Code | Standard | `/bp-<workflow>` |
-| `roocode` | Roo Code | Standard | `/bp:<workflow>` |
-| `kimi` | Kimi | Skill-only | `/skill:bp-<workflow>` |
-| `trae` | Trae | Skill-only | `bp-<workflow>` |
-| `forgecode` | Forge Code | Skill-only | `/skill:bp-<workflow>` |
-| `qwen` | Qwen | TOML | `bp-<workflow>` |
-| `amazon-q` | Amazon Q | Standard | `/bp:<workflow>` |
-| `continue` | Continue | Standard | `/bp-<workflow>` |
-| `opencode` | OpenCode | Standard | `/bp:<workflow>` |
-| ... | [+14 more](docs/supported-tools.md) | | |
-
-### Multi-Backend Setup
+`bp` supports **31 backends** — Claude Code, Cursor, OpenAI Codex CLI, GitHub Copilot,
+Gemini CLI, Windsurf, Cline, Kiro, Roo Code, Amazon Q, OpenCode, Qwen, Kimi, Trae, and
+more. See [docs/supported-tools.md](docs/supported-tools.md) for the full matrix with
+paths, command syntax, and per-backend limitations.
 
 ```bash
-bp init --tools claude,cursor,windsurf     # multiple backends
-bp init --tools all                         # all 31 backends
-bp convert --from claude --to windsurf      # convert between any pair
-bp doctor --all                             # diagnose all configured backends
+bp init --tools claude,cursor,windsurf     # multiple backends at once
+bp init --tools all                        # all 31
+bp convert --from claude --to windsurf     # translate between any pair
+bp doctor --all                            # diagnose every configured backend
 ```
 
-### Ownership Tracking & Round-Trip
+## Ownership Tracking & Round-Trip
 
-`bp` records the files it generates in an ownership manifest (`.bp/manifest.json`),
-so it can tell an intentional developer edit from configuration rot — and adopt
-files you authored yourself.
+`bp` records the files it generates in `.bp/manifest.json`, so it can tell an
+intentional developer edit from configuration rot — and adopt files you authored
+yourself:
 
 ```bash
 bp adopt --status         # classify files: managed | modified | missing | untracked
 bp adopt                  # bring user-authored rules/skills under ownership tracking
 bp adopt --wrap           # ...and wrap their bodies in bp:preserve markers
 bp emit                   # serialize the parsed BlueprintIR back to disk (round-trip)
-bp emit --input ir.json   # ...from an explicit IR file, manifest-aware & marker-safe
 ```
 
----
+## Honest Limitations
+
+This project values honest output over impressive output (see the
+[production audit](docs/production-audit.md)):
+
+- **Core adapters carry the fidelity guarantee.** `claude`, `cursor`, `codex`, and
+  `generic` round-trip at ≥ 95 % (test-enforced). Most other backends inherit shared
+  base adapters: functional, but without backend-specific round-trip tests.
+- **Cost figures are configuration-driven.** `bp` does not meter live token usage;
+  wire real numbers from your provider's billing into the blueprint's `cost` section.
+- **No hosted registry.** Template/pack distribution works via npm search plus signed
+  artifacts on any static host you control ([details](docs/pack-distribution.md)).
+- **Rule enforcement is static analysis.** Rules that can't be expressed as a static
+  check are reported as *manual* — a documented obligation, not a pass.
 
 ## License
 
-This project is licensed under the **MIT License**. See [LICENSE](LICENSE) for full details.
+MIT — see [LICENSE](LICENSE).
