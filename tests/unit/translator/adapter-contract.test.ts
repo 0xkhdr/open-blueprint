@@ -68,11 +68,12 @@ function contentDigest(root: string, files: string[]): Map<string, string> {
   const digests = new Map<string, string>();
   for (const file of files) {
     const rel = path.relative(root, file);
-    // The shared AGENTS.md generator embeds a `**Generated:**` timestamp —
-    // the one sanctioned nondeterminism (see BlueprintAdapter contract docs).
+    // Generation-timestamp lines (AGENTS.md `**Generated:**`, settings-file
+    // `# Generated:` comments) are the one sanctioned nondeterminism — see
+    // the BlueprintAdapter contract docs.
     const normalized = fs
       .readFileSync(file, "utf-8")
-      .replace(/^\*\*Generated:\*\* .*$/gm, "**Generated:** <normalized>");
+      .replace(/^(\*\*Generated:\*\*|# Generated:) .*$/gm, "$1 <normalized>");
     digests.set(rel, crypto.createHash("sha256").update(normalized).digest("hex"));
   }
   return digests;
