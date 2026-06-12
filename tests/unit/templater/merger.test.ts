@@ -21,6 +21,18 @@ describe("hasMarkers", () => {
   it("returns false for plain content", () => {
     expect(hasMarkers("# Just a heading\n\nSome content.")).toBe(false);
   });
+
+  it("is stable across repeated calls on the same content (no regex state)", () => {
+    const content =
+      "<!-- bp-generated:begin position -->\ncontent\n<!-- bp-generated:end position -->";
+    // Regression test: a /g regex's lastIndex made this alternate true/false
+    for (let i = 0; i < 4; i++) {
+      expect(hasMarkers(content)).toBe(true);
+    }
+    for (let i = 0; i < 4; i++) {
+      expect(hasMarkers("plain")).toBe(false);
+    }
+  });
 });
 
 describe("parseExistingFile", () => {
@@ -99,5 +111,81 @@ New generated
     const merged = mergeContent(existing, newContent);
     expect(merged).toContain("New generated");
     expect(merged).toContain("Team custom notes");
+  });
+
+  it("is idempotent: re-merging the merged output changes nothing", () => {
+    const existing = `<!-- bp-generated:begin pos -->
+Old generated
+<!-- bp-generated:end pos -->
+
+<!-- bp:preserve -->
+Team custom notes
+<!-- bp:end-preserve -->`;
+    const newContent = `<!-- bp-generated:begin pos -->
+New generated
+<!-- bp-generated:end pos -->`;
+
+    const once = mergeContent(existing, newContent);
+    const twice = mergeContent(once, newContent);
+    expect(twice).toBe(once);
+  });
+
+  it("does not duplicate a preserve block already present in new content", () => {
+    const preserve = "<!-- bp:preserve -->\nTeam custom notes\n<!-- bp:end-preserve -->";
+    const existing = `# Doc\n\n${preserve}`;
+    const newContent = `# Doc v2\n\n${preserve}`;
+
+    const merged = mergeContent(existing, newContent);
+    expect(merged.match(/bp:preserve/g)).toHaveLength(1);
+  });
+
+  it("appends every distinct preserve block from existing", () => {
+    const existing = `<!-- bp:preserve -->
+first note
+<!-- bp:end-preserve -->
+<!-- bp:preserve -->
+second note
+<!-- bp:end-preserve -->`;
+    const merged = mergeContent(existing, "# Fresh content");
+    expect(merged).toContain("first note");
+    expect(merged).toContain("second note");
+    expect(merged.startsWith("# Fresh content")).toBe(true);
+  });
+});
+
+describe("marker edge cases", () => {
+  it("parseExistingFile tolerates an unclosed generated block (consumes to EOF)", () => {
+    const content = `<!-- bp-generated:begin pos -->
+dangling content with no end marker`;
+    const parsed = parseExistingFile(content);
+    expect(parsed.generatedBlocks.get("pos")?.content).toContain("dangling content");
+  });
+
+  it("parseExistingFile tolerates an unclosed preserve block (consumes to EOF)", () => {
+    const content = `<!-- bp:preserve -->
+dangling preserve`;
+    const parsed = parseExistingFile(content);
+    expect(parsed.preserveBlocks).toHaveLength(1);
+    expect(parsed.preserveBlocks[0]?.content).toContain("dangling preserve");
+  });
+
+  it("end marker of a different id does not close a block", () => {
+    const content = `<!-- bp-generated:begin a -->
+inside a
+<!-- bp-generated:end b -->
+still inside a
+<!-- bp-generated:end a -->`;
+    const parsed = parseExistingFile(content);
+    expect(parsed.generatedBlocks.size).toBe(1);
+    expect(parsed.generatedBlocks.get("a")?.content).toContain("still inside a");
+  });
+
+  it("wrapBlock and extractGeneratedContent round-trip", () => {
+    const body = "# Heading\n\nbody text";
+    expect(extractGeneratedContent(wrapBlock("id-1", body), "id-1")).toBe(body);
+  });
+
+  it("extractGeneratedContent returns input verbatim when markers are absent", () => {
+    expect(extractGeneratedContent("no markers here", "id")).toBe("no markers here");
   });
 });

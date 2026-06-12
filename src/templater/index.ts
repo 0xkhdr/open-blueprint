@@ -6,7 +6,6 @@ import { loadProjectConfig } from "../config/project.js";
 import type { Fingerprint } from "../detector/fingerprint.js";
 import { enrichFingerprint } from "../detector/index.js";
 import { logger } from "../logger.js";
-import { RegistryClient } from "../registry/client.js";
 import { normalizeError } from "../utils/errors.js";
 import { type RenderContext, shouldRenderTemplate } from "./conditional.js";
 import { registerPartials } from "./engine.js";
@@ -254,6 +253,10 @@ export async function runTemplater(
   if (!isExtendedRun && !templateOverride) {
     const projectConfig = loadProjectConfig(projectRoot);
     if (projectConfig?.extends) {
+      // Lazy import: keeps the L2 templater's static graph free of the L3
+      // registry service (stage-1 layering violation V4); only `extends`
+      // projects pay the load cost.
+      const { RegistryClient } = await import("../registry/client.js");
       const registry = new RegistryClient();
       const baseDir = path.join(os.homedir(), ".bp", "templates", projectConfig.extends);
       try {

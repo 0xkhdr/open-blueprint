@@ -3,8 +3,7 @@
  * ADR-007: block-level merge, not full-file regeneration.
  */
 
-const BEGIN_PATTERN = /<!--\s*bp-generated:begin\s+(\S+)\s*-->/g;
-const END_PATTERN = /<!--\s*bp-generated:end\s+(\S+)\s*-->/;
+const BEGIN_PATTERN = /<!--\s*bp-generated:begin\s+(\S+)\s*-->/;
 const PRESERVE_BEGIN = /<!--\s*bp:preserve\s*-->/;
 const PRESERVE_END = /<!--\s*bp:end-preserve\s*-->/;
 
@@ -100,12 +99,12 @@ export function parseExistingFile(content: string): ParsedFile {
   return { generatedBlocks, preserveBlocks, rawContent: content };
 }
 
+// BEGIN_PATTERN is deliberately non-global: a /g regex carries `lastIndex`
+// state across `.test()` calls, which made repeated hasMarkers() calls on the
+// same content alternate between true and false.
 export function hasMarkers(content: string): boolean {
   return BEGIN_PATTERN.test(content) || PRESERVE_BEGIN.test(content);
 }
-
-// Reset lastIndex after test
-BEGIN_PATTERN.lastIndex = 0;
 
 export function mergeContent(existingContent: string, newContent: string): string {
   const parsed = parseExistingFile(existingContent);
@@ -176,6 +175,3 @@ export function extractGeneratedContent(block: string, id: string): string {
   if (start === -1 || end === -1) return block;
   return block.slice(start + beginMarker.length, end).trim();
 }
-
-// Suppress unused import warnings
-void END_PATTERN;
