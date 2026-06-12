@@ -1,6 +1,6 @@
 # Spec — Stage 1: Architecture & Dependency Audit
 
-**Status:** Draft — awaiting approval before implementation
+**Status:** Complete — executed 2026-06-12; results in `findings.md`, `dependency-graph.md`, `baseline-metrics.md`, `gaps.md`
 **Source:** PROMPT.md Stage 1
 **Date:** 2026-06-12
 

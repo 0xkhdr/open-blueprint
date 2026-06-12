@@ -7,7 +7,7 @@ explicit approval before each stage; `npm run ci` must pass at every stage exit.
 
 | Stage | Directory | Focus | Status |
 |---|---|---|---|
-| 1 | `stage-01/` | Architecture & dependency audit (read-only baseline) | Spec ready — awaiting approval |
+| 1 | `stage-01/` | Architecture & dependency audit (read-only baseline) | **Complete** (2026-06-12) — see `stage-01/gaps.md` |
 | 2 | `stage-02/` | SOLID refactoring of Detector/Templater/Validator/Translator | Draft |
 | 3 | `stage-03/` | Error handling & observability hardening | Draft |
 | 4 | `stage-04/` | Testing strategy & coverage hardening (85/85/75/85) | Draft |

@@ -31,7 +31,7 @@
     "lint": "biome check src/",
     "lint:fix": "biome check --write src/",
     "lint:no-sync-fs": "! grep -n 'fs\\.readFileSync\\|fs\\.readdirSync\\|fs\\.accessSync\\|fs\\.statSync\\|fs\\.existsSync' src/detector/index.ts src/validator/index.ts src/validator/structural.ts src/templater/index.ts src/templater/writer.ts src/templater/engine.ts src/registry/signer.ts src/validator/cache.ts src/registry/client.ts src/security/audit.ts src/validator/drift.ts src/validator/enforcement.ts src/validator/checks/schema.ts src/validator/checks/evaluate.ts src/lsp/server.ts src/cli/commands/doctor.ts src/security/scan.ts 2>/dev/null && echo 'lint:no-sync-fs PASS'",
-    "check:circular": "madge --circular --ts-config tsconfig.json src/",
+    "check:circular": "madge --circular --extensions ts --ts-config tsconfig.json src/",
     "lint:no-interior-exit": "! grep -rn 'process\\.exit(' src/ --include='*.ts' | grep -v 'src/cli/index.ts:' && echo 'lint:no-interior-exit PASS'",
     "lint:no-require": "! grep -rn 'require(' src/ --include='*.ts' | grep -v '//' | grep -v 'packs.ts' | grep -v 'lsp/server.ts' && echo 'lint:no-require PASS'",
     "lint:custom": "npm run lint:no-sync-fs && npm run lint:no-interior-exit && npm run lint:no-require",

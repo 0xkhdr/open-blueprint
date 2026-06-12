@@ -1,17 +1,20 @@
 {
   "version": "1.0",
-  "manifestVersion": "2026.1",
+  "manifestVersion": "2026.1:entropy=0",
   "files": {
     "/var/www/html/rai/up/open-blueprint/tests/fixtures/conflict-rules/CLAUDE.md": {
       "mtime": 1779921050934.5034,
+      "contentHash": "98c91d17d45922f508a0b8ab01543440781b3c51c7bf0c87018afdff743e19c2",
       "errors": []
     },
     "/var/www/html/rai/up/open-blueprint/tests/fixtures/conflict-rules/.claude/rules/01-api.md": {
       "mtime": 1779921050929.5034,
+      "contentHash": "c154a83ee25602c9edd506bfa4eb568968479474e05ffeb0c7f304ed7783ded4",
       "errors": []
     },
     "/var/www/html/rai/up/open-blueprint/tests/fixtures/conflict-rules/.claude/rules/02-legacy.md": {
       "mtime": 1779921050931.5034,
+      "contentHash": "3b3fd6583a44cc9810a8d47744b856c1557c87b6865ea7d801600a2ce43c5424",
       "errors": []
     }
   }
