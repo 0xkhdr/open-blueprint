@@ -13,11 +13,11 @@ import { type FileSystem, RealFileSystem } from "../utils/fs.js";
 import { detectEnterpriseSignals, type EnterpriseSignals } from "./enterprise-signals.js";
 import type { Fingerprint } from "./fingerprint.js";
 import { FingerprintSchema } from "./fingerprint.js";
-import { detectFrameworks } from "./frameworks.js";
-import { detectLanguages } from "./languages.js";
-import { detectSecurity } from "./security.js";
-import { detectTooling } from "./tooling.js";
+import { createDefaultStrategies, type DetectorStrategies } from "./strategies.js";
 import { parseWorkspacePackages } from "./workspace-parser.js";
+
+export type { DetectionStrategy } from "./contracts.js";
+export { createDefaultStrategies, type DetectorStrategies } from "./strategies.js";
 
 export type RiskTier = "low" | "medium" | "high" | "critical";
 export type ApprovalMode = "auto" | "confirm" | "read-only";
@@ -278,7 +278,8 @@ function estimateMonthlyTokens(fp: Fingerprint): number {
 
 export async function detect(
   projectRoot: string,
-  fs: FileSystem = new RealFileSystem()
+  fs: FileSystem = new RealFileSystem(),
+  strategies: DetectorStrategies = createDefaultStrategies()
 ): Promise<Fingerprint> {
   return startSpan("bp.detect", async () => {
     const absoluteRoot = path.resolve(projectRoot);
@@ -289,10 +290,10 @@ export async function detect(
 
     const [languages, frameworks, tooling, security_signals, directory_topology] =
       await Promise.all([
-        Promise.resolve().then(() => detectLanguages(absoluteRoot)),
-        Promise.resolve().then(() => detectFrameworks(absoluteRoot)),
-        Promise.resolve().then(() => detectTooling(absoluteRoot)),
-        Promise.resolve().then(() => detectSecurity(absoluteRoot)),
+        strategies.languages.detect(absoluteRoot, fs),
+        strategies.frameworks.detect(absoluteRoot, fs),
+        strategies.tooling.detect(absoluteRoot, fs),
+        strategies.security.detect(absoluteRoot, fs),
         scanDirectoryTopology(absoluteRoot, fs),
       ]);
 
