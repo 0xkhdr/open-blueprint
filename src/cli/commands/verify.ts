@@ -12,10 +12,10 @@ import { detect } from "../../detector/index.js";
 import { BpError } from "../../errors.js";
 import { toSarif } from "../../report/sarif.js";
 import { resolveTemplatePack } from "../../templater/selector.js";
+import type { ValidationError } from "../../types/validation.js";
 import { normalizeError } from "../../utils/errors.js";
 import type { ValidationLevel } from "../../validator/index.js";
 import { EXIT_CODES, exitCodeForResult, runValidator } from "../../validator/index.js";
-import type { ValidationError } from "../../types/validation.js";
 
 const VALID_LEVELS = [
   "structural",

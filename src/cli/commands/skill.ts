@@ -23,10 +23,10 @@ import {
   slugifySkillName,
 } from "../../translator/skill-file.js";
 import { canonicalToBackend, toCanonical } from "../../translator/tools.js";
+import type { ValidationError } from "../../types/validation.js";
 import { normalizeError } from "../../utils/errors.js";
 import { EXIT_CODES } from "../../validator/index.js";
 import { validateSkillFiles } from "../../validator/skills.js";
-import type { ValidationError } from "../../types/validation.js";
 import { installArtifactRef } from "../pack-install.js";
 import { resolveBackendManifest, resolveBackendName } from "../resolve-backend.js";
 

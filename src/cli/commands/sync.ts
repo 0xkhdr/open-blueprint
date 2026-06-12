@@ -9,10 +9,10 @@ import { loadUserConfig } from "../../config/user.js";
 import { detect } from "../../detector/index.js";
 import { BpError } from "../../errors.js";
 import { resolveTemplatePack } from "../../templater/selector.js";
+import type { ValidationError } from "../../types/validation.js";
 import { normalizeError } from "../../utils/errors.js";
 import { FINGERPRINT_FILE, storeFingerprint, validateDrift } from "../../validator/drift.js";
 import { EXIT_CODES } from "../../validator/index.js";
-import type { ValidationError } from "../../types/validation.js";
 import { validateStructuralBatch } from "../../validator/structural.js";
 
 // ---------------------------------------------------------------------------
