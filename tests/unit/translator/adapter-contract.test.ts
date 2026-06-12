@@ -73,7 +73,7 @@ function contentDigest(root: string, files: string[]): Map<string, string> {
     // the BlueprintAdapter contract docs.
     const normalized = fs
       .readFileSync(file, "utf-8")
-      .replace(/^(\*\*Generated:\*\*|# Generated:) .*$/gm, "$1 <normalized>");
+      .replace(/^(\*\*Generated:\*\*|# Generated:|\/\/ Generated:) .*$/gm, "$1 <normalized>");
     digests.set(rel, crypto.createHash("sha256").update(normalized).digest("hex"));
   }
   return digests;

@@ -23,9 +23,9 @@ import type { BlueprintIR } from "./ir.js";
  * `render(ir, projectRoot)`
  * - Precondition: `ir` is schema-valid. Rendering must be deterministic for
  *   the same `ir` (no randomness in file content). Known exemption:
- *   generation-timestamp lines (`**Generated:**` in AGENTS.md,
- *   `# Generated:` in settings files); the contract suite normalizes
- *   them. Do not add new nondeterminism.
+ *   generation-timestamp lines (`**Generated:**` in AGENTS.md, `# Generated:`
+ *   / `// Generated:` in settings/config files); the contract suite
+ *   normalizes them. Do not add new nondeterminism.
  * - Postcondition: returns the list of file paths written. Re-rendering the
  *   same IR is idempotent and must respect `bp:preserve` blocks.
  * - Errors: filesystem failures propagate; partial writes are not reported as
