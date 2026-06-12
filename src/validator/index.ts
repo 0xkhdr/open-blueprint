@@ -1,107 +1,56 @@
+/**
+ * Validation pipeline (Stage 2 SOLID refactor).
+ *
+ * This file is a thin composer: it owns file collection, resource limits,
+ * the per-file result cache, the timeout, and severity partitioning. The six
+ * validation levels live in `levels/` behind the `LevelValidator` contract
+ * and are assembled by `levels/registry.ts`; cross-layer services (blueprint
+ * parsing, plugin running) are injected (`contracts.ts`, default wiring in
+ * `default-wiring.ts`).
+ */
+
 import * as crypto from "node:crypto";
 import * as fsPromises from "node:fs/promises";
 import * as path from "node:path";
 import fg from "fast-glob";
 import { EXIT_CODES } from "../constants.js";
-import type { Fingerprint } from "../detector/fingerprint.js";
-import { logger } from "../logger.js";
-import {
-  activePluginLevels,
-  buildFileInventory,
-  type PluginRunPayload,
-} from "../plugins/context.js";
-import { loadPlugins, type PluginSpec, pluginOutcomeErrors } from "../plugins/loader.js";
+import { logger as defaultLogger } from "../logger.js";
 import { startSpan } from "../telemetry/tracer.js";
 import type { BackendManifest } from "../templater/selector.js";
-import { getRegisteredAdapter } from "../translator/adapters/registry.js";
-import type { BlueprintIR } from "../translator/ir.js";
-import { validateAlertingConfig } from "./alerting.js";
+import type { ILogger } from "../types/logger.js";
+import type { ValidationError } from "../types/validation.js";
 import { loadCacheAsync, saveCacheAsync } from "./cache.js";
-import { validateCostConfig } from "./cost.js";
-import { validateCrossLayerReferences } from "./cross-layer.js";
-import { validateDrift } from "./drift.js";
+import type {
+  LevelValidator,
+  ValidationContext,
+  ValidationLevel,
+  ValidationResult,
+  ValidatorOptions,
+  ValidatorServices,
+} from "./contracts.js";
+import { resolveServices } from "./default-wiring.js";
 import type { EnforcementSummary } from "./enforcement.js";
-import { validateEnforcementDetailed } from "./enforcement.js";
 import { ResourceLimitError, ValidationTimeoutError } from "./errors.js";
-import {
-  validateAudit,
-  validateCommands,
-  validateCompliance,
-  validateIdentity,
-  validateMCPServers,
-  validateOrchestration,
-  validateRegistry,
-  validateRisk,
-  validateSettings,
-} from "./layers.js";
-import {
-  validateCommandsDeep,
-  validateMCPServersDeep,
-  validateSettingsDeep,
-} from "./layers-deep.js";
-import { validateLogical } from "./logical.js";
-import { validateOrchestrationSemantic } from "./orchestration.js";
-import { validatePackIntegrity } from "./pack-integrity.js";
-import { auditPerformance } from "./performance.js";
-import { validateRBAC } from "./rbac.js";
-import { runBackendRules } from "./rules/backend-rules.js";
-import { validateSemantic } from "./semantic.js";
-import { validateSkills } from "./skills.js";
-import type { ValidationError } from "./structural.js";
-import { validateStructuralBatch } from "./structural.js";
+import { createDefaultLevels } from "./levels/registry.js";
 
 export const MAX_VALIDATION_FILES = Number(process.env.BP_MAX_VALIDATION_FILES ?? 1000);
 export const MAX_VALIDATION_BYTES = Number(process.env.BP_MAX_VALIDATION_BYTES ?? 52_428_800);
 export const VALIDATION_TIMEOUT_MS = Number(process.env.BP_VALIDATION_TIMEOUT_MS ?? 30_000);
 
-export type ValidationLevel =
-  | "structural"
-  | "semantic"
-  | "logical"
-  | "enforcement"
-  | "drift"
-  | "governance"
-  | "all";
-
-export interface ValidatorOptions {
-  level: ValidationLevel;
-  projectRoot: string;
-  manifest: BackendManifest;
-  fingerprint?: Fingerprint;
-  json?: boolean;
-  failOn?: ValidationLevel;
-  /** Skip plugin validators configured in .bp.json (verify --no-plugins). */
-  noPlugins?: boolean;
-  /** Entropy-based secret detection (verify --entropy-scan / .bp.json scan.entropyEnabled). */
-  entropyScan?: boolean;
-}
-
-export interface ValidationResult {
-  passed: boolean;
-  errors: ValidationError[];
-  warnings: ValidationError[];
-  infos: ValidationError[];
-  level: ValidationLevel;
-  filesChecked: number;
-  enforcement?: EnforcementSummary;
-}
+export type {
+  BlueprintSource,
+  LevelOutcome,
+  LevelValidator,
+  PluginEngine,
+  ValidationContext,
+  ValidationLevel,
+  ValidationResult,
+  ValidatorOptions,
+  ValidatorServices,
+} from "./contracts.js";
+export { createDefaultLevels } from "./levels/registry.js";
 
 export { EXIT_CODES };
-
-function mapLayerErrors(
-  layerName: string,
-  rawErrors: Array<{ message: string; field?: string }>,
-  blueprintFile: string
-): ValidationError[] {
-  const type = `GOVERNANCE_${layerName.toUpperCase().replace(/\s+/g, "_")}_INVALID`;
-  return rawErrors.map((e) => ({
-    file: blueprintFile,
-    type,
-    severity: "error" as const,
-    message: `${layerName} layer: ${e.message}`,
-    resolution: `Fix ${layerName.toLowerCase()} configuration at ${e.field || "root"}`,
-  }));
-}
 
 export async function collectBlueprintFiles(
   projectRoot: string,
@@ -123,438 +72,205 @@ export async function collectBlueprintFiles(
   return files;
 }
 
-async function validateGovernance(
-  projectRoot: string,
-  manifest: BackendManifest
-): Promise<ValidationError[]> {
-  try {
-    const adapter = getAdapterByName(manifest.backend);
-    const ir = await adapter.parse(projectRoot);
-
-    const errors: ValidationError[] = [];
-    const blueprintFile = manifest.file_patterns.anchor[0]
-      ? path.join(projectRoot, manifest.file_patterns.anchor[0])
-      : path.join(projectRoot, ".claude", "blueprint.json");
-
-    // Validate each enterprise layer
-    if (ir.settings) {
-      errors.push(...mapLayerErrors("settings", validateSettings(ir.settings), blueprintFile));
-    }
-
-    if (ir.commands && ir.commands.length > 0) {
-      errors.push(...mapLayerErrors("commands", validateCommands(ir.commands), blueprintFile));
-    }
-
-    if (ir.mcp_servers && ir.mcp_servers.length > 0) {
-      errors.push(
-        ...mapLayerErrors("mcp servers", validateMCPServers(ir.mcp_servers), blueprintFile)
-      );
-    }
-
-    if (ir.identity !== undefined) {
-      errors.push(...mapLayerErrors("identity", validateIdentity(ir.identity), blueprintFile));
-      const rbacErrors = validateRBAC({ identity: ir.identity }, blueprintFile);
-      errors.push(...rbacErrors);
-    }
-
-    if (ir.audit) {
-      errors.push(...mapLayerErrors("audit", validateAudit(ir.audit), blueprintFile));
-    }
-
-    if (ir.compliance) {
-      errors.push(
-        ...mapLayerErrors("compliance", validateCompliance(ir.compliance), blueprintFile)
-      );
-    }
-
-    if (ir.risk) {
-      errors.push(...mapLayerErrors("risk", validateRisk(ir.risk), blueprintFile));
-    }
-
-    if (ir.registry) {
-      errors.push(...mapLayerErrors("registry", validateRegistry(ir.registry), blueprintFile));
-    }
-
-    if (ir.orchestration) {
-      errors.push(
-        ...mapLayerErrors("orchestration", validateOrchestration(ir.orchestration), blueprintFile)
-      );
-    }
-
-    // Semantic orchestration + cross-layer validation (always runs in governance mode)
-    {
-      const orchestrationSemanticErrors = validateOrchestrationSemantic(ir);
-      errors.push(...orchestrationSemanticErrors);
-    }
-
-    // Cross-layer reference validation
-    {
-      const crossLayerErrors = validateCrossLayerReferences(ir, blueprintFile);
-      errors.push(...crossLayerErrors);
-    }
-
-    // Layer 6-8 deep validation
-    {
-      const settingsDeepErrors = validateSettingsDeep(ir, blueprintFile);
-      errors.push(...settingsDeepErrors);
-    }
-    {
-      const commandsDeepErrors = validateCommandsDeep(ir, blueprintFile);
-      errors.push(...commandsDeepErrors);
-    }
-    {
-      const mcpDeepErrors = validateMCPServersDeep(ir, blueprintFile);
-      errors.push(...mcpDeepErrors);
-    }
-
-    // Performance audit
-    {
-      const perfResult = auditPerformance(ir, blueprintFile);
-      errors.push(...perfResult.warnings);
-    }
-
-    // Phase 4: Observability & Cost validation
-    if (ir.cost) {
-      const costErrors = validateCostConfig(ir);
-      errors.push(...costErrors);
-    }
-
-    if (ir.alerting) {
-      const alertingErrors = validateAlertingConfig(ir);
-      errors.push(...alertingErrors);
-    }
-
-    return errors;
-  } catch (err) {
-    return [
-      {
-        file: path.join(projectRoot, ".claude", "blueprint.json"),
-        type: "GOVERNANCE_PARSE_ERROR",
-        severity: "error",
-        message: `Failed to parse blueprint for governance validation: ${String(err)}`,
-        resolution: "Ensure blueprint is valid JSON/YAML and conforms to IR schema",
-      },
-    ];
-  }
-}
-
-function getAdapterByName(backend: string) {
-  return getRegisteredAdapter(backend);
-}
-
-async function runConfiguredPlugins(
-  projectRoot: string,
-  manifest: BackendManifest,
-  fingerprint: Fingerprint | undefined,
-  files: string[],
-  levels: ReturnType<typeof activePluginLevels>,
-  specs: PluginSpec[]
-): Promise<ValidationError[]> {
-  let blueprint: BlueprintIR;
-  try {
-    blueprint = await getAdapterByName(manifest.backend).parse(projectRoot);
-  } catch (err) {
-    logger.warn({ err }, "Plugin context unavailable: blueprint parse failed");
-    return [
-      {
-        file: projectRoot,
-        type: "PLUGIN_CONTEXT_UNAVAILABLE",
-        severity: "warning",
-        message: `Plugins skipped: blueprint parse failed: ${err instanceof Error ? err.message : String(err)}`,
-        resolution: "Fix blueprint parse errors, then re-run bp verify",
-      },
-    ];
-  }
-
-  const inventory = await buildFileInventory(projectRoot, manifest, files);
-  const payload: PluginRunPayload = {
-    blueprint,
-    ...(fingerprint ? { fingerprint } : {}),
-    files: inventory,
-    levels,
-  };
-  const outcomes = await loadPlugins(specs, payload, projectRoot);
-  return outcomes.flatMap((outcome) => pluginOutcomeErrors(outcome, projectRoot));
-}
-
 async function computeContentHash(filePath: string): Promise<string> {
   const content = await fsPromises.readFile(filePath);
   return crypto.createHash("sha256").update(content).digest("hex");
 }
 
-async function runValidationPipeline(options: ValidatorOptions): Promise<ValidationResult> {
-  const { level, projectRoot, manifest, fingerprint } = options;
+/**
+ * Composes the registered levels into one run. Constructor injection only —
+ * levels, services, and logger all have default wiring supplied by
+ * `runValidator`, so tests and orchestrators can substitute any of them.
+ */
+export class ValidationPipeline {
+  private readonly levels: LevelValidator[];
+  private readonly services: ValidatorServices;
+  private readonly logger: ILogger;
 
-  const files = await collectBlueprintFiles(projectRoot, manifest);
-
-  // Pre-validation file count check
-  if (files.length > MAX_VALIDATION_FILES) {
-    throw new ResourceLimitError(
-      `File count ${files.length} exceeds limit ${MAX_VALIDATION_FILES}`,
-      files.length,
-      MAX_VALIDATION_FILES
-    );
+  constructor(options?: {
+    levels?: LevelValidator[];
+    services?: Partial<ValidatorServices>;
+    logger?: ILogger;
+  }) {
+    this.services = resolveServices(options?.services);
+    this.levels = options?.levels ?? createDefaultLevels(this.services);
+    this.logger = options?.logger ?? defaultLogger;
   }
 
-  // Pre-validation total byte size check
-  const sizes = await Promise.all(
-    files.map(async (f) => {
-      try {
-        const stat = await fsPromises.stat(f);
-        return stat.size;
-      } catch {
-        return 0;
-      }
-    })
-  );
-  const totalBytes = sizes.reduce((a, b) => a + b, 0);
-  if (totalBytes > MAX_VALIDATION_BYTES) {
-    throw new ResourceLimitError(
-      `Total size ${totalBytes} bytes exceeds limit ${MAX_VALIDATION_BYTES} bytes`,
-      totalBytes,
-      MAX_VALIDATION_BYTES
-    );
-  }
+  async run(options: ValidatorOptions): Promise<ValidationResult> {
+    const { level, projectRoot, manifest, fingerprint } = options;
 
-  // Scan mode is part of the cache identity: entropy on/off changes per-file
-  // findings, so cached results from one mode must not serve the other.
-  const cacheKey = `${manifest.version}:entropy=${options.entropyScan ? 1 : 0}`;
-  const cache = await loadCacheAsync(projectRoot, cacheKey);
-  const cacheUpdatedFiles: Record<
-    string,
-    { mtime: number; contentHash: string; errors: ValidationError[] }
-  > = { ...cache.files };
+    const files = await collectBlueprintFiles(projectRoot, manifest);
 
-  const filesToValidate: string[] = [];
-  const cachedErrors: ValidationError[] = [];
-
-  await Promise.all(
-    files.map(async (file) => {
-      let stat: Awaited<ReturnType<typeof fsPromises.stat>> | undefined;
-      try {
-        stat = await fsPromises.stat(file);
-      } catch {
-        filesToValidate.push(file);
-        return;
-      }
-      const mtime = stat.mtimeMs;
-      const cachedEntry = cache.files[file];
-      if (!cachedEntry) {
-        filesToValidate.push(file);
-        return;
-      }
-      if (cachedEntry.mtime === mtime) {
-        cachedErrors.push(...cachedEntry.errors);
-        return;
-      }
-      const contentHash = await computeContentHash(file);
-      if (cachedEntry.contentHash === contentHash) {
-        cacheUpdatedFiles[file] = { ...cachedEntry, mtime };
-        cachedErrors.push(...cachedEntry.errors);
-      } else {
-        filesToValidate.push(file);
-      }
-    })
-  );
-
-  const newErrors: ValidationError[] = [];
-
-  // Layer 1: Structural (always run for modified/new files)
-  const structuralErrors = await startSpan("bp.validate.structural", () =>
-    validateStructuralBatch(filesToValidate, manifest, {
-      entropyScan: options.entropyScan === true,
-    })
-  );
-  newErrors.push(...structuralErrors);
-
-  // Short-circuit: if structural hard failures exist, skip deeper layers
-  const structuralHardFail = structuralErrors.some((e) => e.severity === "error");
-
-  // Layer 2: Semantic (run only for modified/new files)
-  if (!structuralHardFail && (level === "semantic" || level === "all")) {
-    const semanticErrors = await startSpan("bp.validate.semantic", () =>
-      validateSemantic(filesToValidate, { projectRoot, manifest })
-    );
-    newErrors.push(...semanticErrors);
-  }
-
-  // Update cache for the validated files
-  await Promise.all(
-    filesToValidate.map(async (file) => {
-      let stat: Awaited<ReturnType<typeof fsPromises.stat>> | undefined;
-      try {
-        stat = await fsPromises.stat(file);
-      } catch {
-        return;
-      }
-      const contentHash = await computeContentHash(file);
-      const fileErrors = newErrors.filter((e) => e.file === file);
-      cacheUpdatedFiles[file] = { mtime: stat.mtimeMs, contentHash, errors: fileErrors };
-    })
-  );
-
-  // Save the updated cache
-  await saveCacheAsync(projectRoot, {
-    version: "1.0",
-    manifestVersion: cacheKey,
-    files: cacheUpdatedFiles,
-  });
-
-  const allErrors: ValidationError[] = [...cachedErrors, ...newErrors];
-
-  // Layer 2.5: Skills (semantic level; global because name collisions are
-  // cross-file, so it bypasses the per-file cache — Stage 3)
-  if (!structuralHardFail && (level === "semantic" || level === "all")) {
-    const skillErrors = await startSpan("bp.validate.skills", () =>
-      validateSkills(projectRoot, manifest)
-    );
-    allErrors.push(...skillErrors);
-  }
-
-  // Layer 3: Logical (always run since it is global across rules)
-  if (!structuralHardFail && (level === "logical" || level === "all")) {
-    const logicalErrors = await startSpan("bp.validate.logical", () =>
-      validateLogical(files, { projectRoot })
-    );
-    allErrors.push(...logicalErrors);
-  }
-
-  // Layer 3.5: Enforcement (executable rule checks; after logical, before drift)
-  let enforcementSummary: EnforcementSummary | undefined;
-  if (!structuralHardFail && (level === "enforcement" || level === "all")) {
-    const enforcementResult = await startSpan("bp.validate.enforcement", () =>
-      validateEnforcementDetailed(projectRoot, manifest, fingerprint)
-    );
-    allErrors.push(...enforcementResult.errors);
-    enforcementSummary = enforcementResult.summary;
-  }
-
-  // Layer 4: Drift (always run since it checks drift)
-  if (level === "drift" || level === "all") {
-    if (fingerprint) {
-      const driftErrors = await startSpan("bp.validate.drift", () =>
-        validateDrift(files, { projectRoot, currentFingerprint: fingerprint })
+    // Pre-validation file count check
+    if (files.length > MAX_VALIDATION_FILES) {
+      throw new ResourceLimitError(
+        `File count ${files.length} exceeds limit ${MAX_VALIDATION_FILES}`,
+        files.length,
+        MAX_VALIDATION_FILES
       );
-      allErrors.push(...driftErrors);
     }
-    const packIntegrityErrors = await startSpan("bp.validate.pack-integrity", async () => {
-      // Stage 5: best-effort upstream-drift check against the configured
-      // signed registry index; offline/unconfigured runs skip it silently.
-      const { loadConfiguredRegistryIndex } = await import("../registry/client.js");
-      const registryIndex = await loadConfiguredRegistryIndex();
-      return validatePackIntegrity(projectRoot, { registryIndex });
+
+    // Pre-validation total byte size check
+    const sizes = await Promise.all(
+      files.map(async (f) => {
+        try {
+          const stat = await fsPromises.stat(f);
+          return stat.size;
+        } catch {
+          return 0;
+        }
+      })
+    );
+    const totalBytes = sizes.reduce((a, b) => a + b, 0);
+    if (totalBytes > MAX_VALIDATION_BYTES) {
+      throw new ResourceLimitError(
+        `Total size ${totalBytes} bytes exceeds limit ${MAX_VALIDATION_BYTES} bytes`,
+        totalBytes,
+        MAX_VALIDATION_BYTES
+      );
+    }
+
+    // Scan mode is part of the cache identity: entropy on/off changes per-file
+    // findings, so cached results from one mode must not serve the other.
+    const cacheKey = `${manifest.version}:entropy=${options.entropyScan ? 1 : 0}`;
+    const cache = await loadCacheAsync(projectRoot, cacheKey);
+    const cacheUpdatedFiles: Record<
+      string,
+      { mtime: number; contentHash: string; errors: ValidationError[] }
+    > = { ...cache.files };
+
+    const filesToValidate: string[] = [];
+    const cachedErrors: ValidationError[] = [];
+
+    await Promise.all(
+      files.map(async (file) => {
+        let stat: Awaited<ReturnType<typeof fsPromises.stat>> | undefined;
+        try {
+          stat = await fsPromises.stat(file);
+        } catch {
+          filesToValidate.push(file);
+          return;
+        }
+        const mtime = stat.mtimeMs;
+        const cachedEntry = cache.files[file];
+        if (!cachedEntry) {
+          filesToValidate.push(file);
+          return;
+        }
+        if (cachedEntry.mtime === mtime) {
+          cachedErrors.push(...cachedEntry.errors);
+          return;
+        }
+        const contentHash = await computeContentHash(file);
+        if (cachedEntry.contentHash === contentHash) {
+          cacheUpdatedFiles[file] = { ...cachedEntry, mtime };
+          cachedErrors.push(...cachedEntry.errors);
+        } else {
+          filesToValidate.push(file);
+        }
+      })
+    );
+
+    const ctx: ValidationContext = {
+      projectRoot,
+      manifest,
+      fingerprint,
+      options,
+      files,
+      filesToValidate,
+      structuralFailed: false,
+    };
+
+    // Phase 1: file-scoped levels (results feed the per-file cache)
+    const newErrors: ValidationError[] = [];
+    for (const lvl of this.levels) {
+      if (!lvl.runFileScoped || !lvl.enabledFor(level)) continue;
+      if (lvl.skipOnStructuralFailure && ctx.structuralFailed) continue;
+      const levelErrors = await lvl.runFileScoped(ctx);
+      newErrors.push(...levelErrors);
+      if (lvl.marksStructuralFailure) {
+        ctx.structuralFailed = levelErrors.some((e) => e.severity === "error");
+      }
+    }
+
+    // Update cache for the validated files
+    await Promise.all(
+      filesToValidate.map(async (file) => {
+        let stat: Awaited<ReturnType<typeof fsPromises.stat>> | undefined;
+        try {
+          stat = await fsPromises.stat(file);
+        } catch {
+          return;
+        }
+        const contentHash = await computeContentHash(file);
+        const fileErrors = newErrors.filter((e) => e.file === file);
+        cacheUpdatedFiles[file] = { mtime: stat.mtimeMs, contentHash, errors: fileErrors };
+      })
+    );
+
+    await saveCacheAsync(projectRoot, {
+      version: "1.0",
+      manifestVersion: cacheKey,
+      files: cacheUpdatedFiles,
     });
-    allErrors.push(...packIntegrityErrors);
-  }
 
-  // Layer 5: Governance (enterprise validation)
-  if (level === "governance" || level === "all") {
-    const governanceErrors = await startSpan("bp.validate.governance", () =>
-      validateGovernance(projectRoot, manifest)
-    );
-    allErrors.push(...governanceErrors);
-  }
+    const allErrors: ValidationError[] = [...cachedErrors, ...newErrors];
 
-  // Backend-specific validation rules (only when .bp.json is present)
-  if (level === "logical" || level === "all") {
-    const { loadProjectConfig } = await import("../config/project.js");
-    const projectConfig = loadProjectConfig(projectRoot);
-    if (projectConfig) {
-      const backends =
-        projectConfig.backends ?? (projectConfig.backend ? [projectConfig.backend] : []);
-      if (backends.length > 0) {
-        const backendErrors = runBackendRules(projectRoot, backends);
-        allErrors.push(...backendErrors);
-      }
-
-      // Workspace blueprint coverage check
-      if (fingerprint?.workspacePackages && fingerprint.workspacePackages.length > 0) {
-        for (const pkg of fingerprint.workspacePackages) {
-          const pkgDir = path.join(projectRoot, pkg.replace(/\*\*?$/, "").replace(/\*/g, ""));
-          const hasBlueprint = files.some((f) => f.startsWith(pkgDir));
-          if (!hasBlueprint) {
-            allErrors.push({
-              file: projectRoot,
-              type: "MISSING_WORKSPACE_BLUEPRINT",
-              severity: "warning",
-              message: `Workspace package "${pkg}" has no blueprint coverage`,
-              resolution: `Run \`bp init --backends ${backends[0] ?? "claude"}\` in ${pkg} to scaffold blueprint`,
-            });
-          }
-        }
-      }
+    // Phase 2: global levels (cross-file checks that bypass the cache)
+    let enforcementSummary: EnforcementSummary | undefined;
+    for (const lvl of this.levels) {
+      if (!lvl.runGlobal || !lvl.enabledFor(level)) continue;
+      if (lvl.skipOnStructuralFailure && ctx.structuralFailed) continue;
+      const outcome = await lvl.runGlobal(ctx);
+      allErrors.push(...outcome.errors);
+      if (outcome.enforcement) enforcementSummary = outcome.enforcement;
     }
+
+    // Phase 3: plugin validators run against the parsed IR + file inventory
+    if (!ctx.structuralFailed && !options.noPlugins) {
+      allErrors.push(...(await this.services.pluginEngine.run(ctx)));
+    }
+
+    const errors = allErrors.filter((e) => e.severity === "error");
+    const warnings = allErrors.filter((e) => e.severity === "warning");
+    const infos = allErrors.filter((e) => e.severity === "info");
+
+    return {
+      passed: errors.length === 0,
+      errors,
+      warnings,
+      infos,
+      level,
+      filesChecked: files.length,
+      ...(enforcementSummary ? { enforcement: enforcementSummary } : {}),
+    };
   }
 
-  // Plugin validators (Stage 4): client plugins run against the parsed IR +
-  // file inventory, grouped by the levels active for this run.
-  const pluginLevels = activePluginLevels(level);
-  if (!structuralHardFail && !options.noPlugins && pluginLevels.length > 0) {
-    const { loadProjectConfigAsync } = await import("../config/project.js");
-    const pluginConfig = await loadProjectConfigAsync(projectRoot);
-    // Stage 5: `artifact:<id>` plugin entries resolve through the lockfile to
-    // the installed plugin bundle under .bp/plugins/.
-    const specs: PluginSpec[] = [];
-    for (const entry of pluginConfig?.plugins ?? []) {
-      if (entry.path.startsWith("artifact:")) {
-        const artifactId = entry.path.slice("artifact:".length);
-        const { resolvePluginArtifactPath } = await import("../registry/install.js");
-        const bundlePath = await resolvePluginArtifactPath(projectRoot, artifactId);
-        if (!bundlePath) {
-          allErrors.push({
-            file: path.join(projectRoot, ".bp.json"),
-            type: "PLUGIN_ARTIFACT_NOT_FOUND",
-            severity: "error",
-            message: `Plugin entry '${entry.path}' references an artifact that is not installed`,
-            resolution: `Install it first: bp pack plugin:install <url-or-id> (artifact id '${artifactId}')`,
-          });
-          continue;
-        }
-        specs.push({ path: bundlePath, mode: entry.mode });
-      } else {
-        specs.push(entry);
-      }
-    }
-    if (specs.length > 0) {
-      const pluginErrors = await startSpan("bp.validate.plugins", () =>
-        runConfiguredPlugins(projectRoot, manifest, fingerprint, files, pluginLevels, specs)
-      );
-      allErrors.push(...pluginErrors);
-    }
+  /** Pipeline run wrapped in the validation timeout and root telemetry span. */
+  async runWithTimeout(options: ValidatorOptions): Promise<ValidationResult> {
+    const startMs = Date.now();
+
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      const t = setTimeout(() => {
+        const elapsedMs = Date.now() - startMs;
+        const err = new ValidationTimeoutError(elapsedMs, VALIDATION_TIMEOUT_MS);
+        this.logger.warn({ elapsedMs, timeoutMs: VALIDATION_TIMEOUT_MS }, "Validation timed out");
+        reject(err);
+      }, VALIDATION_TIMEOUT_MS);
+      if (typeof t === "object" && "unref" in t) t.unref();
+    });
+
+    return startSpan("bp.validate", (span) => {
+      span.setAttribute("level", options.level);
+      return Promise.race([this.run(options), timeoutPromise]);
+    });
   }
-
-  const errors = allErrors.filter((e) => e.severity === "error");
-  const warnings = allErrors.filter((e) => e.severity === "warning");
-  const infos = allErrors.filter((e) => e.severity === "info");
-
-  return {
-    passed: errors.length === 0,
-    errors,
-    warnings,
-    infos,
-    level,
-    filesChecked: files.length,
-    ...(enforcementSummary ? { enforcement: enforcementSummary } : {}),
-  };
 }
 
 export async function runValidator(options: ValidatorOptions): Promise<ValidationResult> {
-  const startMs = Date.now();
-
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    const t = setTimeout(() => {
-      const elapsedMs = Date.now() - startMs;
-      const err = new ValidationTimeoutError(elapsedMs, VALIDATION_TIMEOUT_MS);
-      logger.warn({ elapsedMs, timeoutMs: VALIDATION_TIMEOUT_MS }, "Validation timed out");
-      reject(err);
-    }, VALIDATION_TIMEOUT_MS);
-    if (typeof t === "object" && "unref" in t) t.unref();
-  });
-
-  return startSpan("bp.validate", (span) => {
-    span.setAttribute("level", options.level);
-    return Promise.race([runValidationPipeline(options), timeoutPromise]);
-  });
+  const pipeline = new ValidationPipeline(options.services ? { services: options.services } : {});
+  return pipeline.runWithTimeout(options);
 }
 
 const DRIFT_WARNING_TYPES = new Set([
