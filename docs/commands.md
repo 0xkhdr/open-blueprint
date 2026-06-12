@@ -1,6 +1,6 @@
 # 💻 CLI Command Reference
 
-This document provides a comprehensive reference for all 24 commands, arguments, and options available in the **open-blueprint (`bp`)** Command Line Interface (CLI).
+This document provides a comprehensive reference for all 31 commands, arguments, and options available in the **open-blueprint (`bp`)** Command Line Interface (CLI).
 
 ---
 
@@ -21,6 +21,7 @@ This document provides a comprehensive reference for all 24 commands, arguments,
 | [`bp merge`](#bp-merge) | Three-way merge of blueprints with conflict detection | `<base> <ours> <theirs>`, `--output` |
 | [`bp template`](#bp-template) | Installs and manages templates from internal registry | `list`, `install <pkg>`, `publish <path>` |
 | [`bp doctor`](#bp-doctor) | Executes diagnostics and cost calculations | `--tool`, `--verbose`, `--cost` |
+| [`bp health`](#bp-health) | Environment/CI health checks (config, engines, registry reachability) | `--json` |
 | [`bp rule`](#bp-rule) | Lints and graphs scope dependencies for rules; manages rule packs | `lint <file>`, `test <file>`, `graph`, `pack:create`, `pack:lint`, `pack:install` (`--allow-unsigned` for remote artifacts), `pack:remove`, `pack:list` |
 | [`bp skill`](#bp-skill) | Authors, validates, dry-runs, and shares skills; manages skill packs | `new <name>`, `lint [glob]`, `list`, `test <file>`, `pack:create`, `pack:lint`, `pack:install` (`--allow-unsigned` for remote artifacts), `pack:remove`, `pack:list` |
 | [`bp pack`](#bp-pack) | Publishes signed pack artifacts and installs plugin artifacts (see [docs/pack-distribution.md](pack-distribution.md)) | `keygen <name>`, `publish <file> --key <pem>`, `index:build <dir> --key <pem>`, `plugin:install <ref>` |
@@ -47,15 +48,18 @@ This document provides a comprehensive reference for all 24 commands, arguments,
 
 Scaffolds a blueprint for the current repository based on detected framework topologies.
 
-* **Arguments**: `[tool]` (claude, cursor, opendev, generic)
+* **Arguments**: `[tool]` — any of the 31 registered backend IDs, e.g. `claude`, `cursor`, `opendev`, `generic` (full list: [Supported Tools](supported-tools.md))
 * **Options**:
   * `--tool <backend>`: Override positional backend tool
+  * `--tools <ids>`: Comma-separated backend IDs to scaffold in one pass, or `all`
   * `--template <name>`: Force specific template pack
+  * `--interactive`: Interactive setup wizard (prompts for backend, risk tier, options)
+  * `--json`: Machine-readable JSON output
   * `--force`: Overwrite existing files
   * `--dry-run`: Preview changes without writing
   * `--no-verify`: Skip post-init validation
 * **Example**: `bp init claude`
-* **Error codes**: [3](troubleshooting.md#code-3) Config error · [9](troubleshooting.md#code-9) Path traversal · [1](troubleshooting.md#code-1) Unexpected error
+* **Error codes**: [2](troubleshooting.md#code-2) Unsupported backend · [3](troubleshooting.md#code-3) Config error · [9](troubleshooting.md#code-9) Path traversal · [1](troubleshooting.md#code-1) Unexpected error
 
 ### `bp verify`
 
@@ -210,6 +214,16 @@ Diagnostic mode for troubleshooting agent ignores or configurations.
 * **Example**: `bp doctor --verbose --cost`
 * **Error codes**: [3](troubleshooting.md#code-3) Config error · [1](troubleshooting.md#code-1) Unexpected error
 
+### `bp health`
+
+Runs environment health checks for CI and diagnostics: project config parseability, engine module importability, registry reachability, and config conflicts.
+
+* **Options**:
+  * `--json`: Output results as JSON (`{ status, checks[], version, correlationId }`)
+* **Example**: `bp health --json`
+* **Exit behavior**: exits `0` when all checks pass; any failing check exits with the health-check failure code
+* **Error codes**: [10](troubleshooting.md#code-10) Health check failure · [1](troubleshooting.md#code-1) Unexpected error
+
 ### `bp rule`
 
 Rule management utilities.
@@ -243,7 +257,7 @@ Skill authoring and governance (layer 4). Skills use the canonical format (Skill
   * `pack:remove <id>`: Deletes the pack's generated skill files and lockfile entry (hash-guarded; `--force` to override).
   * `pack:list`: Lists project and installed skill packs.
 * **Example**: `bp skill new deploy-check --tools read_file,run_command --risk low`
-* **Error codes**: [3](troubleshooting.md#code-3) Semantic failure · [1](troubleshooting.md#code-1) Unexpected error
+* **Error codes**: [5](troubleshooting.md#code-5) Semantic failure · [1](troubleshooting.md#code-1) Unexpected error
 * **See also**: [Skill Authoring guide](skill-authoring.md)
 
 ### `bp hook`
@@ -252,9 +266,9 @@ Hook management.
 
 * **Subcommands**:
   * `generate`: Scaffolds hook script stubs for the current active backend.
-  * `validate <file>`: Runs static analysis on hook scripts to ensure safety.
+  * `validate <file>`: Runs advisory static analysis on hook scripts. The checks are a pattern-based denylist (process execution, network, dynamic code execution, secret leaks — including ESM/`node:` imports and dynamic `import()`), not a sandbox: a passing result raises confidence but cannot prove a script is safe against deliberate obfuscation.
 * **Example**: `bp hook generate`
-* **Error codes**: [4](troubleshooting.md#code-4) Hook safety failure · [9](troubleshooting.md#code-9) Path traversal
+* **Error codes**: [1](troubleshooting.md#code-1) Hook safety failure (general command failure) · [9](troubleshooting.md#code-9) Path traversal
 
 ### `bp config`
 

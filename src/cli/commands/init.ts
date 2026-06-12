@@ -164,7 +164,7 @@ export function createInitCommand(): Command {
             }
             throw new BpError(
               `Unknown backend ID(s): ${unknown.join(", ")}`,
-              EXIT_CODES.UNSUPPORTED_BACKEND,
+              EXIT_CODES.INVALID_ARGS,
               "UNSUPPORTED_BACKEND",
               "Run bp --help to see valid backends"
             );
@@ -178,7 +178,7 @@ export function createInitCommand(): Command {
             );
             throw new BpError(
               `Unsupported backend: "${backendRaw}"`,
-              EXIT_CODES.UNSUPPORTED_BACKEND,
+              EXIT_CODES.INVALID_ARGS,
               "UNSUPPORTED_BACKEND",
               "Run bp --help to see valid backends"
             );

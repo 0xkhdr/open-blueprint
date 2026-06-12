@@ -77,4 +77,44 @@ describe("validateHookSafety", () => {
     const result = validateHookSafety(`eval("test")`);
     expect(result.violations[0]?.match).toContain("eval");
   });
+
+  it("catches ESM child_process import", () => {
+    const result = validateHookSafety(`import { execSync } from "child_process";`);
+    expect(result.safe).toBe(false);
+    expect(result.violations.some((v) => v.pattern === "child_process")).toBe(true);
+  });
+
+  it("catches node:-prefixed specifiers", () => {
+    expect(validateHookSafety(`import cp from "node:child_process";`).safe).toBe(false);
+    expect(validateHookSafety(`const fs = require("node:fs");`).safe).toBe(false);
+    expect(validateHookSafety(`import { writeFile } from "node:fs/promises";`).safe).toBe(false);
+  });
+
+  it("catches dynamic import()", () => {
+    const result = validateHookSafety(`const cp = await import("child_process");`);
+    expect(result.safe).toBe(false);
+    expect(result.violations.some((v) => v.pattern === "dynamic import")).toBe(true);
+  });
+
+  it("catches bare-specifier ESM import statement", () => {
+    const result = validateHookSafety(`import "child_process";`);
+    expect(result.safe).toBe(false);
+  });
+
+  it("catches bracket-access eval on globalThis", () => {
+    const result = validateHookSafety(`globalThis["eval"]("bad");`);
+    expect(result.safe).toBe(false);
+    expect(result.violations.some((v) => v.pattern === "indirect eval")).toBe(true);
+  });
+
+  it("catches bracket-access Function constructor", () => {
+    const result = validateHookSafety(`const F = globalThis["Function"];`);
+    expect(result.safe).toBe(false);
+  });
+
+  it('catches process["env"] bracket access', () => {
+    const result = validateHookSafety(`const key = process["env"].SECRET;`);
+    expect(result.safe).toBe(false);
+    expect(result.violations.some((v) => v.pattern === "process.env")).toBe(true);
+  });
 });

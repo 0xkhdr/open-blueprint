@@ -20,8 +20,11 @@
 import type { Dirent } from "node:fs";
 import * as fsPromises from "node:fs/promises";
 import * as path from "node:path";
+import { fileURLToPath } from "node:url";
+import { EXIT_CODES } from "../constants.js";
 import { BpError, NetworkError, PermissionError } from "../errors.js";
 import { logger } from "../logger.js";
+import { safeOutputPath } from "../security/path-traversal.js";
 import { getTemplatesRoot } from "../templater/selector.js";
 import { normalizeError } from "../utils/errors.js";
 import { findIndexEntry, type RegistryIndex, verifyIndex } from "./registry-index.js";
@@ -151,7 +154,7 @@ const GITHUB_REF_RE = /^github:([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)(?:@([A-Za-z0
 /** Parse `github:owner/repo[@ref]#path/to/artifact.bp-pack.tgz`. */
 export function parseGithubRef(ref: string): GithubRef {
   const match = GITHUB_REF_RE.exec(ref);
-  if (!match || !match[1] || !match[2] || !match[4]) {
+  if (!match?.[1] || !match[2] || !match[4]) {
     throw new BpError(
       `PACK_REF_INVALID: cannot parse github ref '${ref}'`,
       1,
@@ -263,7 +266,6 @@ function mockEnabled(): boolean {
 }
 
 export class RegistryClient {
-  private registryUrl: string;
   private registryAdapter: RegistryAdapter | undefined;
 
   // In-memory mock store; only consulted when BP_REGISTRY_MOCK=1.
@@ -277,7 +279,6 @@ export class RegistryClient {
     adapter?: RegistryAdapter
   ) {
     assertFetchableUrl(registryUrl);
-    this.registryUrl = registryUrl;
     this.token = token;
     this.registryAdapter = adapter;
   }
@@ -351,17 +352,14 @@ export class RegistryClient {
   }
 
   async install(packageName: string, targetDir: string, publicKey?: string): Promise<void> {
-    const resolvedPublicKey = publicKey ?? (await loadPublicKey());
-    if (!resolvedPublicKey) {
-      logger.warn("BP_REGISTRY_PUBLIC_KEY not configured; registry signature verification skipped");
-    }
     const pkgs = mockEnabled() ? RegistryClient.mockRegistry.get(packageName) : undefined;
     if (!pkgs || pkgs.length === 0) {
+      // Local bundled template copy — no network, no archive, no signature.
       const isOfficial = packageName.startsWith("@bp-templates/");
       const packName = isOfficial ? packageName.replace("@bp-templates/", "") : packageName;
 
       const sourceTemplateDir = path.join(
-        path.dirname(new URL(import.meta.url).pathname),
+        path.dirname(fileURLToPath(import.meta.url)),
         "../../templates",
         packName
       );
@@ -385,18 +383,43 @@ export class RegistryClient {
     if (latest.archiveData && latest.signature) {
       const buffer = Buffer.from(latest.archiveData, "base64");
 
+      // Fail closed: with no key resolvable and the trust policy requiring
+      // signatures (the default), refuse the install instead of skipping
+      // verification. Opt-out is explicit only (policy.require_signature=false).
+      const resolvedPublicKey = publicKey ?? (await loadPublicKey());
       if (resolvedPublicKey) {
         const isValid = verifySignature(buffer, latest.signature, resolvedPublicKey);
         if (!isValid) {
-          throw new Error(`Signature verification failed for package ${packageName}.`);
+          throw new BpError(
+            `SIGNATURE_FAILED: signature verification failed for package ${packageName}`,
+            EXIT_CODES.PERMISSION_DENIED,
+            "SIGNATURE_FAILED",
+            "The artifact does not match any trusted key. Refusing to install."
+          );
         }
+      } else {
+        const { loadTrustStore } = await import("./trust.js");
+        const policy = (await loadTrustStore()).policy;
+        if (policy.require_signature) {
+          throw new BpError(
+            `SIGNATURE_FAILED: no public key configured to verify package ${packageName}`,
+            EXIT_CODES.PERMISSION_DENIED,
+            "SIGNATURE_FAILED",
+            "Configure BP_REGISTRY_PUBLIC_KEY or add a trusted key with 'bp trust add'. To install unsigned packs, explicitly set policy.require_signature=false in trust.json."
+          );
+        }
+        logger.warn(
+          { packageName },
+          "Installing unsigned package: trust policy has require_signature=false"
+        );
       }
 
       await fsPromises.mkdir(targetDir, { recursive: true });
       try {
         const files = JSON.parse(buffer.toString("utf-8")) as Record<string, string>;
         for (const [relPath, content] of Object.entries(files)) {
-          const fullPath = path.join(targetDir, relPath);
+          // Reject archive keys that escape the target directory (e.g. ../../x).
+          const fullPath = safeOutputPath(relPath, targetDir);
           await fsPromises.mkdir(path.dirname(fullPath), { recursive: true });
           await fsPromises.writeFile(fullPath, content, "utf-8");
         }

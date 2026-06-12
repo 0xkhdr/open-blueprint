@@ -106,7 +106,7 @@ export function createTemplateCommand(): Command {
             spinner.fail(`Pack directory does not exist: ${absolutePackDir}`);
             throw new BpError(
               "Template not found",
-              EXIT_CODES.TEMPLATE_NOT_FOUND,
+              EXIT_CODES.CONFIG_ERROR,
               "TEMPLATE_NOT_FOUND",
               ""
             );

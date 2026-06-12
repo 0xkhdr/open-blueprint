@@ -3,6 +3,7 @@ import { Command } from "commander";
 import { BpError } from "../errors.js";
 import { initCorrelationId, logger, runWithCorrelationId } from "../logger.js";
 import { normalizeError } from "../utils/errors.js";
+import { getPackageInfo } from "../utils/pkg.js";
 import { createAdoptCommand } from "./commands/adopt.js";
 import { createAgentCommand } from "./commands/agent.js";
 import { createChainCommand } from "./commands/chain.js";
@@ -35,11 +36,7 @@ import { createTrustCommand } from "./commands/trust.js";
 import { createUpdateCommand } from "./commands/update.js";
 import { createVerifyCommand } from "./commands/verify.js";
 
-const pkg = {
-  name: "@agentic/bp",
-  version: "1.0.0",
-  description: "Scaffold and verify governance structures for agentic AI tools",
-};
+const pkg = getPackageInfo();
 
 const program = new Command();
 

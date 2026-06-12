@@ -129,7 +129,7 @@ describe("bp report (Stage 6 integration)", () => {
     expect(result?.locations[0]?.physicalLocation.region?.startLine).toBeGreaterThan(0);
 
     // default --fail-on hard exits non-zero; fixing the repo clears it
-    expect(exitCodeForReport(governanceReport, "hard")).toBe(EXIT_CODES.LOGICAL_FAILURE);
+    expect(exitCodeForReport(governanceReport, "hard")).toBe(EXIT_CODES.STRUCTURAL_FAILURE);
     expect(exitCodeForReport(governanceReport, "none")).toBe(EXIT_CODES.SUCCESS);
 
     fs.writeFileSync(

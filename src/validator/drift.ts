@@ -108,7 +108,9 @@ async function checkEntryPointDrift(
   }
   if (!content) return errors;
 
-  const entryPattern = /[-*]\s*Entry(?:\s+point)?:\s*`?([^\s`\n]+)`?/gi;
+  // Match both list items (`- Entry point: src/x.ts`) and bold labels
+  // (`**Entry point:** \`src/x.ts\``) without capturing markdown asterisks.
+  const entryPattern = /[-*]?\s*\*{0,2}Entry(?:\s+point)?\s*:\*{0,2}\s*`?([^\s`*\n]+)`?/gi;
   let match = entryPattern.exec(content);
   while (match !== null) {
     const entryPath = match[1];

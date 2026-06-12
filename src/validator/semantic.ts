@@ -3,55 +3,14 @@ import * as path from "node:path";
 import fg from "fast-glob";
 import matter from "gray-matter";
 import type { BackendManifest } from "../templater/selector.js";
-import { allKnownToolNames, isMcpToolRef } from "../translator/tools.js";
+import { allKnownToolNames, isKnownToolName } from "../translator/tools.js";
 import { normalizeError } from "../utils/errors.js";
 import type { ValidationError } from "./structural.js";
 
-// ---------------------------------------------------------------------------
-// Known agentic tool names (Claude Code tool surface)
-// ---------------------------------------------------------------------------
-const KNOWN_TOOLS = new Set([
-  // Canonical vocabulary + backend aliases (Stage 3, src/translator/tools.ts)
-  ...allKnownToolNames(),
-  "bash",
-  "computer",
-  "edit",
-  "glob",
-  "grep",
-  "ls",
-  "mcp",
-  "mkdir",
-  "move_file",
-  "multiedit",
-  "notebook_edit",
-  "notebook_read",
-  "read",
-  "screenshot_tool",
-  "search_files",
-  "task",
-  "todo_read",
-  "todo_write",
-  "web_fetch",
-  "web_search",
-  "write",
-  // Cursor tool names
-  "cursor_tools",
-  "codebase_search",
-  "read_file",
-  "run_terminal_cmd",
-  "list_dir",
-  "file_search",
-  "delete_file",
-  "reapply",
-  "edit_file",
-  "parallel_apply",
-  "grep_search",
-  // Generic / OpenDev
-  "file_read",
-  "file_write",
-  "terminal",
-  "search",
-]);
+// Known agentic tool names live in src/translator/tools.ts (canonical
+// vocabulary + native backend surfaces); validation resolves through
+// isKnownToolName so translation and validation can never disagree.
+const KNOWN_TOOLS = allKnownToolNames();
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -149,7 +108,7 @@ function checkToolReferences(filePath: string, content: string): ValidationError
   const checkTools = (fieldName: string, value: unknown): void => {
     if (!Array.isArray(value)) return;
     for (const tool of value) {
-      if (typeof tool === "string" && !KNOWN_TOOLS.has(tool) && !isMcpToolRef(tool)) {
+      if (typeof tool === "string" && !isKnownToolName(tool)) {
         errors.push({
           file: filePath,
           type: "UNKNOWN_TOOL_REFERENCE",

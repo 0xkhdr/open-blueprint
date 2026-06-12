@@ -5,11 +5,14 @@ FROM node:22 AS builder
 
 WORKDIR /build
 
-COPY package.json package-lock.json ./
-RUN npm ci
+COPY package.json package-lock.json .npmrc ./
+# --ignore-scripts: the `prepare` hook runs `npm run build`, which cannot
+# succeed before src/ is copied; the explicit build below covers it.
+RUN npm ci --ignore-scripts
 
 COPY tsconfig.json ./
 COPY src/ ./src/
+COPY templates/ ./templates/
 
 RUN npm run build
 
@@ -28,8 +31,12 @@ WORKDIR /app
 COPY --chown=node:node --from=builder /build/node_modules ./node_modules
 COPY --chown=node:node --from=builder /build/dist ./dist
 COPY --chown=node:node --from=builder /build/package.json ./package.json
+# Template packs are resolved relative to the package root at runtime
+# (src/templater/selector.ts) — without them `bp init` cannot scaffold.
+COPY --chown=node:node --from=builder /build/templates ./templates
 
 ENV NODE_ENV=production
 
-ENTRYPOINT ["node", "dist/cli/index.js"]
+# Absolute path: users mount a project and set -w to it, changing the cwd.
+ENTRYPOINT ["node", "/app/dist/cli/index.js"]
 CMD ["--help"]

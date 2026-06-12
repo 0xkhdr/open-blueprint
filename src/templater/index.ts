@@ -21,7 +21,7 @@ import {
 import { hasTemplateMetadata, parseTemplateMetadata, stripMetadata } from "./metadata.js";
 import { renderFromRegistry } from "./registry.js";
 import { mergeRiskTemplates, resolveRiskTemplatePack } from "./risk-selector.js";
-import { getTemplatesRoot, resolveTemplatePack } from "./selector.js";
+import { type BackendManifest, getTemplatesRoot, resolveTemplatePack } from "./selector.js";
 import type { WriteResult } from "./writer.js";
 import { writeFile } from "./writer.js";
 
@@ -205,6 +205,28 @@ function getOutputPath(templatePath: string, templateDir: string, projectRoot: s
   return path.join(projectRoot, withoutHbs);
 }
 
+/**
+ * Risk-tier templates are backend-agnostic, so their output location comes
+ * from the backend manifest: rule files (`rules-*.md`) belong in the
+ * backend's rules directory, companion docs (escalation runbooks, compliance
+ * checklists) next to it — never at the repository root.
+ */
+function getRiskFileOutputPath(
+  templatePath: string,
+  manifest: BackendManifest,
+  projectRoot: string
+): string {
+  const base = path.basename(templatePath).replace(/\.hbs$/, "");
+  const rulesPattern = manifest.file_patterns?.rules;
+  const rulesDir =
+    typeof rulesPattern === "string" && rulesPattern.includes("*")
+      ? path.dirname(rulesPattern)
+      : undefined;
+  if (!rulesDir || rulesDir === ".") return path.join(projectRoot, base);
+  if (base.startsWith("rules-")) return path.join(projectRoot, rulesDir, base);
+  return path.join(projectRoot, path.dirname(rulesDir), base);
+}
+
 export async function runTemplater(
   fingerprint: Fingerprint,
   projectRoot: string,
@@ -304,9 +326,10 @@ export async function runTemplater(
       context as Record<string, unknown>
     );
 
-    // Determine output base dir: risk files map to projectRoot directly
-    const baseDir = riskFiles.includes(templateFile) && riskDir ? riskDir : pack.directory;
-    const outputPath = getOutputPath(templateFile, baseDir, projectRoot);
+    const isRiskFile = riskFiles.includes(templateFile) && riskDir;
+    const outputPath = isRiskFile
+      ? getRiskFileOutputPath(templateFile, pack.manifest, projectRoot)
+      : getOutputPath(templateFile, pack.directory, projectRoot);
 
     const result = await writeFile(outputPath, rendered, {
       dryRun,

@@ -143,7 +143,7 @@ describe("Registry Signer & Client", () => {
       // Install verifying with anotherKeys.publicKey (should fail)
       await expect(
         client.install("@bp-templates/custom-pack", installTarget, anotherKeys.publicKey)
-      ).rejects.toThrow("Signature verification failed");
+      ).rejects.toThrow("signature verification failed");
     });
 
     it("mock registry is inert without BP_REGISTRY_MOCK=1", async () => {

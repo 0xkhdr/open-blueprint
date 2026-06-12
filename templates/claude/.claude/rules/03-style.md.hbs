@@ -1,5 +1,5 @@
 ---
-scope: "{{#if src_dirs}}{{join src_dirs '/**/*,'}},{{else}}src/**/*{{/if}}"
+scope: "{{scopeGlob src_dirs}}"
 severity: soft
 action: Follow project style conventions
 rationale: Consistent style reduces cognitive load and merge conflicts

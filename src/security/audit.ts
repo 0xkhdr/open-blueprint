@@ -4,6 +4,7 @@ import * as fsPromises from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 import { getCorrelationId, logger } from "../logger.js";
+import { bpHome } from "../registry/trust.js";
 
 export interface AuditLogEntry {
   timestamp: string;
@@ -19,6 +20,9 @@ export interface AuditLogEntry {
 }
 
 const sessionId = randomUUID();
+
+// Warn once per process, not once per audited command.
+let hmacWarningEmitted = false;
 
 export function createCorrelationId(): string {
   return randomUUID();
@@ -39,7 +43,8 @@ export class AuditLogger {
     entry: Omit<AuditLogEntry, "timestamp" | "user" | "correlation_id" | "sig">
   ): Promise<void> {
     const hmacKey = process.env.BP_AUDIT_HMAC_KEY ?? null;
-    if (!hmacKey) {
+    if (!hmacKey && !hmacWarningEmitted) {
+      hmacWarningEmitted = true;
       logger.warn("Audit HMAC key not configured; log integrity cannot be verified");
     }
 
@@ -61,7 +66,8 @@ export class AuditLogger {
 
     const fullEntry: AuditLogEntry = { ...baseEntry, sig };
 
-    const auditDir = path.join(os.homedir(), ".bp");
+    // Same home resolution as the trust store: BP_HOME overrides ~/.bp.
+    const auditDir = bpHome();
     const dateStr = new Date().toISOString().split("T")[0];
     const auditFile = path.join(auditDir, `audit-${dateStr}.log`);
 

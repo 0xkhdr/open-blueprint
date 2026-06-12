@@ -59,7 +59,7 @@ describe("bp rule test — check evaluation", () => {
     ]);
     const cmd = createRuleCommand();
     await expect(cmd.parseAsync(["test", file], { from: "user" })).rejects.toSatisfy(
-      (e: unknown) => e instanceof BpError && e.exitCode === EXIT_CODES.LOGICAL_FAILURE
+      (e: unknown) => e instanceof BpError && e.exitCode === EXIT_CODES.STRUCTURAL_FAILURE
     );
   });
 

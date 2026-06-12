@@ -122,3 +122,73 @@ export function allKnownToolNames(): Set<string> {
   }
   return names;
 }
+
+/**
+ * Wider agentic tool surface accepted by the validators on top of the
+ * canonical vocabulary: native Claude Code, Cursor, and OpenDev tool names
+ * that appear in scaffolded agents and hand-written blueprints.
+ */
+const AGENTIC_TOOL_SURFACE = [
+  // Claude Code
+  "bash",
+  "computer",
+  "edit",
+  "glob",
+  "grep",
+  "ls",
+  "mcp",
+  "mkdir",
+  "move_file",
+  "multiedit",
+  "notebook_edit",
+  "notebook_read",
+  "read",
+  "screenshot_tool",
+  "search_files",
+  "task",
+  "todo_read",
+  "todo_write",
+  "web_fetch",
+  "web_search",
+  "write",
+  // Cursor
+  "cursor_tools",
+  "codebase_search",
+  "read_file",
+  "run_terminal_cmd",
+  "list_dir",
+  "file_search",
+  "delete_file",
+  "reapply",
+  "edit_file",
+  "parallel_apply",
+  "grep_search",
+  // Generic / OpenDev
+  "file_read",
+  "file_write",
+  "file_edit",
+  "terminal",
+  "test_runner",
+  "search",
+];
+
+function normalizeToolName(name: string): string {
+  return name.toLowerCase().replace(/[_-]/g, "");
+}
+
+const KNOWN_TOOL_NAMES_NORMALIZED: Set<string> = (() => {
+  const names = new Set<string>();
+  for (const n of allKnownToolNames()) names.add(normalizeToolName(n));
+  for (const n of AGENTIC_TOOL_SURFACE) names.add(normalizeToolName(n));
+  return names;
+})();
+
+/**
+ * Whether a tool reference is part of the accepted vocabulary. Matching is
+ * case- and separator-insensitive so native spellings ("Read", "WebSearch",
+ * "web_search") all resolve. MCP refs always pass.
+ */
+export function isKnownToolName(name: string): boolean {
+  if (isMcpToolRef(name)) return true;
+  return KNOWN_TOOL_NAMES_NORMALIZED.has(normalizeToolName(name));
+}

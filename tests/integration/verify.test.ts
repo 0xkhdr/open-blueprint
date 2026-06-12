@@ -42,11 +42,11 @@ async function initAndVerify(
 }
 
 // ---------------------------------------------------------------------------
-// Conflict fixture — two overlapping hard rules → exit 4
+// Conflict fixture — two overlapping hard rules → exit 5
 // ---------------------------------------------------------------------------
 
 describe("bp verify — conflict detection", () => {
-  it("exits with code 4 when two hard rules conflict on same scope", async () => {
+  it("exits with code 5 when two hard rules conflict on same scope", async () => {
     const conflictFixture = path.join(FIXTURE_DIR, "conflict-rules");
 
     const fingerprint = await detect(conflictFixture);
@@ -60,7 +60,7 @@ describe("bp verify — conflict detection", () => {
     });
 
     const code = exitCodeForResult(result);
-    expect(code).toBe(EXIT_CODES.LOGICAL_FAILURE); // exit 4
+    expect(code).toBe(EXIT_CODES.SEMANTIC_FAILURE); // exit 5
   });
 
   it("conflict result has RULE_CONFLICT_HARD error", async () => {

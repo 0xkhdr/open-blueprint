@@ -66,6 +66,7 @@ Common issues, diagnostic procedures, and the complete `bp` exit code registry. 
 **Description**: Blueprint files have been modified outside of `bp` — hash mismatch with `.bp-lock` snapshot.
 **Example trigger**: Manual edit to `CLAUDE.md` after `bp init`.
 **Resolution**: Run `bp sync --auto-apply` to resync, or `bp verify --level drift` to inspect what changed.
+**Note**: Drift findings are advisory warnings. A passing `bp verify` exits `0` even when drift warnings are present; code `6` is returned only when drift checking is explicitly requested via `--level drift` or `--fail-on drift`.
 
 ---
 

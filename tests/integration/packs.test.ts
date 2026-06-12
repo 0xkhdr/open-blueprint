@@ -64,7 +64,7 @@ describe("rule pack lifecycle (Stage 2 integration)", () => {
       fingerprint,
     });
     expect(failing.passed).toBe(false);
-    expect(exitCodeForResult(failing)).toBe(EXIT_CODES.LOGICAL_FAILURE);
+    expect(exitCodeForResult(failing)).toBe(EXIT_CODES.STRUCTURAL_FAILURE);
     const violation = failing.errors.find((e) => e.type === "RULE_VIOLATION");
     expect(violation?.file).toContain("pack-acme-no-console.md");
 

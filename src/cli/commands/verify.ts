@@ -225,11 +225,15 @@ export function createVerifyCommand(): Command {
                 );
               }
 
+              // --entropy-scan wins; otherwise .bp.json scan.entropyEnabled decides.
+              const entropyScan = opts.entropyScan || projectConfig?.scan?.entropyEnabled === true;
+
               const result = await runValidator({
                 level,
                 projectRoot: absolutePath,
                 manifest: pack.manifest,
                 fingerprint,
+                entropyScan,
                 ...(VALID_LEVELS.includes(opts.failOn as ValidationLevel)
                   ? { failOn: opts.failOn as ValidationLevel }
                   : {}),
@@ -260,6 +264,7 @@ export function createVerifyCommand(): Command {
                     projectRoot: absolutePath,
                     manifest: pack.manifest,
                     fingerprint,
+                    entropyScan,
                     ...(opts.plugins === false ? { noPlugins: true } : {}),
                   });
                   Object.assign(result, reResult);
@@ -270,7 +275,15 @@ export function createVerifyCommand(): Command {
               if (!result.passed) {
                 _overallPassed = false;
               }
-              maxExitCode = Math.max(maxExitCode, exitCodeForResult(result));
+              maxExitCode = Math.max(
+                maxExitCode,
+                exitCodeForResult(
+                  result,
+                  VALID_LEVELS.includes(opts.failOn as ValidationLevel)
+                    ? (opts.failOn as ValidationLevel)
+                    : undefined
+                )
+              );
 
               if (!opts.json) {
                 if (result.passed && result.warnings.length === 0) {

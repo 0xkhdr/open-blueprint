@@ -36,7 +36,15 @@ export async function loadCacheAsync(
       return parsed;
     }
   } catch (err) {
-    logger.warn({ err }, "Async validation cache unreadable; starting fresh");
+    // A missing cache file is the normal first-run state, not a fault.
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+      logger.debug("No validation cache yet; starting fresh");
+    } else {
+      logger.warn(
+        { reason: (err as Error).message },
+        "Validation cache unreadable; starting fresh"
+      );
+    }
   }
 
   return defaultCache;

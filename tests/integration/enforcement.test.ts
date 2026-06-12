@@ -30,7 +30,7 @@ describe("bp verify --level enforcement (pipeline integration)", () => {
     const result = await verify("enforcement");
 
     expect(result.passed).toBe(false);
-    expect(exitCodeForResult(result)).toBe(EXIT_CODES.LOGICAL_FAILURE);
+    expect(exitCodeForResult(result)).toBe(EXIT_CODES.STRUCTURAL_FAILURE);
 
     const hard = result.errors.find((e) => e.type === "RULE_VIOLATION");
     expect(hard).toBeDefined();

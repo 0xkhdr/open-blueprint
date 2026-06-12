@@ -54,8 +54,8 @@ export function filterReportByFramework(
 export function exitCodeForReport(report: GovernanceReport, failOn: FailOn): number {
   if (failOn === "none") return EXIT_CODES.SUCCESS;
   const { violations_hard, violations_soft } = report.summary;
-  if (violations_hard > 0) return EXIT_CODES.LOGICAL_FAILURE;
-  if (failOn === "soft" && violations_soft > 0) return EXIT_CODES.LOGICAL_FAILURE;
+  if (violations_hard > 0) return EXIT_CODES.STRUCTURAL_FAILURE;
+  if (failOn === "soft" && violations_soft > 0) return EXIT_CODES.STRUCTURAL_FAILURE;
   return EXIT_CODES.SUCCESS;
 }
 

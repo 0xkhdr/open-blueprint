@@ -167,10 +167,12 @@ function checkTrigger(parsed: ParsedSkillFile): ValidationError[] {
 
 /**
  * Conservative path heuristic: backticked tokens containing a slash, made of
- * plain path characters only (no glob/expansion syntax, no URLs).
+ * plain path characters only (no glob/expansion syntax, no URLs), whose last
+ * segment carries a file extension — `src/index.ts` is a path candidate,
+ * `async/await` or `try/catch` are prose and must not be flagged.
  */
 const BACKTICK_TOKEN = /`([^`\n]+)`/g;
-const PATH_LIKE = /^[A-Za-z0-9_.][A-Za-z0-9_./-]*\/[A-Za-z0-9_./-]+$/;
+const PATH_LIKE = /^[A-Za-z0-9_.][A-Za-z0-9_./-]*\/[A-Za-z0-9_-]+\.[A-Za-z0-9]+$/;
 
 export function extractPathCandidates(body: string): string[] {
   const candidates = new Set<string>();

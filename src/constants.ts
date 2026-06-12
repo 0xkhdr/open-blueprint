@@ -1,15 +1,21 @@
+/**
+ * Public exit-code contract (stable API since v1.0.0).
+ * Canonical source: docs/troubleshooting.md "Exit Code Registry" — the
+ * numbering here, the BpError subclasses in errors.ts, and the docs must
+ * always agree.
+ */
 export const EXIT_CODES = {
   SUCCESS: 0,
   GENERAL_ERROR: 1,
-  STRUCTURAL_FAILURE: 2,
-  SEMANTIC_FAILURE: 3,
-  LOGICAL_FAILURE: 4,
-  DRIFT_DETECTED: 5,
-  UNSUPPORTED_BACKEND: 6,
-  TEMPLATE_NOT_FOUND: 7,
-  PERMISSION_DENIED: 8,
-  REGISTRY_UNREACHABLE: 9,
-  SIGNATURE_FAILED: 10,
+  INVALID_ARGS: 2,
+  CONFIG_ERROR: 3,
+  STRUCTURAL_FAILURE: 4,
+  SEMANTIC_FAILURE: 5,
+  DRIFT_DETECTED: 6,
+  TRANSLATION_ERROR: 7,
+  NETWORK_ERROR: 8,
+  PERMISSION_DENIED: 9,
+  HEALTH_FAILURE: 10,
 } as const;
 
 export const KNOWN_SOURCE_DIRS = ["src", "lib", "app", "source"] as const;

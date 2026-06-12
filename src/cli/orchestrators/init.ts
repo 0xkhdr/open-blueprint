@@ -67,7 +67,7 @@ export class InitOrchestrator {
         level: "error",
         text: `Unknown backend ID(s): ${unknown.join(", ")}. Valid: ${listBackendIds().join(", ")}`,
       });
-      return { exitCode: EXIT_CODES.UNSUPPORTED_BACKEND, messages, filesWritten: [], backends: [] };
+      return { exitCode: EXIT_CODES.INVALID_ARGS, messages, filesWritten: [], backends: [] };
     }
 
     let fingerprint: Fingerprint;

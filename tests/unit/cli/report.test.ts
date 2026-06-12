@@ -35,14 +35,14 @@ describe("exitCodeForReport (--fail-on thresholds)", () => {
   it("default hard threshold: hard/invalid fail, soft passes", () => {
     expect(exitCodeForReport(clean, "hard")).toBe(EXIT_CODES.SUCCESS);
     expect(exitCodeForReport(softOnly, "hard")).toBe(EXIT_CODES.SUCCESS);
-    expect(exitCodeForReport(hard, "hard")).toBe(EXIT_CODES.LOGICAL_FAILURE);
-    expect(exitCodeForReport(invalid, "hard")).toBe(EXIT_CODES.LOGICAL_FAILURE);
+    expect(exitCodeForReport(hard, "hard")).toBe(EXIT_CODES.STRUCTURAL_FAILURE);
+    expect(exitCodeForReport(invalid, "hard")).toBe(EXIT_CODES.STRUCTURAL_FAILURE);
   });
 
   it("soft threshold also fails on soft violations", () => {
     expect(exitCodeForReport(clean, "soft")).toBe(EXIT_CODES.SUCCESS);
-    expect(exitCodeForReport(softOnly, "soft")).toBe(EXIT_CODES.LOGICAL_FAILURE);
-    expect(exitCodeForReport(hard, "soft")).toBe(EXIT_CODES.LOGICAL_FAILURE);
+    expect(exitCodeForReport(softOnly, "soft")).toBe(EXIT_CODES.STRUCTURAL_FAILURE);
+    expect(exitCodeForReport(hard, "soft")).toBe(EXIT_CODES.STRUCTURAL_FAILURE);
   });
 
   it("none never fails", () => {

@@ -127,7 +127,7 @@ export function createRuleCommand(): Command {
               `✗ [RULE_CHECK_INVALID] check.${issue?.path.join(".") || "(root)"}: ${issue?.message ?? "malformed check"}`
             )
           );
-          throw new BpError("Command failed", EXIT_CODES.LOGICAL_FAILURE, "CMD_ERROR", "");
+          throw new BpError("Command failed", EXIT_CODES.STRUCTURAL_FAILURE, "CMD_ERROR", "");
         }
 
         const fingerprint = await detect(cwd);
@@ -156,7 +156,7 @@ export function createRuleCommand(): Command {
         console.log();
 
         if (!outcome.passed && severity === "hard") {
-          throw new BpError("Rule check failed", EXIT_CODES.LOGICAL_FAILURE, "CMD_ERROR", "");
+          throw new BpError("Rule check failed", EXIT_CODES.STRUCTURAL_FAILURE, "CMD_ERROR", "");
         }
         return;
       } catch (e) {

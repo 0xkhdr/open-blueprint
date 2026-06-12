@@ -72,6 +72,8 @@ export interface ValidatorOptions {
   failOn?: ValidationLevel;
   /** Skip plugin validators configured in .bp.json (verify --no-plugins). */
   noPlugins?: boolean;
+  /** Entropy-based secret detection (verify --entropy-scan / .bp.json scan.entropyEnabled). */
+  entropyScan?: boolean;
 }
 
 export interface ValidationResult {
@@ -314,7 +316,10 @@ async function runValidationPipeline(options: ValidatorOptions): Promise<Validat
     );
   }
 
-  const cache = await loadCacheAsync(projectRoot, manifest.version);
+  // Scan mode is part of the cache identity: entropy on/off changes per-file
+  // findings, so cached results from one mode must not serve the other.
+  const cacheKey = `${manifest.version}:entropy=${options.entropyScan ? 1 : 0}`;
+  const cache = await loadCacheAsync(projectRoot, cacheKey);
   const cacheUpdatedFiles: Record<
     string,
     { mtime: number; contentHash: string; errors: ValidationError[] }
@@ -356,7 +361,9 @@ async function runValidationPipeline(options: ValidatorOptions): Promise<Validat
 
   // Layer 1: Structural (always run for modified/new files)
   const structuralErrors = await startSpan("bp.validate.structural", () =>
-    validateStructuralBatch(filesToValidate, manifest)
+    validateStructuralBatch(filesToValidate, manifest, {
+      entropyScan: options.entropyScan === true,
+    })
   );
   newErrors.push(...structuralErrors);
 
@@ -389,7 +396,7 @@ async function runValidationPipeline(options: ValidatorOptions): Promise<Validat
   // Save the updated cache
   await saveCacheAsync(projectRoot, {
     version: "1.0",
-    manifestVersion: manifest.version,
+    manifestVersion: cacheKey,
     files: cacheUpdatedFiles,
   });
 
@@ -550,37 +557,42 @@ export async function runValidator(options: ValidatorOptions): Promise<Validatio
   });
 }
 
-export function exitCodeForResult(result: ValidationResult): number {
+const DRIFT_WARNING_TYPES = new Set([
+  "FINGERPRINT_DELTA",
+  "ENTRY_POINT_DRIFT",
+  "TEST_COMMAND_DRIFT",
+  "UNCOVERED_DIRECTORY",
+  "DEPENDENCY_DRIFT",
+  "PACK_FILE_MISSING",
+  "PACK_FILE_MODIFIED",
+  "PACK_DRIFTED",
+]);
+
+/**
+ * Map a validation result to the public exit-code contract
+ * (docs/troubleshooting.md "Exit Code Registry").
+ *
+ * Drift findings are warnings: a passing result exits 0 unless drift was
+ * explicitly requested via `--level drift` or `--fail-on drift` — a fresh
+ * scaffold must never fail its own verification by default.
+ */
+export function exitCodeForResult(result: ValidationResult, failOn?: ValidationLevel): number {
+  const hasDriftWarnings = result.warnings.some((e) => DRIFT_WARNING_TYPES.has(e.type));
+
   if (result.passed) {
-    const hasDriftWarnings = result.warnings.some(
-      (e) =>
-        e.type === "FINGERPRINT_DELTA" ||
-        e.type === "ENTRY_POINT_DRIFT" ||
-        e.type === "TEST_COMMAND_DRIFT" ||
-        e.type === "UNCOVERED_DIRECTORY" ||
-        e.type === "DEPENDENCY_DRIFT" ||
-        e.type === "PACK_FILE_MISSING" ||
-        e.type === "PACK_FILE_MODIFIED" ||
-        e.type === "PACK_DRIFTED"
-    );
-    if (hasDriftWarnings) return EXIT_CODES.DRIFT_DETECTED;
+    if (hasDriftWarnings && (result.level === "drift" || failOn === "drift")) {
+      return EXIT_CODES.DRIFT_DETECTED;
+    }
     return EXIT_CODES.SUCCESS;
   }
 
-  // Logical conflicts and enforcement violations → exit 4
-  const hasLogical = result.errors.some(
+  // Logically inconsistent rules/constraints and reference-level issues →
+  // semantic validation failure (exit 5)
+  const hasSemantic = result.errors.some(
     (e) =>
       e.type === "RULE_CONFLICT_HARD" ||
       e.type === "SEMANTIC_CONTRADICTION" ||
       e.type === "CIRCULAR_SKILL_DEPENDENCY" ||
-      e.type === "RULE_VIOLATION" ||
-      e.type === "RULE_CHECK_INVALID"
-  );
-  if (hasLogical) return EXIT_CODES.LOGICAL_FAILURE;
-
-  // Semantic failures → exit 3
-  const hasSemantic = result.errors.some(
-    (e) =>
       e.type === "ZERO_MATCH_SCOPE" ||
       e.type === "INVALID_SCOPE_PATTERN" ||
       e.type === "MISSING_SKILL_REFERENCE" ||
@@ -596,9 +608,12 @@ export function exitCodeForResult(result: ValidationResult): number {
   );
   if (hasSemantic) return EXIT_CODES.SEMANTIC_FAILURE;
 
-  // Structural failures → exit 2
+  // Structural problems and failed enforcement checks → structural
+  // validation failure (exit 4; the documented `bp report` CI-gate code)
   const hasStructural = result.errors.some(
     (e) =>
+      e.type === "RULE_VIOLATION" ||
+      e.type === "RULE_CHECK_INVALID" ||
       e.type === "FILE_NOT_FOUND" ||
       e.type === "FRONTMATTER_PARSE_ERROR" ||
       e.type === "MISSING_REQUIRED_FIELD" ||
@@ -608,20 +623,6 @@ export function exitCodeForResult(result: ValidationResult): number {
       e.type === "UNCLOSED_CODE_FENCE"
   );
   if (hasStructural) return EXIT_CODES.STRUCTURAL_FAILURE;
-
-  // Drift (warnings only, no errors) → check warnings
-  const hasDriftWarnings = result.warnings.some(
-    (e) =>
-      e.type === "FINGERPRINT_DELTA" ||
-      e.type === "ENTRY_POINT_DRIFT" ||
-      e.type === "TEST_COMMAND_DRIFT" ||
-      e.type === "UNCOVERED_DIRECTORY" ||
-      e.type === "DEPENDENCY_DRIFT" ||
-      e.type === "PACK_FILE_MISSING" ||
-      e.type === "PACK_FILE_MODIFIED" ||
-      e.type === "PACK_DRIFTED"
-  );
-  if (hasDriftWarnings) return EXIT_CODES.DRIFT_DETECTED;
 
   return EXIT_CODES.GENERAL_ERROR;
 }

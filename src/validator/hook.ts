@@ -18,7 +18,8 @@ export function validateHookSafety(filePath: string): ValidationError[] {
 
   const content = fs.readFileSync(filePath, "utf-8");
 
-  // Check forbidden keywords/API calls
+  // Advisory denylist, not a sandbox: substring matching deliberately catches
+  // `node:`-prefixed specifiers, ESM imports, and dynamic import() too.
   const forbiddenPatterns = [
     {
       regex: /child_process|exec|spawn|fork/i,
@@ -33,6 +34,14 @@ export function validateHookSafety(filePath: string): ValidationError[] {
       message: "Hook file makes network requests using 'fetch', 'http', 'https', or 'axios'",
       resolution:
         "Avoid performing network operations inside repository hooks to ensure offline reliability.",
+    },
+    {
+      regex:
+        /\beval\s*\(|new\s+Function\s*\(|\b(?:globalThis|window|self)\s*\[\s*['"`](?:eval|Function)['"`]\s*\]|\bimport\s*\(/,
+      type: "UNSAFE_HOOK_DYNAMIC_CODE",
+      message:
+        "Hook file uses dynamic code execution ('eval', 'new Function', bracket-access eval, or dynamic import())",
+      resolution: "Hooks must contain only statically analyzable logic stubs.",
     },
   ];
 

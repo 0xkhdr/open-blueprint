@@ -1,4 +1,4 @@
-import * as fs from "node:fs";
+import type { Dirent } from "node:fs";
 import * as fsPromises from "node:fs/promises";
 import * as path from "node:path";
 import type { ValidationError } from "../validator/structural.js";
@@ -453,12 +453,12 @@ const TEXT_EXTENSIONS = new Set([
   ".cer",
 ]);
 
-function collectTextFilesSync(root: string): string[] {
+async function collectTextFiles(root: string): Promise<string[]> {
   const files: string[] = [];
-  function walk(dir: string): void {
-    let entries: fs.Dirent[];
+  async function walk(dir: string): Promise<void> {
+    let entries: Dirent[];
     try {
-      entries = fs.readdirSync(dir, { withFileTypes: true });
+      entries = await fsPromises.readdir(dir, { withFileTypes: true });
     } catch {
       return;
     }
@@ -467,13 +467,13 @@ function collectTextFilesSync(root: string): string[] {
       if (entry.isDirectory()) {
         if (["node_modules", ".git", "dist", ".next", "build", "coverage"].includes(entry.name))
           continue;
-        walk(fullPath);
+        await walk(fullPath);
       } else if (TEXT_EXTENSIONS.has(path.extname(entry.name).toLowerCase())) {
         files.push(fullPath);
       }
     }
   }
-  walk(root);
+  await walk(root);
   return files;
 }
 
@@ -481,7 +481,7 @@ export async function scanDirectory(
   projectRoot: string,
   options: ScanOptions = {}
 ): Promise<ValidationError[]> {
-  const files = collectTextFilesSync(projectRoot);
+  const files = await collectTextFiles(projectRoot);
   const results: ValidationError[] = [];
   for (const file of files) {
     try {

@@ -85,7 +85,7 @@ export class HealthError extends BpError {
 
 export class SecurityError extends BpError {
   constructor(message: string, resolution = "See: docs/troubleshooting.md#security") {
-    super(message, 8, "SECURITY_ERROR", resolution);
+    super(message, 9, "SECURITY_ERROR", resolution);
     this.name = "SecurityError";
   }
 }
