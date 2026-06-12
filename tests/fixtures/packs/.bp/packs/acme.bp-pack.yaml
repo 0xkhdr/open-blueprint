@@ -1,0 +1,25 @@
+# Hand-written client pack used by the Stage 2 lifecycle tests.
+schema: bp-pack/1
+id: acme
+name: ACME Internal Security
+version: 1.0.0
+kind: rules
+framework: custom
+description: House security constraints for ACME repos
+author: platform-team@acme.test
+tags: [security, internal]
+rules:
+  - id: no-console
+    scope: "src/**/*.ts"
+    severity: hard
+    action: "Never use console.log in source files"
+    rationale: "Use the structured logger instead"
+    check:
+      type: content-absent
+      glob: "src/**/*.ts"
+      pattern: "console\\.log\\("
+  - id: docs-required
+    scope: "**/*"
+    severity: soft
+    action: "Keep the README up to date with public API changes"
+    rationale: "Documentation drift confuses agents and humans alike"

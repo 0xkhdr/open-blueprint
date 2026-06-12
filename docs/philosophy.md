@@ -48,12 +48,14 @@ Manual edits are the lifeblood of a customized developer environment. Traditiona
 Permalink: Fail-Loud Diagnostics
 Agentic AI can fail silently, misinterpreting rules or ignoring setup directories completely. `bp` enforces a rigorous 4-layer validation pipeline during local verification and CI. When an error is encountered—be it semantic scope issues, logical contradictions, or dependency drift—it fails loud, pinpointing the line-precise location and presenting actionable steps for remediation.
 
+Rule enforcement is **static-analysis-based**: a rule's declarative `check` is evaluated against the repository's files and Fingerprint only — no network, no shell, no code execution. Rules that cannot be honestly expressed as a static check are reported as **manual** (`RULE_MANUAL`, info-level): bp tells you it cannot verify them automatically rather than silently counting them as passing. A `manual` outcome is a documented obligation for a human reviewer, not a pass.
+
 ### 4. Backend-Agnostic Governance
 
 Permalink: Backend-Agnostic Governance
 The landscape of AI coding assistants is highly fragmented. One developer may use Claude Code, while another prefers Cursor, Goose, or OpenDev.
 
-Instead of maintaining separate files and risking inconsistencies, `bp` utilizes a Zod-validated Intermediate Representation (`BlueprintIR`). This allows seamless conversion and synchronization across multiple formats while keeping fidelity above 98%.
+Instead of maintaining separate files and risking inconsistencies, `bp` utilizes a Zod-validated Intermediate Representation (`BlueprintIR`). This allows seamless conversion and synchronization across multiple formats. Round-trip fidelity (e.g. `claude` ➔ `cursor` ➔ `claude`) is verified by integration tests to stay at or above 95% for the core adapters.
 
 ### 5. Brownfield-First Design
 

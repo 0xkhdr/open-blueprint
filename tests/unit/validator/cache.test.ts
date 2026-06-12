@@ -101,8 +101,8 @@ describe("Incremental validation cache", () => {
     const cachePath = getCachePath(tmpDir);
     expect(fs.existsSync(cachePath)).toBe(true);
 
-    // Read cache to check rule1.md is present
-    const cache1 = await loadCacheAsync(tmpDir, "2026.1");
+    // Read cache to check rule1.md is present (cache identity includes scan mode)
+    const cache1 = await loadCacheAsync(tmpDir, "2026.1:entropy=0");
     expect(cache1.files[rulePath]).toBeDefined();
     const oldMtime = cache1.files[rulePath]?.mtime;
 

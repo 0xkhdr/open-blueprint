@@ -1,7 +1,7 @@
 import * as crypto from "node:crypto";
 import * as fsPromises from "node:fs/promises";
-import * as os from "node:os";
 import * as path from "node:path";
+import { keysDir } from "./trust.js";
 
 export function generateKeyPair(): { publicKey: string; privateKey: string } {
   const { publicKey, privateKey } = crypto.generateKeyPairSync("rsa", {
@@ -40,12 +40,11 @@ export async function loadPublicKey(): Promise<string | null> {
   const envKey = process.env.BP_REGISTRY_PUBLIC_KEY;
   if (envKey) return envKey;
 
-  const keyringDir = path.join(os.homedir(), ".bp", "keys");
+  const keyringDir = keysDir();
   try {
     const files = await fsPromises.readdir(keyringDir);
     const keyFile = files.find((f) => f.endsWith(".pub") || f.endsWith(".pem"));
-    if (keyFile)
-      return (await fsPromises.readFile(path.join(keyringDir, keyFile), "utf-8")).trim();
+    if (keyFile) return (await fsPromises.readFile(path.join(keyringDir, keyFile), "utf-8")).trim();
   } catch {
     // keyring dir absent or unreadable
   }

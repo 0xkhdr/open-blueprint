@@ -4,6 +4,7 @@ import fg from "fast-glob";
 import matter from "gray-matter";
 import type { BlueprintAdapter } from "../index.js";
 import type { BlueprintIR, MCPServer, Persona, Rule, Skill } from "../ir.js";
+import { parseSkillMarkdown, renderSkillMarkdown, skillFileName } from "../skill-file.js";
 import { generateAgentsMD } from "./agents-md.js";
 import { generateMCPJson } from "./mcp-json.js";
 
@@ -110,16 +111,7 @@ export class CursorAdapter implements BlueprintAdapter {
     for (const file of skillFiles) {
       try {
         const content = fs.readFileSync(file, "utf-8");
-        const parsed = matter(content);
-        const data = parsed.data;
-
-        skills.push({
-          name: typeof data.name === "string" ? data.name : path.basename(file, ".md"),
-          description: typeof data.description === "string" ? data.description : "",
-          when_to_use: typeof data.when_to_use === "string" ? data.when_to_use : "",
-          tools_required: Array.isArray(data.tools_required) ? data.tools_required : [],
-          procedure: parsed.content.trim(),
-        });
+        skills.push(parseSkillMarkdown(content, path.basename(file, ".md")));
       } catch (_e) {
         // Ignore
       }
@@ -254,19 +246,10 @@ export class CursorAdapter implements BlueprintAdapter {
       writtenFiles.push(rulePath);
     }
 
-    // 4. Skills
+    // 4. Skills (canonical format — all SkillSchema fields survive round-trip)
     for (const skill of ir.skills) {
-      const skillPath = path.join(cursorDir, "skills", `${skill.name.toLowerCase()}.md`);
-      let content = `---\n`;
-      content += `name: ${skill.name}\n`;
-      content += `description: "${skill.description}"\n`;
-      content += `when_to_use: "${skill.when_to_use}"\n`;
-      if (skill.tools_required && skill.tools_required.length > 0) {
-        content += `tools_required: [${skill.tools_required.map((t) => `"${t}"`).join(", ")}]\n`;
-      }
-      content += `---\n\n`;
-      content += `${skill.procedure}\n`;
-      fs.writeFileSync(skillPath, content, "utf-8");
+      const skillPath = path.join(cursorDir, "skills", skillFileName(skill));
+      fs.writeFileSync(skillPath, renderSkillMarkdown(skill), "utf-8");
       writtenFiles.push(skillPath);
     }
 

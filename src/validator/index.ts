@@ -5,17 +5,24 @@ import fg from "fast-glob";
 import { EXIT_CODES } from "../constants.js";
 import type { Fingerprint } from "../detector/fingerprint.js";
 import { logger } from "../logger.js";
-import { loadPlugins } from "../plugins/loader.js";
-import { PluginLoadError, PluginTimeoutError } from "../errors.js";
+import {
+  activePluginLevels,
+  buildFileInventory,
+  type PluginRunPayload,
+} from "../plugins/context.js";
+import { loadPlugins, type PluginSpec, pluginOutcomeErrors } from "../plugins/loader.js";
 import { startSpan } from "../telemetry/tracer.js";
-import { ResourceLimitError, ValidationTimeoutError } from "./errors.js";
 import type { BackendManifest } from "../templater/selector.js";
 import { getRegisteredAdapter } from "../translator/adapters/registry.js";
+import type { BlueprintIR } from "../translator/ir.js";
 import { validateAlertingConfig } from "./alerting.js";
 import { loadCacheAsync, saveCacheAsync } from "./cache.js";
 import { validateCostConfig } from "./cost.js";
 import { validateCrossLayerReferences } from "./cross-layer.js";
 import { validateDrift } from "./drift.js";
+import type { EnforcementSummary } from "./enforcement.js";
+import { validateEnforcementDetailed } from "./enforcement.js";
+import { ResourceLimitError, ValidationTimeoutError } from "./errors.js";
 import {
   validateAudit,
   validateCommands,
@@ -34,10 +41,12 @@ import {
 } from "./layers-deep.js";
 import { validateLogical } from "./logical.js";
 import { validateOrchestrationSemantic } from "./orchestration.js";
+import { validatePackIntegrity } from "./pack-integrity.js";
 import { auditPerformance } from "./performance.js";
 import { validateRBAC } from "./rbac.js";
 import { runBackendRules } from "./rules/backend-rules.js";
 import { validateSemantic } from "./semantic.js";
+import { validateSkills } from "./skills.js";
 import type { ValidationError } from "./structural.js";
 import { validateStructuralBatch } from "./structural.js";
 
@@ -49,6 +58,7 @@ export type ValidationLevel =
   | "structural"
   | "semantic"
   | "logical"
+  | "enforcement"
   | "drift"
   | "governance"
   | "all";
@@ -60,6 +70,10 @@ export interface ValidatorOptions {
   fingerprint?: Fingerprint;
   json?: boolean;
   failOn?: ValidationLevel;
+  /** Skip plugin validators configured in .bp.json (verify --no-plugins). */
+  noPlugins?: boolean;
+  /** Entropy-based secret detection (verify --entropy-scan / .bp.json scan.entropyEnabled). */
+  entropyScan?: boolean;
 }
 
 export interface ValidationResult {
@@ -69,6 +83,7 @@ export interface ValidationResult {
   infos: ValidationError[];
   level: ValidationLevel;
   filesChecked: number;
+  enforcement?: EnforcementSummary;
 }
 
 export { EXIT_CODES };
@@ -88,7 +103,7 @@ function mapLayerErrors(
   }));
 }
 
-async function collectBlueprintFiles(
+export async function collectBlueprintFiles(
   projectRoot: string,
   manifest: BackendManifest
 ): Promise<string[]> {
@@ -227,6 +242,41 @@ function getAdapterByName(backend: string) {
   return getRegisteredAdapter(backend);
 }
 
+async function runConfiguredPlugins(
+  projectRoot: string,
+  manifest: BackendManifest,
+  fingerprint: Fingerprint | undefined,
+  files: string[],
+  levels: ReturnType<typeof activePluginLevels>,
+  specs: PluginSpec[]
+): Promise<ValidationError[]> {
+  let blueprint: BlueprintIR;
+  try {
+    blueprint = await getAdapterByName(manifest.backend).parse(projectRoot);
+  } catch (err) {
+    logger.warn({ err }, "Plugin context unavailable: blueprint parse failed");
+    return [
+      {
+        file: projectRoot,
+        type: "PLUGIN_CONTEXT_UNAVAILABLE",
+        severity: "warning",
+        message: `Plugins skipped: blueprint parse failed: ${err instanceof Error ? err.message : String(err)}`,
+        resolution: "Fix blueprint parse errors, then re-run bp verify",
+      },
+    ];
+  }
+
+  const inventory = await buildFileInventory(projectRoot, manifest, files);
+  const payload: PluginRunPayload = {
+    blueprint,
+    ...(fingerprint ? { fingerprint } : {}),
+    files: inventory,
+    levels,
+  };
+  const outcomes = await loadPlugins(specs, payload, projectRoot);
+  return outcomes.flatMap((outcome) => pluginOutcomeErrors(outcome, projectRoot));
+}
+
 async function computeContentHash(filePath: string): Promise<string> {
   const content = await fsPromises.readFile(filePath);
   return crypto.createHash("sha256").update(content).digest("hex");
@@ -266,7 +316,10 @@ async function runValidationPipeline(options: ValidatorOptions): Promise<Validat
     );
   }
 
-  const cache = await loadCacheAsync(projectRoot, manifest.version);
+  // Scan mode is part of the cache identity: entropy on/off changes per-file
+  // findings, so cached results from one mode must not serve the other.
+  const cacheKey = `${manifest.version}:entropy=${options.entropyScan ? 1 : 0}`;
+  const cache = await loadCacheAsync(projectRoot, cacheKey);
   const cacheUpdatedFiles: Record<
     string,
     { mtime: number; contentHash: string; errors: ValidationError[] }
@@ -308,7 +361,9 @@ async function runValidationPipeline(options: ValidatorOptions): Promise<Validat
 
   // Layer 1: Structural (always run for modified/new files)
   const structuralErrors = await startSpan("bp.validate.structural", () =>
-    validateStructuralBatch(filesToValidate, manifest)
+    validateStructuralBatch(filesToValidate, manifest, {
+      entropyScan: options.entropyScan === true,
+    })
   );
   newErrors.push(...structuralErrors);
 
@@ -341,11 +396,20 @@ async function runValidationPipeline(options: ValidatorOptions): Promise<Validat
   // Save the updated cache
   await saveCacheAsync(projectRoot, {
     version: "1.0",
-    manifestVersion: manifest.version,
+    manifestVersion: cacheKey,
     files: cacheUpdatedFiles,
   });
 
   const allErrors: ValidationError[] = [...cachedErrors, ...newErrors];
+
+  // Layer 2.5: Skills (semantic level; global because name collisions are
+  // cross-file, so it bypasses the per-file cache — Stage 3)
+  if (!structuralHardFail && (level === "semantic" || level === "all")) {
+    const skillErrors = await startSpan("bp.validate.skills", () =>
+      validateSkills(projectRoot, manifest)
+    );
+    allErrors.push(...skillErrors);
+  }
 
   // Layer 3: Logical (always run since it is global across rules)
   if (!structuralHardFail && (level === "logical" || level === "all")) {
@@ -353,6 +417,16 @@ async function runValidationPipeline(options: ValidatorOptions): Promise<Validat
       validateLogical(files, { projectRoot })
     );
     allErrors.push(...logicalErrors);
+  }
+
+  // Layer 3.5: Enforcement (executable rule checks; after logical, before drift)
+  let enforcementSummary: EnforcementSummary | undefined;
+  if (!structuralHardFail && (level === "enforcement" || level === "all")) {
+    const enforcementResult = await startSpan("bp.validate.enforcement", () =>
+      validateEnforcementDetailed(projectRoot, manifest, fingerprint)
+    );
+    allErrors.push(...enforcementResult.errors);
+    enforcementSummary = enforcementResult.summary;
   }
 
   // Layer 4: Drift (always run since it checks drift)
@@ -363,6 +437,14 @@ async function runValidationPipeline(options: ValidatorOptions): Promise<Validat
       );
       allErrors.push(...driftErrors);
     }
+    const packIntegrityErrors = await startSpan("bp.validate.pack-integrity", async () => {
+      // Stage 5: best-effort upstream-drift check against the configured
+      // signed registry index; offline/unconfigured runs skip it silently.
+      const { loadConfiguredRegistryIndex } = await import("../registry/client.js");
+      const registryIndex = await loadConfiguredRegistryIndex();
+      return validatePackIntegrity(projectRoot, { registryIndex });
+    });
+    allErrors.push(...packIntegrityErrors);
   }
 
   // Layer 5: Governance (enterprise validation)
@@ -385,28 +467,6 @@ async function runValidationPipeline(options: ValidatorOptions): Promise<Validat
         allErrors.push(...backendErrors);
       }
 
-      // Plugin sandboxing: load and run custom validator plugins
-      if (projectConfig.plugins && projectConfig.plugins.length > 0) {
-        try {
-          const pluginResults = await loadPlugins(projectConfig.plugins);
-          for (const result of pluginResults) {
-            allErrors.push(...result.errors);
-          }
-        } catch (err) {
-          if (err instanceof PluginLoadError || err instanceof PluginTimeoutError) {
-            allErrors.push({
-              file: projectRoot,
-              type: err instanceof PluginTimeoutError ? "PLUGIN_TIMEOUT" : "PLUGIN_LOAD_ERROR",
-              severity: "error",
-              message: err.message,
-              resolution: err.resolution,
-            });
-          } else {
-            logger.warn({ err }, "Plugin loading failed unexpectedly");
-          }
-        }
-      }
-
       // Workspace blueprint coverage check
       if (fingerprint?.workspacePackages && fingerprint.workspacePackages.length > 0) {
         for (const pkg of fingerprint.workspacePackages) {
@@ -426,6 +486,43 @@ async function runValidationPipeline(options: ValidatorOptions): Promise<Validat
     }
   }
 
+  // Plugin validators (Stage 4): client plugins run against the parsed IR +
+  // file inventory, grouped by the levels active for this run.
+  const pluginLevels = activePluginLevels(level);
+  if (!structuralHardFail && !options.noPlugins && pluginLevels.length > 0) {
+    const { loadProjectConfigAsync } = await import("../config/project.js");
+    const pluginConfig = await loadProjectConfigAsync(projectRoot);
+    // Stage 5: `artifact:<id>` plugin entries resolve through the lockfile to
+    // the installed plugin bundle under .bp/plugins/.
+    const specs: PluginSpec[] = [];
+    for (const entry of pluginConfig?.plugins ?? []) {
+      if (entry.path.startsWith("artifact:")) {
+        const artifactId = entry.path.slice("artifact:".length);
+        const { resolvePluginArtifactPath } = await import("../registry/install.js");
+        const bundlePath = await resolvePluginArtifactPath(projectRoot, artifactId);
+        if (!bundlePath) {
+          allErrors.push({
+            file: path.join(projectRoot, ".bp.json"),
+            type: "PLUGIN_ARTIFACT_NOT_FOUND",
+            severity: "error",
+            message: `Plugin entry '${entry.path}' references an artifact that is not installed`,
+            resolution: `Install it first: bp pack plugin:install <url-or-id> (artifact id '${artifactId}')`,
+          });
+          continue;
+        }
+        specs.push({ path: bundlePath, mode: entry.mode });
+      } else {
+        specs.push(entry);
+      }
+    }
+    if (specs.length > 0) {
+      const pluginErrors = await startSpan("bp.validate.plugins", () =>
+        runConfiguredPlugins(projectRoot, manifest, fingerprint, files, pluginLevels, specs)
+      );
+      allErrors.push(...pluginErrors);
+    }
+  }
+
   const errors = allErrors.filter((e) => e.severity === "error");
   const warnings = allErrors.filter((e) => e.severity === "warning");
   const infos = allErrors.filter((e) => e.severity === "info");
@@ -437,6 +534,7 @@ async function runValidationPipeline(options: ValidatorOptions): Promise<Validat
     infos,
     level,
     filesChecked: files.length,
+    ...(enforcementSummary ? { enforcement: enforcementSummary } : {}),
   };
 }
 
@@ -459,32 +557,42 @@ export async function runValidator(options: ValidatorOptions): Promise<Validatio
   });
 }
 
-export function exitCodeForResult(result: ValidationResult): number {
+const DRIFT_WARNING_TYPES = new Set([
+  "FINGERPRINT_DELTA",
+  "ENTRY_POINT_DRIFT",
+  "TEST_COMMAND_DRIFT",
+  "UNCOVERED_DIRECTORY",
+  "DEPENDENCY_DRIFT",
+  "PACK_FILE_MISSING",
+  "PACK_FILE_MODIFIED",
+  "PACK_DRIFTED",
+]);
+
+/**
+ * Map a validation result to the public exit-code contract
+ * (docs/troubleshooting.md "Exit Code Registry").
+ *
+ * Drift findings are warnings: a passing result exits 0 unless drift was
+ * explicitly requested via `--level drift` or `--fail-on drift` — a fresh
+ * scaffold must never fail its own verification by default.
+ */
+export function exitCodeForResult(result: ValidationResult, failOn?: ValidationLevel): number {
+  const hasDriftWarnings = result.warnings.some((e) => DRIFT_WARNING_TYPES.has(e.type));
+
   if (result.passed) {
-    const hasDriftWarnings = result.warnings.some(
-      (e) =>
-        e.type === "FINGERPRINT_DELTA" ||
-        e.type === "ENTRY_POINT_DRIFT" ||
-        e.type === "TEST_COMMAND_DRIFT" ||
-        e.type === "UNCOVERED_DIRECTORY" ||
-        e.type === "DEPENDENCY_DRIFT"
-    );
-    if (hasDriftWarnings) return EXIT_CODES.DRIFT_DETECTED;
+    if (hasDriftWarnings && (result.level === "drift" || failOn === "drift")) {
+      return EXIT_CODES.DRIFT_DETECTED;
+    }
     return EXIT_CODES.SUCCESS;
   }
 
-  // Logical conflicts → exit 4
-  const hasLogical = result.errors.some(
+  // Logically inconsistent rules/constraints and reference-level issues →
+  // semantic validation failure (exit 5)
+  const hasSemantic = result.errors.some(
     (e) =>
       e.type === "RULE_CONFLICT_HARD" ||
       e.type === "SEMANTIC_CONTRADICTION" ||
-      e.type === "CIRCULAR_SKILL_DEPENDENCY"
-  );
-  if (hasLogical) return EXIT_CODES.LOGICAL_FAILURE;
-
-  // Semantic failures → exit 3
-  const hasSemantic = result.errors.some(
-    (e) =>
+      e.type === "CIRCULAR_SKILL_DEPENDENCY" ||
       e.type === "ZERO_MATCH_SCOPE" ||
       e.type === "INVALID_SCOPE_PATTERN" ||
       e.type === "MISSING_SKILL_REFERENCE" ||
@@ -492,13 +600,20 @@ export function exitCodeForResult(result: ValidationResult): number {
       e.type === "UNKNOWN_COMMAND_REFERENCE" ||
       e.type === "DUPLICATE_COMMAND" ||
       e.type === "INVALID_BUDGET" ||
-      e.type === "MCP_SERVER_INCOMPLETE"
+      e.type === "MCP_SERVER_INCOMPLETE" ||
+      e.type === "SKILL_SCHEMA_INVALID" ||
+      e.type === "SKILL_NAME_COLLISION" ||
+      e.type === "SKILL_UNKNOWN_TOOL" ||
+      e.type === "SKILL_NO_PROCEDURE"
   );
   if (hasSemantic) return EXIT_CODES.SEMANTIC_FAILURE;
 
-  // Structural failures → exit 2
+  // Structural problems and failed enforcement checks → structural
+  // validation failure (exit 4; the documented `bp report` CI-gate code)
   const hasStructural = result.errors.some(
     (e) =>
+      e.type === "RULE_VIOLATION" ||
+      e.type === "RULE_CHECK_INVALID" ||
       e.type === "FILE_NOT_FOUND" ||
       e.type === "FRONTMATTER_PARSE_ERROR" ||
       e.type === "MISSING_REQUIRED_FIELD" ||
@@ -508,17 +623,6 @@ export function exitCodeForResult(result: ValidationResult): number {
       e.type === "UNCLOSED_CODE_FENCE"
   );
   if (hasStructural) return EXIT_CODES.STRUCTURAL_FAILURE;
-
-  // Drift (warnings only, no errors) → check warnings
-  const hasDriftWarnings = result.warnings.some(
-    (e) =>
-      e.type === "FINGERPRINT_DELTA" ||
-      e.type === "ENTRY_POINT_DRIFT" ||
-      e.type === "TEST_COMMAND_DRIFT" ||
-      e.type === "UNCOVERED_DIRECTORY" ||
-      e.type === "DEPENDENCY_DRIFT"
-  );
-  if (hasDriftWarnings) return EXIT_CODES.DRIFT_DETECTED;
 
   return EXIT_CODES.GENERAL_ERROR;
 }

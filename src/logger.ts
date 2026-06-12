@@ -16,10 +16,15 @@ const isTest = process.env.NODE_ENV === "test";
 const isTTY = process.stdout.isTTY === true;
 const level = process.env.BP_LOG_LEVEL ?? (isTest ? "silent" : "info");
 
+// All diagnostics go to stderr: stdout is reserved for command output so the
+// machine-readable contracts (`--json`, `--format sarif`) stay parseable.
 const transport =
   !isTest && isTTY
-    ? pino.transport({ target: "pino-pretty", options: { colorize: true, translateTime: true } })
-    : undefined;
+    ? pino.transport({
+        target: "pino-pretty",
+        options: { colorize: true, translateTime: true, destination: 2 },
+      })
+    : pino.destination(2);
 
 const baseLogger = pino(
   {

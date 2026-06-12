@@ -4,20 +4,28 @@ import chalk from "chalk";
 import { Command } from "commander";
 import matter from "gray-matter";
 import ora from "ora";
-import { toSarif } from "../formatters/sarif.js";
 import { getBackend, listBackendIds } from "../../backends/registry.js";
 import { checkBackendVersion } from "../../backends/version-check.js";
 import { loadProjectConfig } from "../../config/project.js";
 import { loadUserConfig } from "../../config/user.js";
 import { detect } from "../../detector/index.js";
 import { BpError } from "../../errors.js";
+import { toSarif } from "../../report/sarif.js";
 import { resolveTemplatePack } from "../../templater/selector.js";
 import { normalizeError } from "../../utils/errors.js";
 import type { ValidationLevel } from "../../validator/index.js";
 import { EXIT_CODES, exitCodeForResult, runValidator } from "../../validator/index.js";
 import type { ValidationError } from "../../validator/structural.js";
 
-const VALID_LEVELS = ["structural", "semantic", "logical", "drift", "governance", "all"] as const;
+const VALID_LEVELS = [
+  "structural",
+  "semantic",
+  "logical",
+  "enforcement",
+  "drift",
+  "governance",
+  "all",
+] as const;
 
 function formatError(err: ValidationError, cwd: string): void {
   const loc = err.line ? `:${err.line}` : "";
@@ -127,13 +135,18 @@ export function createVerifyCommand(): Command {
   cmd
     .description("Validate blueprint integrity")
     .argument("[paths...]", "One or more repository paths to verify")
-    .option("--level <level>", "structural | semantic | logical | drift | all", "all")
+    .option(
+      "--level <level>",
+      "structural | semantic | logical | enforcement | drift | governance | all",
+      "all"
+    )
     .option("--json", "Machine-readable JSON output", false)
     .option("--format <format>", "Output format: json | sarif", "json")
     .option("--fix", "Auto-correct unambiguous structural issues", false)
     .option("--watch", "Re-validate on file change (debounced 300ms)", false)
     .option("--fail-on <level>", "Exit non-zero only at this severity level", "logical")
     .option("--entropy-scan", "Enable entropy-based secret detection", false)
+    .option("--no-plugins", "Skip plugin validators configured in .bp.json")
     .action(
       async (
         pathsArg: string[] | undefined,
@@ -145,6 +158,7 @@ export function createVerifyCommand(): Command {
           watch: boolean;
           failOn: string;
           entropyScan: boolean;
+          plugins: boolean;
         }
       ) => {
         const paths = pathsArg && pathsArg.length > 0 ? pathsArg : ["."];
@@ -198,7 +212,12 @@ export function createVerifyCommand(): Command {
                     .map(async (id) => {
                       try {
                         const cfg = getBackend(id);
-                        await checkBackendVersion(id, absolutePath, cfg.minVersion, cfg.testedVersions);
+                        await checkBackendVersion(
+                          id,
+                          absolutePath,
+                          cfg.minVersion,
+                          cfg.testedVersions
+                        );
                       } catch {
                         // version check failure is non-fatal
                       }
@@ -206,11 +225,19 @@ export function createVerifyCommand(): Command {
                 );
               }
 
+              // --entropy-scan wins; otherwise .bp.json scan.entropyEnabled decides.
+              const entropyScan = opts.entropyScan || projectConfig?.scan?.entropyEnabled === true;
+
               const result = await runValidator({
                 level,
                 projectRoot: absolutePath,
                 manifest: pack.manifest,
                 fingerprint,
+                entropyScan,
+                ...(VALID_LEVELS.includes(opts.failOn as ValidationLevel)
+                  ? { failOn: opts.failOn as ValidationLevel }
+                  : {}),
+                ...(opts.plugins === false ? { noPlugins: true } : {}),
               });
 
               // Apply fixes before reporting
@@ -237,6 +264,8 @@ export function createVerifyCommand(): Command {
                     projectRoot: absolutePath,
                     manifest: pack.manifest,
                     fingerprint,
+                    entropyScan,
+                    ...(opts.plugins === false ? { noPlugins: true } : {}),
                   });
                   Object.assign(result, reResult);
                 }
@@ -246,7 +275,15 @@ export function createVerifyCommand(): Command {
               if (!result.passed) {
                 _overallPassed = false;
               }
-              maxExitCode = Math.max(maxExitCode, exitCodeForResult(result));
+              maxExitCode = Math.max(
+                maxExitCode,
+                exitCodeForResult(
+                  result,
+                  VALID_LEVELS.includes(opts.failOn as ValidationLevel)
+                    ? (opts.failOn as ValidationLevel)
+                    : undefined
+                )
+              );
 
               if (!opts.json) {
                 if (result.passed && result.warnings.length === 0) {
@@ -265,6 +302,15 @@ export function createVerifyCommand(): Command {
                   spinner?.fail(
                     chalk.red(
                       `[${targetPath}] ${result.errors.length} error(s), ${result.warnings.length} warning(s) (${result.filesChecked} files)`
+                    )
+                  );
+                }
+
+                if (result.enforcement) {
+                  const { enforced, violations, manual } = result.enforcement;
+                  console.log(
+                    chalk.dim(
+                      `  Enforcement: ${enforced} enforced, ${violations} violation(s), ${manual} manual`
                     )
                   );
                 }

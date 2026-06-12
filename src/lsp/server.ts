@@ -13,12 +13,11 @@ import {
   TextDocumentSyncKind,
   TextDocuments,
 } from "vscode-languageserver";
+import { createConnection } from "vscode-languageserver/lib/node/main.js";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { detect, enrichFingerprint } from "../detector/index.js";
 import { resolveTemplatePack } from "../templater/selector.js";
 import { runValidator } from "../validator/index.js";
-
-import { createConnection } from "vscode-languageserver/lib/node/main.js";
 
 const connection = createConnection();
 const documents = new TextDocuments(TextDocument);
@@ -78,8 +77,14 @@ async function findProjectRoot(filePath: string): Promise<string> {
   let dir = path.dirname(filePath);
   while (dir !== path.dirname(dir)) {
     const [hasPkg, hasBp] = await Promise.all([
-      fsPromises.access(path.join(dir, "package.json")).then(() => true).catch(() => false),
-      fsPromises.access(path.join(dir, ".bp.json")).then(() => true).catch(() => false),
+      fsPromises
+        .access(path.join(dir, "package.json"))
+        .then(() => true)
+        .catch(() => false),
+      fsPromises
+        .access(path.join(dir, ".bp.json"))
+        .then(() => true)
+        .catch(() => false),
     ]);
     if (hasPkg || hasBp) return dir;
     dir = path.dirname(dir);

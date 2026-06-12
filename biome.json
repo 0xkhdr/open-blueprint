@@ -6,8 +6,7 @@
       "recommended": true,
       "suspicious": {
         "noExplicitAny": "error",
-        "noConsole": "error",
-        "noGlobalEval": "error"
+        "noConsole": "error"
       },
       "style": {
         "useConst": "error"

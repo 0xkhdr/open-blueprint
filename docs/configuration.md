@@ -35,6 +35,7 @@ Permalink: Global Schema Properties
 | `auto_verify_on_init` | `boolean` | Instantly trigger `bp verify` upon a successful `bp init`. | `true` |
 | `auto_fix_level` | `string` | Severity level of anomalies that `bp` should automatically resolve. | `"structural"` |
 | `ci_mode` | `boolean` | Optimizes logging output and sets terminal behaviors for CI environments. | `false` |
+| `registry_url` | `string` | Signed static-host pack registry index URL (Stage 5). Set via `bp config set registry.url <url>` — the dotted form is an alias for this key. See [pack-distribution.md](pack-distribution.md). | *(unset)* |
 
 **Example config.json:**
 
@@ -67,7 +68,7 @@ Permalink: Project Schema Properties
 | `extends` | `string` | Name of a template pack or internal organization policy base to inherit. | No |
 | `overrides` | `object` | Customize or soften validation severities defined in the base template. | No |
 | `exclude` | `array` | Glob patterns of directories to completely skip during file verification. | No |
-| `plugins` | `array` | Package names or file paths of custom validators to inject into the pipeline. | No |
+| `plugins` | `array` | Validator plugins to run during `bp verify`. Entries are either a path string (runs in `isolated` mode) or `{ "path": "...", "mode": "isolated" \| "inline" }`. Paths must stay inside the project root. See [Plugin API](plugin-api.md). | No |
 
 **Example .bp.json:**
 
@@ -86,7 +87,8 @@ Permalink: Project Schema Properties
     "dist/"
   ],
   "plugins": [
-    "@myorg/bp-validate-rationale"
+    "./plugins/validate-rationale.mjs",
+    { "path": "./plugins/fast-check.mjs", "mode": "inline" }
   ]
 }
 ```
@@ -114,7 +116,11 @@ The following environment variables control security, validation limits, and obs
 | Variable | Default | Description |
 |---|---|---|
 | `BP_AUDIT_HMAC_KEY` | *(unset)* | HMAC-SHA256 key for audit log signing. When unset, entries are written with `sig: null` and a warning is emitted. |
-| `BP_REGISTRY_PUBLIC_KEY` | *(unset)* | PEM-encoded RSA public key for verifying registry package signatures. Falls back to `~/.bp/keys/*.pub`. When unset, signature verification is skipped with a warning. |
+| `BP_REGISTRY_PUBLIC_KEY` | *(unset)* | Legacy PEM-encoded RSA public key for verifying signed pack artifacts; folded into the Stage 5 trust keyring as `env:BP_REGISTRY_PUBLIC_KEY`. Prefer `bp trust add`. |
+| `BP_PACK_MAX_BYTES` | `10485760` (10 MiB) | Maximum pack artifact size — applies to both the network download and the decompressed archive contents. |
+| `BP_PACK_TIMEOUT_MS` | `30000` (30 s) | Timeout for pack artifact and registry index downloads. |
+| `BP_OFFLINE` | *(unset)* | Set to `1` to skip the advisory registry-index lookup (`PACK_OUTDATED`) during `bp verify`. |
+| `BP_HOME` | `~/.bp` | Overrides the bp home directory (user config, trust store, signing keys). |
 | `BP_MAX_VALIDATION_FILES` | `1000` | Maximum number of blueprint files allowed before validation aborts with `ResourceLimitError`. |
 | `BP_MAX_VALIDATION_BYTES` | `52428800` (50 MB) | Maximum total file size in bytes allowed before validation aborts with `ResourceLimitError`. |
 | `BP_VALIDATION_TIMEOUT_MS` | `30000` (30 s) | Maximum milliseconds the validation pipeline is allowed to run before aborting with `ValidationTimeoutError`. |

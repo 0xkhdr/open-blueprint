@@ -1,0 +1,7 @@
+{
+  "name": "enforcement-fixture",
+  "version": "1.0.0",
+  "dependencies": {
+    "pino": "^9.0.0"
+  }
+}

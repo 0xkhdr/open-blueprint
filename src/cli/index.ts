@@ -3,6 +3,8 @@ import { Command } from "commander";
 import { BpError } from "../errors.js";
 import { initCorrelationId, logger, runWithCorrelationId } from "../logger.js";
 import { normalizeError } from "../utils/errors.js";
+import { getPackageInfo } from "../utils/pkg.js";
+import { createAdoptCommand } from "./commands/adopt.js";
 import { createAgentCommand } from "./commands/agent.js";
 import { createChainCommand } from "./commands/chain.js";
 import { createConfigCommand } from "./commands/config.js";
@@ -13,6 +15,7 @@ import { createDiffCommand } from "./commands/diff.js";
 import { createDocsCommand } from "./commands/docs.js";
 import { createDoctorCommand } from "./commands/doctor.js";
 import { createDriftCommand } from "./commands/drift.js";
+import { createEmitCommand } from "./commands/emit.js";
 import { createHealthCommand } from "./commands/health.js";
 import { createHookCommand } from "./commands/hook.js";
 import { createInitCommand } from "./commands/init.js";
@@ -21,19 +24,19 @@ import { createMCPCommand } from "./commands/mcp.js";
 import { createMemoryCommand } from "./commands/memory.js";
 import { createMergeCommand } from "./commands/merge.js";
 import { createMigrateCommand } from "./commands/migrate.js";
+import { createPackCommand } from "./commands/pack.js";
+import { createReportCommand } from "./commands/report.js";
 import { createRuleCommand } from "./commands/rule.js";
+import { createSkillCommand } from "./commands/skill.js";
 import { createSyncCommand } from "./commands/sync.js";
 import { createTeamCommand } from "./commands/team.js";
 import { createTelemetryCommand } from "./commands/telemetry.js";
 import { createTemplateCommand } from "./commands/template.js";
+import { createTrustCommand } from "./commands/trust.js";
 import { createUpdateCommand } from "./commands/update.js";
 import { createVerifyCommand } from "./commands/verify.js";
 
-const pkg = {
-  name: "@agentic/bp",
-  version: "1.0.0",
-  description: "Scaffold and verify governance structures for agentic AI tools",
-};
+const pkg = getPackageInfo();
 
 const program = new Command();
 
@@ -45,6 +48,7 @@ program
 
 program.addCommand(createInitCommand());
 program.addCommand(createVerifyCommand());
+program.addCommand(createReportCommand());
 program.addCommand(createSyncCommand());
 program.addCommand(createConvertCommand());
 program.addCommand(createDevCommand());
@@ -54,6 +58,7 @@ program.addCommand(createMergeCommand());
 program.addCommand(createTemplateCommand());
 program.addCommand(createDoctorCommand());
 program.addCommand(createRuleCommand());
+program.addCommand(createSkillCommand());
 program.addCommand(createHookCommand());
 program.addCommand(createConfigCommand());
 program.addCommand(createUpdateCommand());
@@ -66,8 +71,12 @@ program.addCommand(createMemoryCommand());
 program.addCommand(createTelemetryCommand());
 program.addCommand(createCostCommand());
 program.addCommand(createDriftCommand());
+program.addCommand(createAdoptCommand());
+program.addCommand(createEmitCommand());
 program.addCommand(createMarketplaceCommand());
 program.addCommand(createHealthCommand());
+program.addCommand(createPackCommand());
+program.addCommand(createTrustCommand());
 
 // Audit logging hook
 program.hook("preAction", (_thisCommand, actionCommand) => {

@@ -2,8 +2,9 @@ import * as crypto from "node:crypto";
 import * as fsPromises from "node:fs/promises";
 import * as path from "node:path";
 import matter from "gray-matter";
-import { logger } from "../logger.js";
 import type { Fingerprint } from "../detector/fingerprint.js";
+import { logger } from "../logger.js";
+import { normalizeText } from "../utils/normalize.js";
 import type { ValidationError } from "./structural.js";
 
 export const FINGERPRINT_FILE = ".bp-fingerprint.json";
@@ -22,7 +23,10 @@ export async function loadStoredFingerprint(projectRoot: string): Promise<Finger
   }
 }
 
-export async function storeFingerprint(projectRoot: string, fingerprint: Fingerprint): Promise<void> {
+export async function storeFingerprint(
+  projectRoot: string,
+  fingerprint: Fingerprint
+): Promise<void> {
   const fp = path.join(projectRoot, FINGERPRINT_FILE);
   await fsPromises.writeFile(fp, JSON.stringify(fingerprint, null, 2), "utf-8");
 }
@@ -87,7 +91,10 @@ export function computeFingerprintDelta(stored: Fingerprint, current: Fingerprin
 // Check 2: Entry point drift
 // ---------------------------------------------------------------------------
 
-async function checkEntryPointDrift(files: string[], projectRoot: string): Promise<ValidationError[]> {
+async function checkEntryPointDrift(
+  files: string[],
+  projectRoot: string
+): Promise<ValidationError[]> {
   const errors: ValidationError[] = [];
 
   const anchorFile = files.find((f) => f.endsWith("CLAUDE.md") || f.endsWith("/CLAUDE.md"));
@@ -101,7 +108,9 @@ async function checkEntryPointDrift(files: string[], projectRoot: string): Promi
   }
   if (!content) return errors;
 
-  const entryPattern = /[-*]\s*Entry(?:\s+point)?:\s*`?([^\s`\n]+)`?/gi;
+  // Match both list items (`- Entry point: src/x.ts`) and bold labels
+  // (`**Entry point:** \`src/x.ts\``) without capturing markdown asterisks.
+  const entryPattern = /[-*]?\s*\*{0,2}Entry(?:\s+point)?\s*:\*{0,2}\s*`?([^\s`*\n]+)`?/gi;
   let match = entryPattern.exec(content);
   while (match !== null) {
     const entryPath = match[1];
@@ -299,12 +308,28 @@ export interface OutputSnapshot {
 }
 
 export function computeOutputHash(output: string): string {
-  const normalized = output.toLowerCase().replace(/\s+/g, " ").trim();
+  const normalized = normalizeText(output, { caseInsensitive: true });
   return crypto.createHash("sha256").update(normalized, "utf8").digest("hex");
 }
 
+/**
+ * Whether two output hashes refer to identical (normalized) output.
+ *
+ * This is an exact identity check, not a graded similarity score: the
+ * underlying hashes match or they do not. Named accordingly to avoid implying
+ * fuzzy comparison.
+ */
+export function isOutputIdentical(hash1: string, hash2: string): boolean {
+  return hash1 === hash2;
+}
+
+/**
+ * @deprecated Use {@link isOutputIdentical}. Retained for backward
+ * compatibility; returns 1.0 for identical hashes and 0.0 otherwise — a binary
+ * identity check, never an intermediate similarity value.
+ */
 export function computeSimilarity(hash1: string, hash2: string): number {
-  return hash1 === hash2 ? 1.0 : 0.0;
+  return isOutputIdentical(hash1, hash2) ? 1.0 : 0.0;
 }
 
 async function checkRuleEffectivenessDrift(
@@ -341,7 +366,10 @@ async function checkRuleEffectivenessDrift(
       }
     }
   } catch (err) {
-    logger.warn({ err }, "Rule metrics file corrupted or unreadable; skipping effectiveness drift check");
+    logger.warn(
+      { err },
+      "Rule metrics file corrupted or unreadable; skipping effectiveness drift check"
+    );
   }
 
   return errors;
@@ -414,20 +442,22 @@ async function checkOutputDrift(_files: string[], projectRoot: string): Promise<
 
       const latest = history.at(-1) as OutputSnapshot;
       const previous = history.at(-2) as OutputSnapshot;
-      const similarity = computeSimilarity(latest.output_hash, previous.output_hash);
 
-      if (similarity !== 1.0) {
+      if (!isOutputIdentical(latest.output_hash, previous.output_hash)) {
         errors.push({
           file: snapshotFile,
           type: "OUTPUT_DRIFT",
           severity: "info",
-          message: `Output from rule "${ruleId}" has diverged significantly (similarity: ${(similarity * 100).toFixed(0)}%)`,
+          message: `Output from rule "${ruleId}" no longer matches the previous snapshot`,
           resolution: `Review recent changes to rule "${ruleId}"; output may indicate behavior change or config drift`,
         });
       }
     }
   } catch (err) {
-    logger.warn({ err }, "Output snapshot file corrupted or unreadable; skipping output drift check");
+    logger.warn(
+      { err },
+      "Output snapshot file corrupted or unreadable; skipping output drift check"
+    );
   }
 
   return errors;

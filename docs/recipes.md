@@ -16,6 +16,7 @@ Use this quick-scan matrix to find the exact setup for your current needs:
 |---|---|---|
 | Configure a brand-new project for Claude | [1. TypeScript Bootstrapping](#1-bootstrapping-a-new-typescript-repository) | `bp init claude` |
 | Block broken rules from entering main branch | [2. CI Verification](#2-ci-verification--drift-protection) | `--fail-on logical` |
+| Get per-rule PR annotations + a measured compliance report | [2b. Governance Report in CI](#2b-governance-report--per-rule-pr-annotations) | `bp report --sarif` |
 | Share configurations between Claude & Cursor | [3. Cross-Compilation](#3-cross-compile-claude-code-to-cursor) | `bp convert` |
 | Enforce strict standards across multiple teams | [4. Enterprise Policy Inheritance](#4-enterprise-private-template-inheritance) | `"extends": "@myorg/base"` |
 
@@ -85,6 +86,44 @@ jobs:
       - name: Verify Blueprint Integrity
         run: npx @agentic/bp verify --level all --fail-on logical
 ```
+
+---
+
+### 2b. Governance Report & Per-Rule PR Annotations
+
+Permalink: Governance Report & Per-Rule PR Annotations
+
+Go beyond pass/fail: `bp report` measures every governance rule against the repository
+and emits SARIF that GitHub code scanning turns into per-rule PR annotations at the
+violating `file:line`. Add this job next to the verification job above:
+
+```yaml
+  governance-report:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Governance report (gates on hard violations)
+        run: npx @agentic/bp report --sarif report.sarif --fail-on hard
+
+      - name: Upload SARIF for PR annotations
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: report.sarif
+          category: bp-report
+```
+
+The same command produces a full machine-readable compliance document with
+`--json report.json` — measured pass/fail/manual counts per installed pack, replacing
+static coverage claims. Details: [Governance Reporting](governance-reporting.md);
+exit codes: [troubleshooting](troubleshooting.md#bp-report-exit-codes).
 
 ---
 

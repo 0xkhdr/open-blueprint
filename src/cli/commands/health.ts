@@ -6,6 +6,7 @@ import { loadUserConfig } from "../../config/user.js";
 import { HealthError } from "../../errors.js";
 import { getCorrelationId } from "../../logger.js";
 import { normalizeError } from "../../utils/errors.js";
+import { getPackageInfo } from "../../utils/pkg.js";
 
 interface HealthCheck {
   name: string;
@@ -117,7 +118,7 @@ export function createHealthCommand(): Command {
     .option("--json", "Output results as JSON")
     .action(async (opts: { json?: boolean }) => {
       const cwd = process.cwd();
-      const version = "1.0.0";
+      const version = getPackageInfo().version;
       const correlationId = getCorrelationId();
 
       const checks = await Promise.all([

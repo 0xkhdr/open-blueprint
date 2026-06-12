@@ -111,7 +111,9 @@ export class BlueprintDiffer {
     }
   }
 
-  private diffArray<T extends { id?: string; name?: string; event?: string }>(
+  private diffArray<
+    T extends { id?: string | undefined; name?: string | undefined; event?: string | undefined },
+  >(
     baseArr: T[] | undefined,
     targetArr: T[] | undefined,
     layer: string,

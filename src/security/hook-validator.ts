@@ -3,13 +3,37 @@ export interface HookSafetyReport {
   violations: Array<{ pattern: string; line: number; match: string }>;
 }
 
+/**
+ * Advisory static analysis — a regex denylist, not a sandbox. It blocks the
+ * common dangerous constructs in CommonJS *and* ESM form (`require`, static
+ * `import`, dynamic `import()`, `node:`-prefixed specifiers) plus indirect
+ * access through bracket notation (`globalThis["eval"]`, `process["env"]`).
+ * Determined obfuscation can still slip past; treat a "safe" verdict as
+ * lint-level confidence only (see docs/commands.md `bp hook validate`).
+ */
 const FORBIDDEN_PATTERNS: Array<{ name: string; regex: RegExp }> = [
-  { name: "child_process", regex: /require\s*\(\s*['"]child_process['"]\s*\)/ },
-  { name: "fs direct", regex: /require\s*\(\s*['"]fs['"]\s*\)/ },
+  {
+    name: "child_process",
+    regex: /(?:require\s*\(\s*|import\s*\(\s*|from\s+|import\s+)['"](?:node:)?child_process['"]/,
+  },
+  {
+    name: "fs direct",
+    regex:
+      /(?:require\s*\(\s*|import\s*\(\s*|from\s+|import\s+)['"](?:node:)?fs(?:\/promises)?['"]/,
+  },
+  {
+    name: "dynamic import",
+    regex: /\bimport\s*\(/,
+  },
   { name: "fetch", regex: /\bfetch\s*\(/ },
   { name: "eval", regex: /\beval\s*\(/ },
+  { name: "indirect eval", regex: /\b(?:globalThis|window|self)\s*\[\s*['"`]eval['"`]\s*\]/ },
   { name: "new Function", regex: /new\s+Function\s*\(/ },
-  { name: "process.env", regex: /process\.env\./ },
+  {
+    name: "Function constructor",
+    regex: /\b(?:globalThis|window|self)\s*\[\s*['"`]Function['"`]\s*\]/,
+  },
+  { name: "process.env", regex: /process\s*(?:\.\s*env\b|\[\s*['"`]env['"`]\s*\])/ },
   { name: "exec", regex: /\.exec\s*\(/ },
   { name: "spawn", regex: /\.spawn\s*\(/ },
 ];

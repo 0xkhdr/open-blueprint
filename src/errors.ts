@@ -85,7 +85,7 @@ export class HealthError extends BpError {
 
 export class SecurityError extends BpError {
   constructor(message: string, resolution = "See: docs/troubleshooting.md#security") {
-    super(message, 8, "SECURITY_ERROR", resolution);
+    super(message, 9, "SECURITY_ERROR", resolution);
     this.name = "SecurityError";
   }
 }
@@ -105,7 +105,10 @@ export class PluginLoadError extends BpError {
 }
 
 export class PluginTimeoutError extends BpError {
-  constructor(message: string, resolution = "Reduce plugin complexity or increase BP_VALIDATION_TIMEOUT_MS") {
+  constructor(
+    message: string,
+    resolution = "Reduce plugin complexity or increase BP_VALIDATION_TIMEOUT_MS"
+  ) {
     super(message, 3, "PLUGIN_TIMEOUT_ERROR", resolution);
     this.name = "PluginTimeoutError";
   }

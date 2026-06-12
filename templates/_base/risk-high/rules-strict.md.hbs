@@ -1,6 +1,10 @@
 ---
 render_if:
   risk_tier: [high, critical]
+scope: "**/*"
+severity: soft
+action: Apply strict security rules for elevated-risk projects
+tags: [risk-tier, high]
 priority: 30
 ---
 # Strict Security Rules

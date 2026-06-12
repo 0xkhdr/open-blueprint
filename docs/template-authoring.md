@@ -145,46 +145,27 @@ Organizations can enforce standardized compliance rules and coding conventions g
 
 ## 5. Cryptographic Packaging & Signing
 
-To secure templates and protect teams from malicious supply-chain prompt-injections, `bp` implements a cryptographic template signing system.
+Pack signing is handled by the Stage 5 distribution pipeline — see
+[pack-distribution.md](pack-distribution.md) for the full publish/trust/install
+walkthrough and threat model. In short:
 
-```text
-       [Raw Template Folder]
-                 │
-                 ▼
-       [Pack Archive (JSON)]
-                 │
-   (Private RSA Key) ──► [signData] ──► SHA256 Signature
-                 │
-                 ▼
-   [Registry Package Archive] (Base64 + Signature)
-                 │
-                 ▼
-          Registry Client
-```
+1. **Keypair generation** — `bp pack keygen <name>` writes a 2048-bit RSA
+   keypair to `~/.bp/keys/` (private key `0600`, never overwritten). Keep the
+   private key private; share the `.pub` file with consumers.
 
-### 5.1 Keypair Generation
+2. **Signing and publishing** — `bp pack publish <packfile> --key <private.pem>`
+   validates the pack against the `bp-pack/1` schema, builds a
+   `MANIFEST.json` with a sha256 for every file, signs the canonical JSON of
+   that manifest (RSA-SHA256, detached `MANIFEST.sig`), and writes the
+   content-addressed artifact `<id>-<version>.bp-pack.tgz`.
 
-Authors generate a standard 2048-bit RSA key pair:
+3. **Verification and unpacking** — on `bp rule|skill pack:install <url>` the
+   client verifies the artifact's signature against the local trust keyring
+   (`bp trust add <name> <pub.pem>`) and every file hash against the signed
+   manifest *before* anything is written into the project. A wrong key ⇒
+   `PACK_SIGNATURE_INVALID`; any altered byte ⇒ `PACK_HASH_MISMATCH`; unsigned
+   artifacts are refused unless `--allow-unsigned` is given (and the bypass is
+   recorded in `.bp/packs.lock.json` as `"trust": "unsigned-accepted"`).
 
-```javascript
-import { generateKeyPair } from "./signer.js";
-
-const { publicKey, privateKey } = generateKeyPair();
-// Keep the privateKey private. Share the publicKey with consumers.
-```
-
-### 5.2 Signing and Publishing
-
-When publishing a pack via `RegistryClient.publish(packageName, version, packDir, privateKey)`, the engine:
-
-1. Compiles the folder's file structures into a single payload buffer.
-2. Generates a SHA256 signature of the payload using the author's private RSA key.
-3. Packages the archive into a Base64-encoded string and publishes it along with the signature.
-
-### 5.3 Verification and Unpacking
-
-When installing a package using `RegistryClient.install(packageName, targetDir, publicKey)`:
-
-1. The client downloads the Base64 package data and signature.
-2. It hashes the payload and validates it using `verifySignature(payload, signature, publicKey)`.
-3. If verification fails (e.g. the signature was invalid or the archive was altered), `bp` throws a terminal diagnostic error and halts execution, blocking untrusted code generation.
+The legacy in-memory `RegistryClient` publish/install path used by older docs
+is test-only and disabled unless `BP_REGISTRY_MOCK=1` is set.

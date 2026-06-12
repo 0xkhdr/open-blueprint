@@ -66,6 +66,7 @@ Common issues, diagnostic procedures, and the complete `bp` exit code registry. 
 **Description**: Blueprint files have been modified outside of `bp` — hash mismatch with `.bp-lock` snapshot.
 **Example trigger**: Manual edit to `CLAUDE.md` after `bp init`.
 **Resolution**: Run `bp sync --auto-apply` to resync, or `bp verify --level drift` to inspect what changed.
+**Note**: Drift findings are advisory warnings. A passing `bp verify` exits `0` even when drift warnings are present; code `6` is returned only when drift checking is explicitly requested via `--level drift` or `--fail-on drift`.
 
 ---
 
@@ -102,6 +103,21 @@ Common issues, diagnostic procedures, and the complete `bp` exit code registry. 
 **Description**: One or more `bp health` checks failed.
 **Example trigger**: `bp health` when config file is unparseable or template registry is unreachable.
 **Resolution**: Run `bp health --json` for machine-readable check details. Address each failing check individually.
+
+---
+
+### `bp report` Exit Codes {#bp-report-exit-codes}
+
+`bp report` is designed as a CI gate; its exit code depends on the `--fail-on` threshold:
+
+| Condition | `--fail-on hard` (default) | `--fail-on soft` | `--fail-on none` |
+|---|---|---|---|
+| No violations | 0 | 0 | 0 |
+| Soft violations only | 0 | 4 | 0 |
+| Hard violation or invalid rule check | 4 | 4 | 0 |
+| Report generation failed (bad path, parse error) | 1 | 1 | 1 |
+
+Manual rules and staleness flags never affect the exit code. See [Governance Reporting](governance-reporting.md).
 
 ---
 

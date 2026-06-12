@@ -2,9 +2,16 @@
 name: add-test
 description: Add a test for an existing function or module
 when_to_use: When asked to add, write, or create a test
-tools_required: ["Read", "Edit", "Write", "Bash"]
+tools_required: [read_file, edit_file, write_file, run_tests]
 ---
 
 # Skill: add-test
 
 Use this skill when asked to add a test for an existing function, module, or behavior in OpenDev.
+
+## Procedure
+
+1. Read the implementation to understand the function's contract, inputs, and outputs.
+2. Check existing tests and match their layout and naming.
+3. Write the test: happy path first, then edge cases and error cases.
+4. Run the test suite and fix failures before marking complete.

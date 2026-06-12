@@ -10,6 +10,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ### Added
 
+- **Ownership manifest (`.bp/manifest.json`)**: `bp init` now records every file it renders — path, content hash, source template, and origin — so later commands can distinguish a `managed` file from one a developer intentionally `modified`, `missing` (deleted), or `untracked` (user-authored). See `src/templater/manifest.ts`.
+- **`bp adopt`**: Brings existing user-authored rules/skills/agents under ownership tracking. `--status` reports managed/modified/missing/untracked classification; `--wrap` wraps file bodies in `bp:preserve` markers; `--dry-run` and `--json` supported.
+- **`bp emit`**: Round-trips a `BlueprintIR` back to governance files at the backend's canonical locations, writing through the manifest-aware writer (so emitted files honor markers, `.blueprintignore`, path safety, and ownership tracking). Reads the IR from the current project or from `--input <ir.json>`; supports `--from <backend>`, `--force`, `--dry-run`, `--json`.
 - **Audit integrity**: HMAC-SHA256 signed audit log entries (`AuditLogger` class). Each entry now includes a `sig` field. Set `BP_AUDIT_HMAC_KEY` to enable verified integrity; entries without the key are written with `sig: null` and a Pino `warn` is emitted.
 - **Resource limits for validator**: Pre-validation file count and total byte size guards. Configure via `BP_MAX_VALIDATION_FILES` (default 1000), `BP_MAX_VALIDATION_BYTES` (default 50 MB), `BP_VALIDATION_TIMEOUT_MS` (default 30 s).
 - **Entropy-based secret scanning**: `--entropy-scan` flag on `bp verify` and `bp scan`. Also configurable via `scan.entropyEnabled: true` in `.bp.json`.
@@ -18,6 +21,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ### Changed
 
+- **Normalized diffing**: `diffRule`/`diffSkill`/`diffPersona` (`src/ecosystem/diff.ts`) now compare prose fields (`action`, `procedure`, `rationale`, `description`, `when_to_use`, `reasoning_style`) after whitespace/line-ending normalization, so cosmetic edits no longer report as changes. Case is preserved to retain governance fidelity. Shared helper: `src/utils/normalize.ts`.
+- **Honest naming**: `detectSemanticDrift` is renamed to `detectBehavioralDrift` (it measures runtime metrics, not natural-language semantics); the old name remains as a `@deprecated` alias. `computeSimilarity` (a binary identity check, never a graded score) is superseded by `isOutputIdentical`; the old name remains as a `@deprecated` alias.
 - **Drift cache invalidation**: The `computeOutputHash` function in `drift.ts` now uses SHA-256 (was a 32-bit rolling hash). **Existing drift caches are invalidated on upgrade** — `bp verify` will perform a fresh full check on first run after upgrading. This is expected behaviour; the cache is a performance optimization and contains no persistent state.
 - Registry public key is no longer hardcoded. Load from `BP_REGISTRY_PUBLIC_KEY` env var or `~/.bp/keys/` keyring. Without a key, signature verification is skipped with a warning.
 - `AuditLogger` now propagates correlation ID from `AsyncLocalStorage` context (set at command entry in `cli/index.ts`) rather than generating a new UUID per entry.

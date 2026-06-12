@@ -60,7 +60,7 @@ describe("exitCodeForResult", () => {
     expect(exitCodeForResult(res)).toBe(EXIT_CODES.SUCCESS);
   });
 
-  it("returns DRIFT_DETECTED (5) when passed has drift warnings but no errors", () => {
+  it("returns DRIFT_DETECTED (6) at drift level when passed has drift warnings but no errors", () => {
     const res: ValidationResult = {
       passed: true,
       errors: [],
@@ -74,7 +74,7 @@ describe("exitCodeForResult", () => {
         },
       ],
       infos: [],
-      level: "all",
+      level: "drift",
       filesChecked: 5,
     };
     expect(exitCodeForResult(res)).toBe(EXIT_CODES.DRIFT_DETECTED);
@@ -92,9 +92,9 @@ describe("exitCodeForResult", () => {
     expect(exitCodeForResult(res5)).toBe(EXIT_CODES.DRIFT_DETECTED);
   });
 
-  it("returns DRIFT_DETECTED (5) when passed is false but only drift warnings are present and no specific errors match", () => {
+  it("returns SUCCESS (0) at default level when passed has drift warnings (drift is advisory)", () => {
     const res: ValidationResult = {
-      passed: false,
+      passed: true,
       errors: [],
       warnings: [
         {
@@ -109,10 +109,11 @@ describe("exitCodeForResult", () => {
       level: "all",
       filesChecked: 5,
     };
-    expect(exitCodeForResult(res)).toBe(EXIT_CODES.DRIFT_DETECTED);
+    expect(exitCodeForResult(res)).toBe(EXIT_CODES.SUCCESS);
+    expect(exitCodeForResult(res, "drift")).toBe(EXIT_CODES.DRIFT_DETECTED);
   });
 
-  it("returns LOGICAL_FAILURE (4) when logical errors are present", () => {
+  it("returns SEMANTIC_FAILURE (5) when logical conflict errors are present", () => {
     const res: ValidationResult = {
       passed: false,
       errors: [
@@ -129,10 +130,10 @@ describe("exitCodeForResult", () => {
       level: "all",
       filesChecked: 5,
     };
-    expect(exitCodeForResult(res)).toBe(EXIT_CODES.LOGICAL_FAILURE);
+    expect(exitCodeForResult(res)).toBe(EXIT_CODES.SEMANTIC_FAILURE);
   });
 
-  it("returns SEMANTIC_FAILURE (3) when semantic errors are present", () => {
+  it("returns SEMANTIC_FAILURE (5) when semantic errors are present", () => {
     const res: ValidationResult = {
       passed: false,
       errors: [
@@ -152,7 +153,7 @@ describe("exitCodeForResult", () => {
     expect(exitCodeForResult(res)).toBe(EXIT_CODES.SEMANTIC_FAILURE);
   });
 
-  it("returns STRUCTURAL_FAILURE (2) when structural errors are present", () => {
+  it("returns STRUCTURAL_FAILURE (4) when structural errors are present", () => {
     const res: ValidationResult = {
       passed: false,
       errors: [

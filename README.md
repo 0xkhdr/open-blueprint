@@ -1,15 +1,27 @@
-# open-blueprint (`bp`)
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="icons/brand/brand-lockup-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="icons/brand/brand-lockup-light.png">
+    <img src="icons/brand/brand-lockup-dark.png" alt="open-blueprint — Zero-runtime governance for agentic AI" width="700">
+  </picture>
+</p>
 
-[![Version](https://img.shields.io/npm/v/@agentic/bp?color=blue)](https://www.npmjs.com/package/@agentic/bp)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/0xkhdr/open-blueprint/ci.yml?branch=main)](https://github.com/0xkhdr/open-blueprint/actions)
-[![Coverage](https://img.shields.io/badge/Coverage-95%25-brightgreen)](coverage)
-[![Bun Supported](https://img.shields.io/badge/Bun-Supported-orange?logo=bun)](https://bun.sh)
-[![LSP Enabled](https://img.shields.io/badge/LSP-Integrate-blueviolet)](src/lsp)
+<h1 align="center">open-blueprint (`bp`)</h1>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/@agentic/bp"><img src="https://img.shields.io/npm/v/@agentic/bp?color=blue" alt="NPM Version"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT"></a>
+  <a href="https://github.com/0xkhdr/open-blueprint/actions"><img src="https://img.shields.io/github/actions/workflow/status/0xkhdr/open-blueprint/ci.yml?branch=main" alt="Build Status"></a>
+  <a href="vitest.config.ts"><img src="https://img.shields.io/badge/Coverage-%E2%89%A575%25%20CI--enforced-brightgreen" alt="Coverage"></a>
+  <a href="https://bun.sh"><img src="https://img.shields.io/badge/Bun-Supported-orange?logo=bun" alt="Bun Supported"></a>
+  <a href="src/lsp"><img src="https://img.shields.io/badge/LSP-Integrate-blueviolet" alt="LSP Enabled"></a>
+</p>
 
 **open-blueprint (`bp`)** is a zero-runtime-overhead development and CI command-line utility that prepares software repositories for agentic AI tools (such as Claude Code, Cursor, OpenDev, and Goose) by scaffolding standardized governance structures, verifying their integrity, and actively detecting configuration drift.
 
 By shifting governance to development-time and CI-time, `bp` keeps your production systems clean. It detects project topologies, scaffolds logic-less Handlebars templates, runs 4-layer validation gates, and translates files across agent platforms, letting you enforce strict, drift-proof constraints with absolute confidence.
+
+And the governance is *measurable*, not declarative: `bp report` evaluates every rule against the repository and publishes per-rule, per-pack, per-framework compliance — with SARIF output that annotates pull requests per rule via GitHub code scanning ([Governance Reporting](docs/governance-reporting.md)).
 
 ```text
                   ┌──────────────────────────────┐
@@ -72,7 +84,10 @@ Documentation follows a progressive-disclosure structure. Read only what you nee
 
 ### Advanced Customization
 
+* **[Rule Packs](docs/rule-packs.md)** — Author, lint, install, and remove client-defined rule packs with lockfile-tracked materialization.
+* **[Skill Authoring](docs/skill-authoring.md)** — Create, validate, dry-run, and share skills with the canonical tool vocabulary and `kind: skills` packs.
 * **[Plugin Developer API](docs/plugin-api.md)** — Write custom TypeScript validators for company governance policies.
+* **[Governance Reporting](docs/governance-reporting.md)** — Measured per-rule compliance, SARIF PR annotations, pack integrity drift, and manual-rule staleness snapshots.
 * **[Contributor Guidelines](docs/contributing.md)** — Development setup instructions, testing steps, and Architecture Decision Records.
 * **[Template Authoring Guide](docs/template-authoring.md)** — Build, merchandise, and cryptographically sign Handlebars template packages.
 * **[Custom Backend Adapters](docs/backend-adapter.md)** — Implement target platform translation adapters using BlueprintIR.
@@ -129,6 +144,20 @@ bp init --tools claude,cursor,windsurf     # multiple backends
 bp init --tools all                         # all 31 backends
 bp convert --from claude --to windsurf      # convert between any pair
 bp doctor --all                             # diagnose all configured backends
+```
+
+### Ownership Tracking & Round-Trip
+
+`bp` records the files it generates in an ownership manifest (`.bp/manifest.json`),
+so it can tell an intentional developer edit from configuration rot — and adopt
+files you authored yourself.
+
+```bash
+bp adopt --status         # classify files: managed | modified | missing | untracked
+bp adopt                  # bring user-authored rules/skills under ownership tracking
+bp adopt --wrap           # ...and wrap their bodies in bp:preserve markers
+bp emit                   # serialize the parsed BlueprintIR back to disk (round-trip)
+bp emit --input ir.json   # ...from an explicit IR file, manifest-aware & marker-safe
 ```
 
 ---

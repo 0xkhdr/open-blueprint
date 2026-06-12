@@ -2,6 +2,7 @@ import * as fsPromises from "node:fs/promises";
 import * as path from "node:path";
 import Handlebars from "handlebars";
 import { LRUCache } from "lru-cache";
+import { deepFreeze } from "../security/sandbox.js";
 import { startSpan } from "../telemetry/tracer.js";
 
 // Allowlisted helpers only — no arbitrary JS execution
@@ -30,6 +31,15 @@ const ALLOWED_HELPERS: Record<string, Handlebars.HelperDelegate> = {
   includes: (arr: unknown, val: unknown) => Array.isArray(arr) && arr.includes(val),
   join: (arr: unknown, sep: unknown) =>
     Array.isArray(arr) ? arr.join(typeof sep === "string" ? sep : ", ") : "",
+  // Build one valid glob from a list of directories: "src" → "src/**/*",
+  // ["src","lib"] → "{src,lib}/**/*". Empty/missing input covers everything.
+  scopeGlob: (dirs: unknown) => {
+    if (!Array.isArray(dirs) || dirs.length === 0) return "**/*";
+    const cleaned = dirs.filter((d): d is string => typeof d === "string" && d.length > 0);
+    if (cleaned.length === 0) return "**/*";
+    if (cleaned.length === 1) return `${cleaned[0]}/**/*`;
+    return `{${cleaned.join(",")}}/**/*`;
+  },
   default: (val: unknown, fallback: unknown) =>
     val !== undefined && val !== null && val !== "" ? val : fallback,
   year: () => new Date().getFullYear(),
@@ -104,9 +114,16 @@ export async function registerPartials(partialsDir: string): Promise<void> {
   }
 }
 
-export async function renderTemplate(templatePath: string, context: Record<string, unknown>): Promise<string> {
+export async function renderTemplate(
+  templatePath: string,
+  context: Record<string, unknown>
+): Promise<string> {
   return startSpan("bp.template", async () => {
-    const cached = templateCache.get(templatePath);
+    // mtime in the cache key invalidates compiled templates when the source
+    // file changes on disk (matters for `--watch` sessions).
+    const stat = await fsPromises.stat(templatePath);
+    const cacheKey = `${templatePath}:${stat.mtimeMs}`;
+    const cached = templateCache.get(cacheKey);
     let compiled: HandlebarsTemplateDelegate;
 
     if (cached) {
@@ -115,7 +132,7 @@ export async function renderTemplate(templatePath: string, context: Record<strin
       const source = await fsPromises.readFile(templatePath, "utf-8");
       // noEscape applies to the template source only; vars are pre-sanitized before reaching here
       compiled = hbs.compile(source, { noEscape: true, strict: false });
-      templateCache.set(templatePath, compiled);
+      templateCache.set(cacheKey, compiled);
     }
 
     // JSON round-trip strips prototype chain; deepFreeze prevents mutation
@@ -128,17 +145,6 @@ export function renderString(template: string, context: Record<string, unknown>)
   const compiled = hbs.compile(template, { noEscape: true, strict: false });
   const frozenCtx = deepFreeze(JSON.parse(JSON.stringify(context)) as Record<string, unknown>);
   return compiled(frozenCtx);
-}
-
-function deepFreeze<T>(obj: T): T {
-  if (obj === null || typeof obj !== "object") return obj;
-  Object.getOwnPropertyNames(obj).forEach((name) => {
-    const value = (obj as Record<string, unknown>)[name];
-    if (value && typeof value === "object") {
-      deepFreeze(value);
-    }
-  });
-  return Object.freeze(obj);
 }
 
 export function compileTemplate(source: string): HandlebarsTemplateDelegate {

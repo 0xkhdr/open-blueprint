@@ -1,10 +1,14 @@
 import { z } from "zod";
+import { CheckSchema } from "../validator/checks/schema.js";
 
-const irIdentifier = z
+export const irIdentifier = z
   .string()
   .max(64)
   .regex(/^[a-z0-9_-]+$/i);
-const irShortString = z.string().max(512);
+export const irShortString = z.string().max(512);
+/** Strict semver (major.minor.patch with optional pre-release/build). */
+export const SEMVER_RE =
+  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/;
 const _irPathField = z.string().max(256);
 const irContentField = z.string().max(2048);
 const noGlobOverrun = (s: string) => !/\*{4,}/.test(s);
@@ -34,6 +38,10 @@ export const RuleSchema = z.object({
   action: irContentField,
   rationale: irContentField.optional(),
   tags: z.array(irShortString).optional(),
+  // Stage 1: machine-evaluable condition. Absent ⇒ rule is manual.
+  check: CheckSchema.optional(),
+  // Default: "auto" when a check is present, otherwise "manual".
+  enforcement: z.enum(["auto", "manual"]).optional(),
 });
 
 export const SkillSchema = z.object({
@@ -43,6 +51,10 @@ export const SkillSchema = z.object({
   tools_required: z.array(irShortString),
   procedure: irContentField,
   disable_model_invocation: z.boolean().optional(),
+  // Stage 3: stable identifier (defaults to slugified name) and risk tier
+  // mapped to the templates/_base risk tiers.
+  id: irIdentifier.optional(),
+  risk: z.enum(["low", "medium", "high"]).optional(),
 });
 
 export const HookSchema = z.object({

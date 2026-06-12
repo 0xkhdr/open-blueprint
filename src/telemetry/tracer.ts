@@ -1,12 +1,9 @@
-import { SpanStatusCode, trace } from "@opentelemetry/api";
 import type { Span } from "@opentelemetry/api";
+import { SpanStatusCode, trace } from "@opentelemetry/api";
 
 const tracer = trace.getTracer("open-blueprint");
 
-export async function startSpan<T>(
-  name: string,
-  fn: (span: Span) => Promise<T>
-): Promise<T> {
+export async function startSpan<T>(name: string, fn: (span: Span) => Promise<T>): Promise<T> {
   return tracer.startActiveSpan(name, async (span) => {
     try {
       const result = await fn(span);

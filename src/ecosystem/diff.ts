@@ -1,4 +1,14 @@
 import type { BlueprintIR, Persona, Rule, Skill } from "../translator/ir.js";
+import { normalizeText } from "../utils/normalize.js";
+
+/**
+ * Compare two prose fields ignoring cosmetic whitespace/line-ending differences
+ * (case is preserved to retain governance fidelity). Returns true when the
+ * fields differ meaningfully.
+ */
+function proseChanged(left: string | undefined, right: string | undefined): boolean {
+  return normalizeText(left ?? "") !== normalizeText(right ?? "");
+}
 
 export interface BlueprintDiff {
   added: Array<{ type: string; id: string; value: unknown }>;
@@ -110,8 +120,8 @@ export function diffRule(left: Rule, right: Rule): string[] {
   if (left.scope !== right.scope) changes.push(`scope: "${left.scope}" → "${right.scope}"`);
   if (left.severity !== right.severity)
     changes.push(`severity: ${left.severity} → ${right.severity}`);
-  if (left.action !== right.action) changes.push("action modified");
-  if (left.rationale !== right.rationale) changes.push("rationale modified");
+  if (proseChanged(left.action, right.action)) changes.push("action modified");
+  if (proseChanged(left.rationale, right.rationale)) changes.push("rationale modified");
   const leftTags = new Set(left.tags || []);
   const rightTags = new Set(right.tags || []);
   const addedTags = [...rightTags].filter((t) => !leftTags.has(t));
@@ -123,9 +133,9 @@ export function diffRule(left: Rule, right: Rule): string[] {
 
 export function diffSkill(left: Skill, right: Skill): string[] {
   const changes: string[] = [];
-  if (left.description !== right.description) changes.push("description modified");
-  if (left.when_to_use !== right.when_to_use) changes.push("when_to_use modified");
-  if (left.procedure !== right.procedure) changes.push("procedure modified");
+  if (proseChanged(left.description, right.description)) changes.push("description modified");
+  if (proseChanged(left.when_to_use, right.when_to_use)) changes.push("when_to_use modified");
+  if (proseChanged(left.procedure, right.procedure)) changes.push("procedure modified");
   const leftTools = new Set(left.tools_required || []);
   const rightTools = new Set(right.tools_required || []);
   const addedTools = [...rightTools].filter((t) => !leftTools.has(t));
@@ -138,7 +148,8 @@ export function diffSkill(left: Skill, right: Skill): string[] {
 export function diffPersona(left: Persona, right: Persona): string[] {
   const changes: string[] = [];
   if (left.role !== right.role) changes.push(`role: ${left.role} → ${right.role}`);
-  if (left.reasoning_style !== right.reasoning_style) changes.push("reasoning_style modified");
+  if (proseChanged(left.reasoning_style, right.reasoning_style))
+    changes.push("reasoning_style modified");
   const leftTools = new Set(left.allowed_tools || []);
   const rightTools = new Set(right.allowed_tools || []);
   const addedTools = [...rightTools].filter((t) => !leftTools.has(t));

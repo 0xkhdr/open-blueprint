@@ -57,8 +57,19 @@ jobs:
           context: .
           push: false
           tags: ghcr.io/${{ github.repository }}:${{ github.sha }}
+          load: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Docker image smoke test (init + verify)
+        run: |
+          smoke=$(mktemp -d)
+          mkdir -p "$smoke/src"
+          printf '{"name":"smoke","version":"1.0.0","scripts":{"test":"vitest"}}\n' > "$smoke/package.json"
+          printf 'export {};\n' > "$smoke/src/index.ts"
+          chmod -R 777 "$smoke"
+          docker run --rm -v "$smoke":/work -w /work ghcr.io/${{ github.repository }}:${{ github.sha }} init claude
+          docker run --rm -v "$smoke":/work -w /work ghcr.io/${{ github.repository }}:${{ github.sha }} verify
 
       - name: Docker Scout scan
         uses: docker/scout-action@v1

@@ -17,6 +17,12 @@ export interface TemplatePack {
 export interface BackendManifest {
   backend: string;
   version: string;
+  /**
+   * Canonical tool capabilities (Stage 3, see src/translator/tools.ts).
+   * Absent ⇒ the backend declares no capability list and unknown
+   * `tools_required` entries downgrade from error to info.
+   */
+  tools?: string[];
   supported_features: {
     anchors: boolean;
     rules: boolean;

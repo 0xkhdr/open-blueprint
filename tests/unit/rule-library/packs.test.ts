@@ -88,3 +88,33 @@ describe("Rule Packs", () => {
     }
   });
 });
+
+describe("Rule Packs — Stage 1 enforcement honesty", () => {
+  it("every rule either has a check or is explicitly manual", () => {
+    for (const pack of BUILT_IN_PACKS) {
+      for (const rule of pack.rules) {
+        const hasCheck = rule.check !== undefined;
+        const isManual = rule.enforcement === "manual";
+        expect(
+          hasCheck !== isManual,
+          `${pack.id}/${rule.id} must have exactly one of check or enforcement: manual`
+        ).toBe(true);
+      }
+    }
+  });
+
+  it("each pack has at least 3 auto-enforceable rules", () => {
+    for (const pack of BUILT_IN_PACKS) {
+      const auto = pack.rules.filter((r) => r.check !== undefined);
+      expect(auto.length, `${pack.id} auto-enforceable rules`).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it("metadata.coverage equals the rounded % of auto-enforceable rules", () => {
+    for (const pack of BUILT_IN_PACKS) {
+      const auto = pack.rules.filter((r) => r.check !== undefined).length;
+      const expected = Math.round((auto / pack.rules.length) * 100);
+      expect(pack.metadata?.coverage, `${pack.id} coverage`).toBe(expected);
+    }
+  });
+});

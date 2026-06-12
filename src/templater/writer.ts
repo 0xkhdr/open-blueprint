@@ -67,7 +67,9 @@ export async function writeFile(
   options: WriteOptions,
   conflictResolution: ConflictResolution = "prompt"
 ): Promise<WriteResult> {
-  return startSpan("bp.write", () => writeFileImpl(outputPath, content, options, conflictResolution));
+  return startSpan("bp.write", () =>
+    writeFileImpl(outputPath, content, options, conflictResolution)
+  );
 }
 
 async function writeFileImpl(

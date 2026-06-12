@@ -1,6 +1,14 @@
 {
   "backend": "cursor",
   "version": "2026.1",
+  "tools": [
+    "read_file",
+    "write_file",
+    "edit_file",
+    "run_command",
+    "run_tests",
+    "search"
+  ],
   "supported_features": {
     "anchors": true,
     "rules": true,
@@ -9,7 +17,10 @@
     "hooks": false
   },
   "file_patterns": {
-    "anchor": ["context.md", ".cursor/context.md"],
+    "anchor": [
+      "context.md",
+      ".cursor/context.md"
+    ],
     "rules": ".cursor/rules/*.md",
     "skills": ".cursor/skills/*.md",
     "agents": ".cursor/agents/*.md",
@@ -23,17 +34,43 @@
   },
   "frontmatter_schema": {
     "rules": {
-      "required": ["scope", "severity"],
-      "optional": ["action", "rationale", "tags"],
-      "severity_values": ["hard", "soft", "info"]
+      "required": [
+        "scope",
+        "severity"
+      ],
+      "optional": [
+        "action",
+        "rationale",
+        "tags",
+        "id",
+        "check",
+        "enforcement"
+      ],
+      "severity_values": [
+        "hard",
+        "soft",
+        "info"
+      ]
     },
     "skills": {
-      "required": ["name", "description"],
-      "optional": ["tools_required", "when_to_use"]
+      "required": [
+        "name",
+        "description"
+      ],
+      "optional": [
+        "tools_required",
+        "when_to_use"
+      ]
     },
     "agents": {
-      "required": ["name"],
-      "optional": ["role", "reasoning_style", "allowed_tools"]
+      "required": [
+        "name"
+      ],
+      "optional": [
+        "role",
+        "reasoning_style",
+        "allowed_tools"
+      ]
     }
   }
 }

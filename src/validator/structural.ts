@@ -280,7 +280,16 @@ function checkMarkdownWellformedness(filePath: string, content: string): Validat
   return errors;
 }
 
-export async function validateStructural(filePath: string, manifest: BackendManifest): Promise<ValidationError[]> {
+export interface StructuralScanOptions {
+  /** Enable entropy-based secret detection (verify --entropy-scan / .bp.json scan.entropyEnabled). */
+  entropyScan?: boolean;
+}
+
+export async function validateStructural(
+  filePath: string,
+  manifest: BackendManifest,
+  scanOptions: StructuralScanOptions = {}
+): Promise<ValidationError[]> {
   const errors: ValidationError[] = [];
 
   try {
@@ -313,7 +322,9 @@ export async function validateStructural(filePath: string, manifest: BackendMani
       errors.push(...checkFrontmatter(filePath, content, ftype));
       errors.push(...checkRequiredFields(filePath, content, ftype, manifest));
       errors.push(...checkMarkdownWellformedness(filePath, content));
-      errors.push(...scanForSecrets(filePath, content));
+      errors.push(
+        ...scanForSecrets(filePath, content, { entropyEnabled: scanOptions.entropyScan === true })
+      );
     }
   }
 
@@ -322,8 +333,11 @@ export async function validateStructural(filePath: string, manifest: BackendMani
 
 export async function validateStructuralBatch(
   files: string[],
-  manifest: BackendManifest
+  manifest: BackendManifest,
+  scanOptions: StructuralScanOptions = {}
 ): Promise<ValidationError[]> {
-  const results = await Promise.all(files.map((file) => validateStructural(file, manifest)));
+  const results = await Promise.all(
+    files.map((file) => validateStructural(file, manifest, scanOptions))
+  );
   return results.flat();
 }

@@ -1,6 +1,6 @@
 import * as path from "node:path";
-import type { FileSystem } from "../utils/fs.js";
 import { logger } from "../logger.js";
+import type { FileSystem } from "../utils/fs.js";
 
 async function readJson(fs: FileSystem, filePath: string): Promise<Record<string, unknown> | null> {
   try {
@@ -61,7 +61,11 @@ export async function parseWorkspacePackages(root: string, fs: FileSystem): Prom
     const workspaces = pkgJson.workspaces;
     if (Array.isArray(workspaces)) {
       results.push(...workspaces.filter((w): w is string => typeof w === "string"));
-    } else if (workspaces && typeof workspaces === "object" && Array.isArray((workspaces as Record<string, unknown>).packages)) {
+    } else if (
+      workspaces &&
+      typeof workspaces === "object" &&
+      Array.isArray((workspaces as Record<string, unknown>).packages)
+    ) {
       results.push(
         ...((workspaces as Record<string, unknown>).packages as string[]).filter(
           (w): w is string => typeof w === "string"

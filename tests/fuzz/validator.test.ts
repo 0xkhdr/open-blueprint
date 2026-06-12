@@ -91,5 +91,7 @@ describe("Property-based Fuzz Testing", () => {
       ),
       { numRuns: 100 } // Fast check run
     );
-  });
+    // 30s: validation pipeline now includes the enforcement layer; this test
+    // asserts "never panics/hangs", not throughput.
+  }, 30_000);
 });

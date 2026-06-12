@@ -119,7 +119,7 @@ export class BlueprintMerger {
     };
   }
 
-  private mergeArrayLayer<T extends { id?: string; name?: string }>(
+  private mergeArrayLayer<T extends { id?: string | undefined; name?: string | undefined }>(
     mergedArray: T[],
     baseArray: T[] | undefined,
     oursArray: T[] | undefined,

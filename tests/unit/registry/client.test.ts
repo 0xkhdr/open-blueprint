@@ -2,8 +2,20 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { RegistryClient } from "../../../src/registry/client.js";
-import { generateKeyPair, verifySignature, signData } from "../../../src/registry/signer.js";
+import {
+  assertFetchableUrl,
+  isArtifactRef,
+  parseGithubRef,
+  githubRawUrl,
+  RegistryClient,
+  resolveArtifactSource,
+} from "../../../src/registry/client.js";
+import {
+  generateKeyPair,
+  loadPublicKey,
+  signData,
+  verifySignature,
+} from "../../../src/registry/signer.js";
 
 function createTmpDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), "bp-registry-test-"));
@@ -16,13 +28,19 @@ function cleanDir(dir: string): void {
 describe("Registry Signer & Client", () => {
   let tmpDir: string;
 
+  let prevMock: string | undefined;
+
   beforeEach(() => {
     tmpDir = createTmpDir();
+    prevMock = process.env.BP_REGISTRY_MOCK;
+    process.env.BP_REGISTRY_MOCK = "1";
     RegistryClient.clearMockPackages();
   });
 
   afterEach(() => {
     cleanDir(tmpDir);
+    if (prevMock === undefined) delete process.env.BP_REGISTRY_MOCK;
+    else process.env.BP_REGISTRY_MOCK = prevMock;
     RegistryClient.clearMockPackages();
   });
 
@@ -39,6 +57,18 @@ describe("Registry Signer & Client", () => {
       // Negative test
       const badVerified = verifySignature(Buffer.from("bad data"), sig, keys.publicKey);
       expect(badVerified).toBe(false);
+    });
+
+    it("loadPublicKey returns the env-configured key when present", async () => {
+      const prev = process.env.BP_REGISTRY_PUBLIC_KEY;
+      process.env.BP_REGISTRY_PUBLIC_KEY = "-----BEGIN PUBLIC KEY-----\nMOCK\n-----END PUBLIC KEY-----";
+      try {
+        const key = await loadPublicKey();
+        expect(key).toContain("BEGIN PUBLIC KEY");
+      } finally {
+        if (prev === undefined) delete process.env.BP_REGISTRY_PUBLIC_KEY;
+        else process.env.BP_REGISTRY_PUBLIC_KEY = prev;
+      }
     });
   });
 
@@ -70,6 +100,32 @@ describe("Registry Signer & Client", () => {
       expect(fs.readFileSync(path.join(installTarget, "README.md"), "utf-8")).toBe("my custom template pack");
     });
 
+    it("listBundledPacks returns only real on-disk template packs", async () => {
+      const packs = await RegistryClient.listBundledPacks();
+      const names = packs.map((p) => p.name);
+      // The repo ships these backend template packs on disk.
+      expect(names).toContain("claude");
+      expect(names).toContain("generic");
+      // Internal/base directories must never be surfaced as installable packs.
+      expect(names).not.toContain("_base");
+      expect(names.some((n) => n.startsWith("_") || n.startsWith("."))).toBe(false);
+      // Every reported pack must carry a description and version.
+      for (const p of packs) {
+        expect(p.version).toBeTruthy();
+        expect(p.description).toContain(p.name);
+      }
+    });
+
+    it("list() falls back to bundled packs when no adapter or mock packages exist", async () => {
+      const client = new RegistryClient("https://registry.mock");
+      RegistryClient.clearMockPackages();
+      const list = await client.list();
+      // No fictional packages — only real bundled packs are returned.
+      expect(list.length).toBeGreaterThan(0);
+      expect(list.map((p) => p.name)).toContain("claude");
+      expect(list.map((p) => p.name)).not.toContain("@bp-templates/fastapi");
+    });
+
     it("throws error if signature is invalid during install", async () => {
       const client = new RegistryClient("https://registry.mock");
       const keys = generateKeyPair();
@@ -87,7 +143,71 @@ describe("Registry Signer & Client", () => {
       // Install verifying with anotherKeys.publicKey (should fail)
       await expect(
         client.install("@bp-templates/custom-pack", installTarget, anotherKeys.publicKey)
-      ).rejects.toThrow("Signature verification failed");
+      ).rejects.toThrow("signature verification failed");
+    });
+
+    it("mock registry is inert without BP_REGISTRY_MOCK=1", async () => {
+      delete process.env.BP_REGISTRY_MOCK;
+      RegistryClient.registerMockPackage({
+        name: "@bp-templates/phantom",
+        version: "9.9.9",
+        description: "should not be visible",
+      });
+      const client = new RegistryClient("https://registry.mock");
+      const list = await client.list();
+      expect(list.map((p) => p.name)).not.toContain("@bp-templates/phantom");
+      await expect(client.publish("x", "1.0.0", tmpDir, "key")).rejects.toThrow(
+        /REGISTRY_MOCK_DISABLED/
+      );
+    });
+  });
+
+  describe("URL safety (Stage 5)", () => {
+    it("accepts https and loopback http only", () => {
+      expect(assertFetchableUrl("https://example.com/x.tgz").href).toContain("https://");
+      expect(assertFetchableUrl("http://127.0.0.1:8080/x.tgz").hostname).toBe("127.0.0.1");
+      expect(assertFetchableUrl("http://localhost:8080/x.tgz").hostname).toBe("localhost");
+      expect(() => assertFetchableUrl("http://example.com/x.tgz")).toThrow(/Non-HTTPS/);
+      expect(() => assertFetchableUrl("ftp://example.com/x.tgz")).toThrow(/Non-HTTPS/);
+      expect(() => assertFetchableUrl("not a url")).toThrow(/Invalid URL/);
+    });
+  });
+
+  describe("github refs (Stage 5)", () => {
+    it("parses owner/repo@ref#path", () => {
+      const ref = parseGithubRef("github:acme/packs@v1.2.0#dist/demo-1.0.0.bp-pack.tgz");
+      expect(ref).toEqual({
+        owner: "acme",
+        repo: "packs",
+        ref: "v1.2.0",
+        filePath: "dist/demo-1.0.0.bp-pack.tgz",
+      });
+      expect(githubRawUrl(ref)).toBe(
+        "https://raw.githubusercontent.com/acme/packs/v1.2.0/dist/demo-1.0.0.bp-pack.tgz"
+      );
+    });
+
+    it("defaults the ref to HEAD and rejects malformed refs", () => {
+      expect(parseGithubRef("github:acme/packs#demo.bp-pack.tgz").ref).toBe("HEAD");
+      expect(() => parseGithubRef("github:acme")).toThrow(/PACK_REF_INVALID/);
+      expect(() => parseGithubRef("github:acme/packs")).toThrow(/PACK_REF_INVALID/);
+    });
+  });
+
+  describe("artifact source resolution (Stage 5)", () => {
+    it("classifies refs", () => {
+      expect(resolveArtifactSource("https://h/x.bp-pack.tgz").type).toBe("https");
+      expect(resolveArtifactSource("github:a/b#x.bp-pack.tgz").type).toBe("github");
+      expect(resolveArtifactSource("./local/x.bp-pack.tgz").type).toBe("path");
+      expect(resolveArtifactSource("demo-pack").type).toBe("registry-id");
+    });
+
+    it("isArtifactRef distinguishes Stage 5 refs from Stage 2/3 pack refs", () => {
+      expect(isArtifactRef("https://h/x.bp-pack.tgz")).toBe(true);
+      expect(isArtifactRef("github:a/b#x.bp-pack.tgz")).toBe(true);
+      expect(isArtifactRef("dist/demo-1.0.0.bp-pack.tgz")).toBe(true);
+      expect(isArtifactRef(".bp/packs/demo.bp-pack.yaml")).toBe(false);
+      expect(isArtifactRef("my-pack-id")).toBe(false);
     });
   });
 });

@@ -92,8 +92,8 @@ export const BACKENDS: BackendConfig[] = [
   {
     id: "generic",
     name: "Generic",
-    skillsPath: ".generic/skills",
-    commandsPath: ".generic/commands",
+    skillsPath: "skills",
+    commandsPath: "commands",
     commandSyntax: "colon",
     fileExtension: ".md",
     supportsCommands: true,

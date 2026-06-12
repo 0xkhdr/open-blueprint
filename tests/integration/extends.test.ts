@@ -9,14 +9,33 @@ import { RegistryClient } from "../../src/registry/client.js";
 describe("blueprint extends / inheritance", () => {
   let tmpDir: string;
 
+  let prevMock: string | undefined;
+  let prevBpHome: string | undefined;
+
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "bp-extends-test-"));
     fs.rmSync(path.join(os.homedir(), ".bp", "templates"), { recursive: true, force: true });
+    prevMock = process.env.BP_REGISTRY_MOCK;
+    process.env.BP_REGISTRY_MOCK = "1";
+    // Installs are fail-closed by default; the mock package's signature is a
+    // placeholder, so this test must explicitly opt out of signature checks.
+    prevBpHome = process.env.BP_HOME;
+    const bpHomeDir = path.join(tmpDir, ".bp-home");
+    fs.mkdirSync(bpHomeDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(bpHomeDir, "trust.json"),
+      JSON.stringify({ schema: "bp-trust/1", keys: [], policy: { require_signature: false } })
+    );
+    process.env.BP_HOME = bpHomeDir;
   });
 
   afterEach(() => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
     fs.rmSync(path.join(os.homedir(), ".bp", "templates"), { recursive: true, force: true });
+    if (prevMock === undefined) delete process.env.BP_REGISTRY_MOCK;
+    else process.env.BP_REGISTRY_MOCK = prevMock;
+    if (prevBpHome === undefined) delete process.env.BP_HOME;
+    else process.env.BP_HOME = prevBpHome;
     RegistryClient.clearMockPackages();
   });
 
@@ -77,9 +96,6 @@ describe("blueprint extends / inheritance", () => {
       "utf-8"
     );
 
-    // Patch the DEFAULT_PUBLIC_KEY in signer to allow verifying our signature
-    const { DEFAULT_PUBLIC_KEY } = await import("../../src/registry/signer.js");
-    
     // Detect project fingerprint
     const fingerprint = await detect(projectDir);
 
