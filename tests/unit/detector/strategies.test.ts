@@ -28,10 +28,10 @@ describe("detector strategy composition", () => {
     const strategies = createDefaultStrategies();
     strategies.languages = {
       name: "languages",
-      detect: async () => [{ name: "python", confidence: 1, files_count: 42 }],
+      detect: async () => [{ name: "python", confidence: 1, primary: true }],
     };
 
     const fp = await detect(tmpDir, undefined, strategies);
-    expect(fp.languages).toEqual([{ name: "python", confidence: 1, files_count: 42 }]);
+    expect(fp.languages).toEqual([{ name: "python", confidence: 1, primary: true }]);
   });
 });
