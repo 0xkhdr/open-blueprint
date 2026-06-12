@@ -1,6 +1,7 @@
 # Spec — Stage 2: SOLID Refactoring — Core Engines
 
-**Status:** Draft — will be revised with Stage 1 findings before implementation
+**Status:** Complete (2026-06-12) — executed against the Stage 1 findings (cycle inventory
+C1–C14, violations V1–V9, SRP review); deviations and residuals recorded in `gaps.md`
 **Depends on:** Stage 1 dependency graph, SRP review, export-surface audit
 **Date:** 2026-06-12
 
